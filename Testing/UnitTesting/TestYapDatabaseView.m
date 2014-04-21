@@ -1,4 +1,4 @@
-#import <SenTestingKit/SenTestingKit.h>
+#import <XCTest/XCTest.h>
 
 #import "YapDatabase.h"
 #import "YapDatabaseView.h"
@@ -6,7 +6,7 @@
 #import "DDLog.h"
 #import "DDTTYLogger.h"
 
-@interface TestYapDatabaseView : SenTestCase
+@interface TestYapDatabaseView : XCTestCase
 @end
 
 @implementation TestYapDatabaseView
@@ -34,7 +34,9 @@
 	[super tearDown];
 }
 
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 #pragma mark -
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 - (void)test_persistent
 {
@@ -61,7 +63,7 @@
 	[[NSFileManager defaultManager] removeItemAtPath:databasePath error:NULL];
 	YapDatabase *database = [[YapDatabase alloc] initWithPath:databasePath];
 	
-	STAssertNotNil(database, @"Oops");
+	XCTAssertNotNil(database, @"Oops");
 	
 	YapDatabaseConnection *connection1 = [database newConnection];
 	YapDatabaseConnection *connection2 = [database newConnection];
@@ -96,12 +98,12 @@
 	                               groupingBlockType:groupingBlockType
 	                                    sortingBlock:sortingBlock
 	                                sortingBlockType:sortingBlockType
-	                                         version:0
+	                                      versionTag:@"1"
 	                                         options:options];
 	
 	BOOL registerResult = [database registerExtension:databaseView withName:@"order"];
 	
-	STAssertTrue(registerResult, @"Failure registering extension");
+	XCTAssertTrue(registerResult, @"Failure registering extension");
 	
 	NSString *key0 = @"key0";
 	NSString *key1 = @"key1";
@@ -123,25 +125,25 @@
 	
 	[connection1 readWriteWithBlock:^(YapDatabaseReadWriteTransaction *transaction){
 		
-		STAssertNil([transaction ext:@"non-existent-view"], @"Expected nil");
-		STAssertNotNil([transaction ext:@"order"], @"Expected non-nil view transaction");
+		XCTAssertNil([transaction ext:@"non-existent-view"], @"Expected nil");
+		XCTAssertNotNil([transaction ext:@"order"], @"Expected non-nil view transaction");
 		
-		STAssertTrue([[transaction ext:@"order"] numberOfGroups] == 0, @"Expected zero group count");
-		STAssertTrue([[[transaction ext:@"order"] allGroups] count] == 0, @"Expected empty array");
+		XCTAssertTrue([[transaction ext:@"order"] numberOfGroups] == 0, @"Expected zero group count");
+		XCTAssertTrue([[[transaction ext:@"order"] allGroups] count] == 0, @"Expected empty array");
 		
-		STAssertTrue([[transaction ext:@"order"] numberOfKeysInGroup:@""] == 0, @"Expected zero");
-		STAssertTrue([[transaction ext:@"order"] numberOfKeysInAllGroups] == 0, @"Expected zero");
+		XCTAssertTrue([[transaction ext:@"order"] numberOfKeysInGroup:@""] == 0, @"Expected zero");
+		XCTAssertTrue([[transaction ext:@"order"] numberOfKeysInAllGroups] == 0, @"Expected zero");
 		
-		STAssertNil([[transaction ext:@"order"] groupForKey:key0 inCollection:nil], @"Expected nil");
+		XCTAssertNil([[transaction ext:@"order"] groupForKey:key0 inCollection:nil], @"Expected nil");
 		
 		NSString *group = nil;
 		NSUInteger index = 0;
 		
 		BOOL result = [[transaction ext:@"order"] getGroup:&group index:&index forKey:key0 inCollection:nil];
 		
-		STAssertFalse(result, @"Expected NO");
-		STAssertNil(group, @"Expected group to be set to nil");
-		STAssertTrue(index == 0, @"Expected index to be set to zero");
+		XCTAssertFalse(result, @"Expected NO");
+		XCTAssertNil(group, @"Expected group to be set to nil");
+		XCTAssertTrue(index == 0, @"Expected index to be set to zero");
 	}];
 	
 	[connection2 readWriteWithBlock:^(YapDatabaseReadWriteTransaction *transaction){
@@ -152,76 +154,76 @@
 		
 		// Read it back
 		
-		STAssertTrue([[transaction ext:@"order"] numberOfGroups] == 1, @"Wrong group count");
-		STAssertTrue([[[transaction ext:@"order"] allGroups] count] == 1, @"Wrong array count");
+		XCTAssertTrue([[transaction ext:@"order"] numberOfGroups] == 1, @"Wrong group count");
+		XCTAssertTrue([[[transaction ext:@"order"] allGroups] count] == 1, @"Wrong array count");
 		
-		STAssertTrue([[transaction ext:@"order"] numberOfKeysInGroup:@""] == keysCount, @"Wrong count");
-		STAssertTrue([[transaction ext:@"order"] numberOfKeysInAllGroups] == keysCount, @"Wrong count");
+		XCTAssertTrue([[transaction ext:@"order"] numberOfKeysInGroup:@""] == keysCount, @"Wrong count");
+		XCTAssertTrue([[transaction ext:@"order"] numberOfKeysInAllGroups] == keysCount, @"Wrong count");
 		
 		NSString *group = nil;
 		NSUInteger index = NSNotFound;
 		
 		group = [[transaction ext:@"order"] groupForKey:key0 inCollection:nil];
 		
-		STAssertTrue([group isEqualToString:@""], @"Wrong group");
+		XCTAssertTrue([group isEqualToString:@""], @"Wrong group");
 		
 		id fetchedKey0;
 		id fetchedCollection0;
 		
 		[[transaction ext:@"order"] getKey:&fetchedKey0 collection:&fetchedCollection0 atIndex:0 inGroup:@""];
 		
-		STAssertTrue([fetchedKey0 isEqualToString:key0], @"Expected match");
-		STAssertTrue([fetchedCollection0 isEqualToString:@""], @"Expected match");
+		XCTAssertTrue([fetchedKey0 isEqualToString:key0], @"Expected match");
+		XCTAssertTrue([fetchedCollection0 isEqualToString:@""], @"Expected match");
 		
 		id fetchedObject0 = [[transaction ext:@"order"] objectAtIndex:0 inGroup:@""];
 		
-		STAssertTrue([fetchedObject0 isEqualToString:object0], @"Expected match");
+		XCTAssertTrue([fetchedObject0 isEqualToString:object0], @"Expected match");
 		
 		BOOL result = [[transaction ext:@"order"] getGroup:&group index:&index forKey:key0 inCollection:nil];
 		
-		STAssertTrue(result, @"Expected YES");
-		STAssertNotNil(group, @"Expected group to be set");
-		STAssertTrue(index == 0, @"Expected index to be set");
+		XCTAssertTrue(result, @"Expected YES");
+		XCTAssertNotNil(group, @"Expected group to be set");
+		XCTAssertTrue(index == 0, @"Expected index to be set");
 	}];
 	
 	[connection1 readWriteWithBlock:^(YapDatabaseReadWriteTransaction *transaction){
 		
 		// Test reading data back on separate connection
 		
-		STAssertTrue([[transaction ext:@"order"] numberOfGroups] == 1, @"Wrong group count");
-		STAssertTrue([[[transaction ext:@"order"] allGroups] count] == 1, @"Wrong array count");
+		XCTAssertTrue([[transaction ext:@"order"] numberOfGroups] == 1, @"Wrong group count");
+		XCTAssertTrue([[[transaction ext:@"order"] allGroups] count] == 1, @"Wrong array count");
 		
-		STAssertTrue([[transaction ext:@"order"] numberOfKeysInGroup:@""] == keysCount, @"Wrong count");
-		STAssertTrue([[transaction ext:@"order"] numberOfKeysInAllGroups] == keysCount, @"Wrong count");
+		XCTAssertTrue([[transaction ext:@"order"] numberOfKeysInGroup:@""] == keysCount, @"Wrong count");
+		XCTAssertTrue([[transaction ext:@"order"] numberOfKeysInAllGroups] == keysCount, @"Wrong count");
 		
 		NSString *group = nil;
 		NSUInteger index = NSNotFound;
 		
 		group = [[transaction ext:@"order"] groupForKey:key0 inCollection:nil];
 		
-		STAssertTrue([group isEqualToString:@""], @"Wrong group");
+		XCTAssertTrue([group isEqualToString:@""], @"Wrong group");
 		
 		id fetchedKey0;
 		id fetchedCollection0;
 		
 		[[transaction ext:@"order"] getKey:&fetchedKey0 collection:&fetchedCollection0 atIndex:0 inGroup:@""];
 		
-		STAssertTrue([fetchedKey0 isEqualToString:key0],
+		XCTAssertTrue([fetchedKey0 isEqualToString:key0],
 		             @"Expected match: fetched(%@) vs expected(%@)", fetchedKey0, key0);
 		
-		STAssertTrue([fetchedCollection0 isEqualToString:@""],
+		XCTAssertTrue([fetchedCollection0 isEqualToString:@""],
 		             @"Expected match: fetched(%@) expected(%@)", fetchedCollection0, @"");
 		
 		id fetchedObject0 = [[transaction ext:@"order"] objectAtIndex:0 inGroup:@""];
 	
-		STAssertTrue([fetchedObject0 isEqualToString:object0],
+		XCTAssertTrue([fetchedObject0 isEqualToString:object0],
 		             @"Expected match: fetchedObject0(%@) vs object0(%@)", fetchedObject0, object0);
 		
 		BOOL result = [[transaction ext:@"order"] getGroup:&group index:&index forKey:key0 inCollection:nil];
 	
-		STAssertTrue(result, @"Expected YES");
-		STAssertNotNil(group, @"Expected group to be set");
-		STAssertTrue(index == 0, @"Expected index to be set to zero");
+		XCTAssertTrue(result, @"Expected YES");
+		XCTAssertNotNil(group, @"Expected group to be set");
+		XCTAssertTrue(index == 0, @"Expected index to be set to zero");
 	}];
 	
 	[connection2 readWriteWithBlock:^(YapDatabaseReadWriteTransaction *transaction){
@@ -234,11 +236,11 @@
 		[transaction setObject:object4 forKey:key4 inCollection:nil]; keysCount++; // Included
 		[transaction setObject:objectX forKey:keyX inCollection:nil];              // Excluded !
 		
-		STAssertTrue([[transaction ext:@"order"] numberOfGroups] == 1, @"Wrong group count");
-		STAssertTrue([[[transaction ext:@"order"] allGroups] count] == 1, @"Wrong array count");
+		XCTAssertTrue([[transaction ext:@"order"] numberOfGroups] == 1, @"Wrong group count");
+		XCTAssertTrue([[[transaction ext:@"order"] allGroups] count] == 1, @"Wrong array count");
 		
-		STAssertTrue([[transaction ext:@"order"] numberOfKeysInGroup:@""] == keysCount, @"Wrong count");
-		STAssertTrue([[transaction ext:@"order"] numberOfKeysInAllGroups] == keysCount, @"Wrong count");
+		XCTAssertTrue([[transaction ext:@"order"] numberOfKeysInGroup:@""] == keysCount, @"Wrong count");
+		XCTAssertTrue([[transaction ext:@"order"] numberOfKeysInAllGroups] == keysCount, @"Wrong count");
 		
 		NSArray *keys = @[ key0, key1, key2, key3, key4 ];
 		
@@ -250,11 +252,11 @@
 			
 			[[transaction ext:@"order"] getKey:&fetchedKey collection:&fetchedCollection atIndex:index inGroup:@""];
 			
-			STAssertTrue([fetchedKey isEqualToString:key],
-			             @"Non-matching keys(%@ vs %@) at index %d", fetchedKey, key, index);
+			XCTAssertTrue([fetchedKey isEqualToString:key],
+			             @"Non-matching keys(%@ vs %@) at index %d", fetchedKey, key, (int)index);
 			
-			STAssertTrue([fetchedCollection isEqualToString:@""],
-						 @"Non-matching collections(%@ vs %@) at index %d", fetchedCollection, @"", index);
+			XCTAssertTrue([fetchedCollection isEqualToString:@""],
+						 @"Non-matching collections(%@ vs %@) at index %d", fetchedCollection, @"", (int)index);
 			
 			index++;
 		}
@@ -263,7 +265,7 @@
 		{
 			NSString *fetchedGroup = [[transaction ext:@"order"] groupForKey:key inCollection:nil];
 			
-			STAssertTrue([fetchedGroup isEqualToString:@""], @"Wrong group(%@) for key(%@)", fetchedGroup, key);
+			XCTAssertTrue([fetchedGroup isEqualToString:@""], @"Wrong group(%@) for key(%@)", fetchedGroup, key);
 		}
 		
 		index = 0;
@@ -277,13 +279,13 @@
 			                                            forKey:key
 			                                      inCollection:nil];
 			
-			STAssertTrue(result, @"Wrong result for key(%@) at index(%d)", key, index);
+			XCTAssertTrue(result, @"Wrong result for key(%@) at index(%d)", key, (int)index);
 			
-			STAssertTrue([fetchedGroup isEqualToString:@""],
-			             @"Wrong group(%@) for key(%@) at index(%d)", fetchedGroup, key, index);
+			XCTAssertTrue([fetchedGroup isEqualToString:@""],
+			             @"Wrong group(%@) for key(%@) at index(%d)", fetchedGroup, key, (int)index);
 			
-			STAssertTrue(fetchedIndex == index,
-			             @"Wrong index(%d) for key(%@) at index(%d)", fetchedIndex, key, index);
+			XCTAssertTrue(fetchedIndex == index,
+			             @"Wrong index(%d) for key(%@) at index(%d)", (int)fetchedIndex, key, (int)index);
 			
 			index++;
 		}
@@ -294,11 +296,11 @@
 		// Test a read-only transaction.
 		// Test reading multiple inserted objects from a separate connection.
 		
-		STAssertTrue([[transaction ext:@"order"] numberOfGroups] == 1, @"Wrong group count");
-		STAssertTrue([[[transaction ext:@"order"] allGroups] count] == 1, @"Wrong array count");
+		XCTAssertTrue([[transaction ext:@"order"] numberOfGroups] == 1, @"Wrong group count");
+		XCTAssertTrue([[[transaction ext:@"order"] allGroups] count] == 1, @"Wrong array count");
 		
-		STAssertTrue([[transaction ext:@"order"] numberOfKeysInGroup:@""] == keysCount, @"Wrong count");
-		STAssertTrue([[transaction ext:@"order"] numberOfKeysInAllGroups] == keysCount, @"Wrong count");
+		XCTAssertTrue([[transaction ext:@"order"] numberOfKeysInGroup:@""] == keysCount, @"Wrong count");
+		XCTAssertTrue([[transaction ext:@"order"] numberOfKeysInAllGroups] == keysCount, @"Wrong count");
 		
 		NSArray *keys = @[ key0, key1, key2, key3, key4 ];
 		
@@ -310,11 +312,11 @@
 			
 			[[transaction ext:@"order"] getKey:&fetchedKey collection:&fetchedCollection atIndex:index inGroup:@""];
 			
-			STAssertTrue([fetchedKey isEqualToString:key],
-						 @"Non-matching keys(%@ vs %@) at index %d", fetchedKey, key, index);
+			XCTAssertTrue([fetchedKey isEqualToString:key],
+						 @"Non-matching keys(%@ vs %@) at index %d", fetchedKey, key, (int)index);
 			
-			STAssertTrue([fetchedCollection isEqualToString:@""],
-						 @"Non-matching collections(%@ vs %@) at index %d", fetchedCollection, @"", index);
+			XCTAssertTrue([fetchedCollection isEqualToString:@""],
+						 @"Non-matching collections(%@ vs %@) at index %d", fetchedCollection, @"", (int)index);
 			
 			index++;
 		}
@@ -323,7 +325,7 @@
 		{
 			NSString *fetchedGroup = [[transaction ext:@"order"] groupForKey:key inCollection:nil];
 			
-			STAssertTrue([fetchedGroup isEqualToString:@""], @"Wrong group(%@) for key(%@)", fetchedGroup, key);
+			XCTAssertTrue([fetchedGroup isEqualToString:@""], @"Wrong group(%@) for key(%@)", fetchedGroup, key);
 		}
 		
 		index = 0;
@@ -335,13 +337,13 @@
 			BOOL result =
 			    [[transaction ext:@"order"] getGroup:&fetchedGroup index:&fetchedIndex forKey:key inCollection:nil];
 			
-			STAssertTrue(result, @"Wrong result for key(%@) at index(%d)", key, index);
+			XCTAssertTrue(result, @"Wrong result for key(%@) at index(%d)", key, (int)index);
 			
-			STAssertTrue([fetchedGroup isEqualToString:@""],
-			             @"Wrong group(%@) for key(%@) at index(%d)", fetchedGroup, key, index);
+			XCTAssertTrue([fetchedGroup isEqualToString:@""],
+			             @"Wrong group(%@) for key(%@) at index(%d)", fetchedGroup, key, (int)index);
 			
-			STAssertTrue(fetchedIndex == index,
-			             @"Wrong index(%d) for key(%@) at index(%d)", fetchedIndex, key, index);
+			XCTAssertTrue(fetchedIndex == index,
+			             @"Wrong index(%d) for key(%@) at index(%d)", (int)fetchedIndex, key, (int)index);
 			
 			index++;
 		}
@@ -355,7 +357,7 @@
 		// However, once it determines the group hasn't changed,
 		// it should abort as the sorting block only takes the object into account.
 		
-		[transaction setMetadata:@"some-metadata" forKey:key0 inCollection:nil];
+		[transaction replaceMetadata:@"some-metadata" forKey:key0 inCollection:nil];
 	}];
 	
 	[connection1 readWriteWithBlock:^(YapDatabaseReadWriteTransaction *transaction){
@@ -369,16 +371,16 @@
 		
 		[[transaction ext:@"order"] getKey:&fetchedKey collection:&fetchedCollection atIndex:1 inGroup:@""];
 		
-		STAssertTrue([fetchedKey isEqualToString:key1], @"Oops");
-		STAssertTrue([fetchedCollection isEqualToString:@""], @"Oops");
+		XCTAssertTrue([fetchedKey isEqualToString:key1], @"Oops");
+		XCTAssertTrue([fetchedCollection isEqualToString:@""], @"Oops");
 		
 		[transaction setObject:object1B forKey:key1 inCollection:nil];
 		
-		STAssertTrue([[transaction ext:@"order"] numberOfGroups] == 1, @"Wrong group count");
-		STAssertTrue([[[transaction ext:@"order"] allGroups] count] == 1, @"Wrong array count");
+		XCTAssertTrue([[transaction ext:@"order"] numberOfGroups] == 1, @"Wrong group count");
+		XCTAssertTrue([[[transaction ext:@"order"] allGroups] count] == 1, @"Wrong array count");
 		
-		STAssertTrue([[transaction ext:@"order"] numberOfKeysInGroup:@""] == keysCount, @"Wrong count");
-		STAssertTrue([[transaction ext:@"order"] numberOfKeysInAllGroups] == keysCount, @"Wrong count");
+		XCTAssertTrue([[transaction ext:@"order"] numberOfKeysInGroup:@""] == keysCount, @"Wrong count");
+		XCTAssertTrue([[transaction ext:@"order"] numberOfKeysInAllGroups] == keysCount, @"Wrong count");
 		
 		NSArray *keys = @[ key0, key2, key3, key4, key1 ]; // <-- Updated order (key1 moved to end)
 		
@@ -390,11 +392,11 @@
 			
 			[[transaction ext:@"order"] getKey:&fetchedKey collection:&fetchedCollection atIndex:index inGroup:@""];
 			
-			STAssertTrue([fetchedKey isEqualToString:key],
-						 @"Non-matching keys(%@ vs %@) at index %d", fetchedKey, key, index);
+			XCTAssertTrue([fetchedKey isEqualToString:key],
+						 @"Non-matching keys(%@ vs %@) at index %d", fetchedKey, key, (int)index);
 			
-			STAssertTrue([fetchedCollection isEqualToString:@""],
-						 @"Non-matching collections(%@ vs %@) at index %d", fetchedCollection, @"", index);
+			XCTAssertTrue([fetchedCollection isEqualToString:@""],
+						 @"Non-matching collections(%@ vs %@) at index %d", fetchedCollection, @"", (int)index);
 			
 			index++;
 		}
@@ -403,7 +405,7 @@
 		{
 			NSString *fetchedGroup = [[transaction ext:@"order"] groupForKey:key inCollection:nil];
 			
-			STAssertTrue([fetchedGroup isEqualToString:@""], @"Wrong group(%@) for key(%@)", fetchedGroup, key);
+			XCTAssertTrue([fetchedGroup isEqualToString:@""], @"Wrong group(%@) for key(%@)", fetchedGroup, key);
 		}
 		
 		index = 0;
@@ -415,13 +417,13 @@
 			BOOL result =
 			    [[transaction ext:@"order"] getGroup:&fetchedGroup index:&fetchedIndex forKey:key inCollection:nil];
 			
-			STAssertTrue(result, @"Wrong result for key(%@) at index(%d)", key, index);
+			XCTAssertTrue(result, @"Wrong result for key(%@) at index(%d)", key, (int)index);
 			
-			STAssertTrue([fetchedGroup isEqualToString:@""],
-			             @"Wrong group(%@) for key(%@) at index(%d)", fetchedGroup, key, index);
+			XCTAssertTrue([fetchedGroup isEqualToString:@""],
+			             @"Wrong group(%@) for key(%@) at index(%d)", fetchedGroup, key, (int)index);
 			
-			STAssertTrue(fetchedIndex == index,
-			             @"Wrong index(%d) for key(%@) at index(%d)", fetchedIndex, key, index);
+			XCTAssertTrue(fetchedIndex == index,
+			             @"Wrong index(%d) for key(%@) at index(%d)", (int)fetchedIndex, key, (int)index);
 			
 			index++;
 		}
@@ -432,11 +434,11 @@
 		// Test read-only block.
 		// Test reading back updated index.
 		
-		STAssertTrue([[transaction ext:@"order"] numberOfGroups] == 1, @"Wrong group count");
-		STAssertTrue([[[transaction ext:@"order"] allGroups] count] == 1, @"Wrong array count");
+		XCTAssertTrue([[transaction ext:@"order"] numberOfGroups] == 1, @"Wrong group count");
+		XCTAssertTrue([[[transaction ext:@"order"] allGroups] count] == 1, @"Wrong array count");
 		
-		STAssertTrue([[transaction ext:@"order"] numberOfKeysInGroup:@""] == keysCount, @"Wrong count");
-		STAssertTrue([[transaction ext:@"order"] numberOfKeysInAllGroups] == keysCount, @"Wrong count");
+		XCTAssertTrue([[transaction ext:@"order"] numberOfKeysInGroup:@""] == keysCount, @"Wrong count");
+		XCTAssertTrue([[transaction ext:@"order"] numberOfKeysInAllGroups] == keysCount, @"Wrong count");
 		
 		NSArray *keys = @[ key0, key2, key3, key4, key1 ]; // <-- Updated order (key1 moved to end)
 		
@@ -448,11 +450,11 @@
 			
 			[[transaction ext:@"order"] getKey:&fetchedKey collection:&fetchedCollection atIndex:index inGroup:@""];
 			
-			STAssertTrue([fetchedKey isEqualToString:key],
-						 @"Non-matching keys(%@ vs %@) at index %d", fetchedKey, key, index);
+			XCTAssertTrue([fetchedKey isEqualToString:key],
+						 @"Non-matching keys(%@ vs %@) at index %d", fetchedKey, key, (int)index);
 			
-			STAssertTrue([fetchedCollection isEqualToString:@""],
-						 @"Non-matching collections(%@ vs %@) at index %d", fetchedCollection, @"", index);
+			XCTAssertTrue([fetchedCollection isEqualToString:@""],
+						 @"Non-matching collections(%@ vs %@) at index %d", fetchedCollection, @"", (int)index);
 			
 			index++;
 		}
@@ -461,7 +463,7 @@
 		{
 			NSString *fetchedGroup = [[transaction ext:@"order"] groupForKey:key inCollection:nil];
 			
-			STAssertTrue([fetchedGroup isEqualToString:@""], @"Wrong group(%@) for key(%@)", fetchedGroup, key);
+			XCTAssertTrue([fetchedGroup isEqualToString:@""], @"Wrong group(%@) for key(%@)", fetchedGroup, key);
 		}
 		
 		index = 0;
@@ -473,13 +475,13 @@
 			BOOL result =
 			    [[transaction ext:@"order"] getGroup:&fetchedGroup index:&fetchedIndex forKey:key inCollection:nil];
 			
-			STAssertTrue(result, @"Wrong result for key(%@) at index(%d)", key, index);
+			XCTAssertTrue(result, @"Wrong result for key(%@) at index(%d)", key, (int)index);
 			
-			STAssertTrue([fetchedGroup isEqualToString:@""],
-			             @"Wrong group(%@) for key(%@) at index(%d)", fetchedGroup, key, index);
+			XCTAssertTrue([fetchedGroup isEqualToString:@""],
+			             @"Wrong group(%@) for key(%@) at index(%d)", fetchedGroup, key, (int)index);
 			
-			STAssertTrue(fetchedIndex == index,
-			             @"Wrong index(%d) for key(%@) at index(%d)", fetchedIndex, key, index);
+			XCTAssertTrue(fetchedIndex == index,
+			             @"Wrong index(%d) for key(%@) at index(%d)", (int)fetchedIndex, key, (int)index);
 			
 			index++;
 		}
@@ -491,11 +493,11 @@
 		
 		[transaction removeObjectForKey:key1 inCollection:nil]; keysCount--;
 		
-		STAssertTrue([[transaction ext:@"order"] numberOfGroups] == 1, @"Wrong group count");
-		STAssertTrue([[[transaction ext:@"order"] allGroups] count] == 1, @"Wrong array count");
+		XCTAssertTrue([[transaction ext:@"order"] numberOfGroups] == 1, @"Wrong group count");
+		XCTAssertTrue([[[transaction ext:@"order"] allGroups] count] == 1, @"Wrong array count");
 		
-		STAssertTrue([[transaction ext:@"order"] numberOfKeysInGroup:@""] == keysCount, @"Wrong count");
-		STAssertTrue([[transaction ext:@"order"] numberOfKeysInAllGroups] == keysCount, @"Wrong count");
+		XCTAssertTrue([[transaction ext:@"order"] numberOfKeysInGroup:@""] == keysCount, @"Wrong count");
+		XCTAssertTrue([[transaction ext:@"order"] numberOfKeysInAllGroups] == keysCount, @"Wrong count");
 		
 		NSArray *keys = @[ key0, key2, key3, key4, ]; // <-- Updated order (key1 removed)
 		
@@ -507,11 +509,11 @@
 			
 			[[transaction ext:@"order"] getKey:&fetchedKey collection:&fetchedCollection atIndex:index inGroup:@""];
 			
-			STAssertTrue([fetchedKey isEqualToString:key],
-						 @"Non-matching keys(%@ vs %@) at index %d", fetchedKey, key, index);
+			XCTAssertTrue([fetchedKey isEqualToString:key],
+						 @"Non-matching keys(%@ vs %@) at index %d", fetchedKey, key, (int)index);
 			
-			STAssertTrue([fetchedCollection isEqualToString:@""],
-						 @"Non-matching collections(%@ vs %@) at index %d", fetchedCollection, @"", index);
+			XCTAssertTrue([fetchedCollection isEqualToString:@""],
+						 @"Non-matching collections(%@ vs %@) at index %d", fetchedCollection, @"", (int)index);
 			
 			index++;
 		}
@@ -520,7 +522,7 @@
 		{
 			NSString *fetchedGroup = [[transaction ext:@"order"] groupForKey:key inCollection:nil];
 			
-			STAssertTrue([fetchedGroup isEqualToString:@""], @"Wrong group(%@) for key(%@)", fetchedGroup, key);
+			XCTAssertTrue([fetchedGroup isEqualToString:@""], @"Wrong group(%@) for key(%@)", fetchedGroup, key);
 		}
 		
 		index = 0;
@@ -532,13 +534,13 @@
 			BOOL result =
 			    [[transaction ext:@"order"] getGroup:&fetchedGroup index:&fetchedIndex forKey:key inCollection:nil];
 			
-			STAssertTrue(result, @"Wrong result for key(%@) at index(%d)", key, index);
+			XCTAssertTrue(result, @"Wrong result for key(%@) at index(%d)", key, (int)index);
 			
-			STAssertTrue([fetchedGroup isEqualToString:@""],
-			             @"Wrong group(%@) for key(%@) at index(%d)", fetchedGroup, key, index);
+			XCTAssertTrue([fetchedGroup isEqualToString:@""],
+			             @"Wrong group(%@) for key(%@) at index(%d)", fetchedGroup, key, (int)index);
 			
-			STAssertTrue(fetchedIndex == index,
-			             @"Wrong index(%d) for key(%@) at index(%d)", fetchedIndex, key, index);
+			XCTAssertTrue(fetchedIndex == index,
+			             @"Wrong index(%d) for key(%@) at index(%d)", (int)fetchedIndex, key, (int)index);
 			
 			index++;
 		}
@@ -549,11 +551,11 @@
 		// Test read-only block.
 		// Test reading back updated index.
 		
-		STAssertTrue([[transaction ext:@"order"] numberOfGroups] == 1, @"Wrong group count");
-		STAssertTrue([[[transaction ext:@"order"] allGroups] count] == 1, @"Wrong array count");
+		XCTAssertTrue([[transaction ext:@"order"] numberOfGroups] == 1, @"Wrong group count");
+		XCTAssertTrue([[[transaction ext:@"order"] allGroups] count] == 1, @"Wrong array count");
 		
-		STAssertTrue([[transaction ext:@"order"] numberOfKeysInGroup:@""] == keysCount, @"Wrong count");
-		STAssertTrue([[transaction ext:@"order"] numberOfKeysInAllGroups] == keysCount, @"Wrong count");
+		XCTAssertTrue([[transaction ext:@"order"] numberOfKeysInGroup:@""] == keysCount, @"Wrong count");
+		XCTAssertTrue([[transaction ext:@"order"] numberOfKeysInAllGroups] == keysCount, @"Wrong count");
 		
 		NSArray *keys = @[ key0, key2, key3, key4, ]; // <-- Updated order (key1 removed)
 		
@@ -565,11 +567,11 @@
 			
 			[[transaction ext:@"order"] getKey:&fetchedKey collection:&fetchedCollection atIndex:index inGroup:@""];
 			
-			STAssertTrue([fetchedKey isEqualToString:key],
-						 @"Non-matching keys(%@ vs %@) at index %d", fetchedKey, key, index);
+			XCTAssertTrue([fetchedKey isEqualToString:key],
+						 @"Non-matching keys(%@ vs %@) at index %d", fetchedKey, key, (int)index);
 			
-			STAssertTrue([fetchedCollection isEqualToString:@""],
-						 @"Non-matching collections(%@ vs %@) at index %d", fetchedCollection, @"", index);
+			XCTAssertTrue([fetchedCollection isEqualToString:@""],
+						 @"Non-matching collections(%@ vs %@) at index %d", fetchedCollection, @"", (int)index);
 			
 			index++;
 		}
@@ -578,7 +580,7 @@
 		{
 			NSString *fetchedGroup = [[transaction ext:@"order"] groupForKey:key inCollection:nil];
 			
-			STAssertTrue([fetchedGroup isEqualToString:@""], @"Wrong group(%@) for key(%@)", fetchedGroup, key);
+			XCTAssertTrue([fetchedGroup isEqualToString:@""], @"Wrong group(%@) for key(%@)", fetchedGroup, key);
 		}
 		
 		index = 0;
@@ -590,13 +592,13 @@
 			BOOL result =
 			    [[transaction ext:@"order"] getGroup:&fetchedGroup index:&fetchedIndex forKey:key inCollection:nil];
 			
-			STAssertTrue(result, @"Wrong result for key(%@) at index(%d)", key, index);
+			XCTAssertTrue(result, @"Wrong result for key(%@) at index(%d)", key, (int)index);
 			
-			STAssertTrue([fetchedGroup isEqualToString:@""],
-			             @"Wrong group(%@) for key(%@) at index(%d)", fetchedGroup, key, index);
+			XCTAssertTrue([fetchedGroup isEqualToString:@""],
+			             @"Wrong group(%@) for key(%@) at index(%d)", fetchedGroup, key, (int)index);
 			
-			STAssertTrue(fetchedIndex == index,
-			             @"Wrong index(%d) for key(%@) at index(%d)", fetchedIndex, key, index);
+			XCTAssertTrue(fetchedIndex == index,
+			             @"Wrong index(%d) for key(%@) at index(%d)", (int)fetchedIndex, key, (int)index);
 			
 			index++;
 		}
@@ -608,11 +610,11 @@
 		
 		[transaction removeObjectsForKeys:@[ key2, key3 ] inCollection:nil]; keysCount -= 2;
 		
-		STAssertTrue([[transaction ext:@"order"] numberOfGroups] == 1, @"Wrong group count");
-		STAssertTrue([[[transaction ext:@"order"] allGroups] count] == 1, @"Wrong array count");
+		XCTAssertTrue([[transaction ext:@"order"] numberOfGroups] == 1, @"Wrong group count");
+		XCTAssertTrue([[[transaction ext:@"order"] allGroups] count] == 1, @"Wrong array count");
 		
-		STAssertTrue([[transaction ext:@"order"] numberOfKeysInGroup:@""] == keysCount, @"Wrong count");
-		STAssertTrue([[transaction ext:@"order"] numberOfKeysInAllGroups] == keysCount, @"Wrong count");
+		XCTAssertTrue([[transaction ext:@"order"] numberOfKeysInGroup:@""] == keysCount, @"Wrong count");
+		XCTAssertTrue([[transaction ext:@"order"] numberOfKeysInAllGroups] == keysCount, @"Wrong count");
 		
 		NSArray *keys = @[ key0, key4, ]; // <-- Updated order (key2 & key3 removed)
 		
@@ -624,11 +626,11 @@
 			
 			[[transaction ext:@"order"] getKey:&fetchedKey collection:&fetchedCollection atIndex:index inGroup:@""];
 			
-			STAssertTrue([fetchedKey isEqualToString:key],
-						 @"Non-matching keys(%@ vs %@) at index %d", fetchedKey, key, index);
+			XCTAssertTrue([fetchedKey isEqualToString:key],
+						 @"Non-matching keys(%@ vs %@) at index %d", fetchedKey, key, (int)index);
 			
-			STAssertTrue([fetchedCollection isEqualToString:@""],
-						 @"Non-matching collections(%@ vs %@) at index %d", fetchedCollection, @"", index);
+			XCTAssertTrue([fetchedCollection isEqualToString:@""],
+						 @"Non-matching collections(%@ vs %@) at index %d", fetchedCollection, @"", (int)index);
 			
 			index++;
 		}
@@ -637,7 +639,7 @@
 		{
 			NSString *fetchedGroup = [[transaction ext:@"order"] groupForKey:key inCollection:nil];
 			
-			STAssertTrue([fetchedGroup isEqualToString:@""], @"Wrong group(%@) for key(%@)", fetchedGroup, key);
+			XCTAssertTrue([fetchedGroup isEqualToString:@""], @"Wrong group(%@) for key(%@)", fetchedGroup, key);
 		}
 		
 		index = 0;
@@ -649,13 +651,13 @@
 			BOOL result =
 			    [[transaction ext:@"order"] getGroup:&fetchedGroup index:&fetchedIndex forKey:key inCollection:nil];
 			
-			STAssertTrue(result, @"Wrong result for key(%@) at index(%d)", key, index);
+			XCTAssertTrue(result, @"Wrong result for key(%@) at index(%d)", key, (int)index);
 			
-			STAssertTrue([fetchedGroup isEqualToString:@""],
-			             @"Wrong group(%@) for key(%@) at index(%d)", fetchedGroup, key, index);
+			XCTAssertTrue([fetchedGroup isEqualToString:@""],
+			             @"Wrong group(%@) for key(%@) at index(%d)", fetchedGroup, key, (int)index);
 			
-			STAssertTrue(fetchedIndex == index,
-			             @"Wrong index(%d) for key(%@) at index(%d)", fetchedIndex, key, index);
+			XCTAssertTrue(fetchedIndex == index,
+			             @"Wrong index(%d) for key(%@) at index(%d)", (int)fetchedIndex, key, (int)index);
 			
 			index++;
 		}
@@ -665,11 +667,11 @@
 		
 		// Read the changes back on another connection
 		
-		STAssertTrue([[transaction ext:@"order"] numberOfGroups] == 1, @"Wrong group count");
-		STAssertTrue([[[transaction ext:@"order"] allGroups] count] == 1, @"Wrong array count");
+		XCTAssertTrue([[transaction ext:@"order"] numberOfGroups] == 1, @"Wrong group count");
+		XCTAssertTrue([[[transaction ext:@"order"] allGroups] count] == 1, @"Wrong array count");
 		
-		STAssertTrue([[transaction ext:@"order"] numberOfKeysInGroup:@""] == keysCount, @"Wrong count");
-		STAssertTrue([[transaction ext:@"order"] numberOfKeysInAllGroups] == keysCount, @"Wrong count");
+		XCTAssertTrue([[transaction ext:@"order"] numberOfKeysInGroup:@""] == keysCount, @"Wrong count");
+		XCTAssertTrue([[transaction ext:@"order"] numberOfKeysInAllGroups] == keysCount, @"Wrong count");
 		
 		NSArray *keys = @[ key0, key4, ]; // <-- Updated order (key2 & key3 removed)
 		
@@ -681,11 +683,11 @@
 			
 			[[transaction ext:@"order"] getKey:&fetchedKey collection:&fetchedCollection atIndex:index inGroup:@""];
 			
-			STAssertTrue([fetchedKey isEqualToString:key],
-						 @"Non-matching keys(%@ vs %@) at index %d", fetchedKey, key, index);
+			XCTAssertTrue([fetchedKey isEqualToString:key],
+						 @"Non-matching keys(%@ vs %@) at index %d", fetchedKey, key, (int)index);
 			
-			STAssertTrue([fetchedCollection isEqualToString:@""],
-						 @"Non-matching collections(%@ vs %@) at index %d", fetchedCollection, @"", index);
+			XCTAssertTrue([fetchedCollection isEqualToString:@""],
+						 @"Non-matching collections(%@ vs %@) at index %d", fetchedCollection, @"", (int)index);
 			
 			index++;
 		}
@@ -694,7 +696,7 @@
 		{
 			NSString *fetchedGroup = [[transaction ext:@"order"] groupForKey:key inCollection:nil];
 			
-			STAssertTrue([fetchedGroup isEqualToString:@""], @"Wrong group(%@) for key(%@)", fetchedGroup, key);
+			XCTAssertTrue([fetchedGroup isEqualToString:@""], @"Wrong group(%@) for key(%@)", fetchedGroup, key);
 		}
 		
 		index = 0;
@@ -706,13 +708,13 @@
 			BOOL result =
 			    [[transaction ext:@"order"] getGroup:&fetchedGroup index:&fetchedIndex forKey:key inCollection:nil];
 			
-			STAssertTrue(result, @"Wrong result for key(%@) at index(%d)", key, index);
+			XCTAssertTrue(result, @"Wrong result for key(%@) at index(%d)", key, (int)index);
 			
-			STAssertTrue([fetchedGroup isEqualToString:@""],
-			             @"Wrong group(%@) for key(%@) at index(%d)", fetchedGroup, key, index);
+			XCTAssertTrue([fetchedGroup isEqualToString:@""],
+			             @"Wrong group(%@) for key(%@) at index(%d)", fetchedGroup, key, (int)index);
 			
-			STAssertTrue(fetchedIndex == index,
-			             @"Wrong index(%d) for key(%@) at index(%d)", fetchedIndex, key, index);
+			XCTAssertTrue(fetchedIndex == index,
+			             @"Wrong index(%d) for key(%@) at index(%d)", (int)fetchedIndex, key, (int)index);
 			
 			index++;
 		}
@@ -724,22 +726,22 @@
 		
 		[transaction removeAllObjectsInAllCollections]; keysCount = 0;
 		
-		STAssertTrue([[transaction ext:@"order"] numberOfGroups] == 0, @"Wrong group count");
-		STAssertTrue([[[transaction ext:@"order"] allGroups] count] == 0, @"Wrong array count");
+		XCTAssertTrue([[transaction ext:@"order"] numberOfGroups] == 0, @"Wrong group count");
+		XCTAssertTrue([[[transaction ext:@"order"] allGroups] count] == 0, @"Wrong array count");
 		
-		STAssertTrue([[transaction ext:@"order"] numberOfKeysInGroup:@""] == keysCount, @"Wrong count");
-		STAssertTrue([[transaction ext:@"order"] numberOfKeysInAllGroups] == keysCount, @"Wrong count");
+		XCTAssertTrue([[transaction ext:@"order"] numberOfKeysInGroup:@""] == keysCount, @"Wrong count");
+		XCTAssertTrue([[transaction ext:@"order"] numberOfKeysInAllGroups] == keysCount, @"Wrong count");
 	}];
 
 	[connection2 readWithBlock:^(YapDatabaseReadTransaction *transaction){
 		
 		// Read changes from other connection
 		
-		STAssertTrue([[transaction ext:@"order"] numberOfGroups] == 0, @"Wrong group count");
-		STAssertTrue([[[transaction ext:@"order"] allGroups] count] == 0, @"Wrong array count");
+		XCTAssertTrue([[transaction ext:@"order"] numberOfGroups] == 0, @"Wrong group count");
+		XCTAssertTrue([[[transaction ext:@"order"] allGroups] count] == 0, @"Wrong array count");
 		
-		STAssertTrue([[transaction ext:@"order"] numberOfKeysInGroup:@""] == keysCount, @"Wrong count");
-		STAssertTrue([[transaction ext:@"order"] numberOfKeysInAllGroups] == keysCount, @"Wrong count");
+		XCTAssertTrue([[transaction ext:@"order"] numberOfKeysInGroup:@""] == keysCount, @"Wrong count");
+		XCTAssertTrue([[transaction ext:@"order"] numberOfKeysInAllGroups] == keysCount, @"Wrong count");
 	}];
 	
 	[connection1 readWriteWithBlock:^(YapDatabaseReadWriteTransaction *transaction){
@@ -753,11 +755,11 @@
 		[transaction setObject:object0 forKey:key0 inCollection:nil]; keysCount++; // Included
 		[transaction setObject:object4 forKey:key4 inCollection:nil]; keysCount++; // Included
 		
-		STAssertTrue([[transaction ext:@"order"] numberOfGroups] == 1, @"Wrong group count");
-		STAssertTrue([[[transaction ext:@"order"] allGroups] count] == 1, @"Wrong array count");
+		XCTAssertTrue([[transaction ext:@"order"] numberOfGroups] == 1, @"Wrong group count");
+		XCTAssertTrue([[[transaction ext:@"order"] allGroups] count] == 1, @"Wrong array count");
 		
-		STAssertTrue([[transaction ext:@"order"] numberOfKeysInGroup:@""] == keysCount, @"Wrong count");
-		STAssertTrue([[transaction ext:@"order"] numberOfKeysInAllGroups] == keysCount, @"Wrong count");
+		XCTAssertTrue([[transaction ext:@"order"] numberOfKeysInGroup:@""] == keysCount, @"Wrong count");
+		XCTAssertTrue([[transaction ext:@"order"] numberOfKeysInAllGroups] == keysCount, @"Wrong count");
 		
 		NSArray *keys = @[ key0, key1, key2, key3, key4 ];
 		
@@ -769,11 +771,11 @@
 			
 			[[transaction ext:@"order"] getKey:&fetchedKey collection:&fetchedCollection atIndex:index inGroup:@""];
 			
-			STAssertTrue([fetchedKey isEqualToString:key],
-						 @"Non-matching keys(%@ vs %@) at index %d", fetchedKey, key, index);
+			XCTAssertTrue([fetchedKey isEqualToString:key],
+						 @"Non-matching keys(%@ vs %@) at index %d", fetchedKey, key, (int)index);
 			
-			STAssertTrue([fetchedCollection isEqualToString:@""],
-						 @"Non-matching collections(%@ vs %@) at index %d", fetchedCollection, @"", index);
+			XCTAssertTrue([fetchedCollection isEqualToString:@""],
+						 @"Non-matching collections(%@ vs %@) at index %d", fetchedCollection, @"", (int)index);
 			
 			index++;
 		}
@@ -782,7 +784,7 @@
 		{
 			NSString *fetchedGroup = [[transaction ext:@"order"] groupForKey:key inCollection:nil];
 			
-			STAssertTrue([fetchedGroup isEqualToString:@""], @"Wrong group(%@) for key(%@)", fetchedGroup, key);
+			XCTAssertTrue([fetchedGroup isEqualToString:@""], @"Wrong group(%@) for key(%@)", fetchedGroup, key);
 		}
 		
 		index = 0;
@@ -794,13 +796,13 @@
 			BOOL result =
 			    [[transaction ext:@"order"] getGroup:&fetchedGroup index:&fetchedIndex forKey:key inCollection:nil];
 			
-			STAssertTrue(result, @"Wrong result for key(%@) at index(%d)", key, index);
+			XCTAssertTrue(result, @"Wrong result for key(%@) at index(%d)", key, (int)index);
 			
-			STAssertTrue([fetchedGroup isEqualToString:@""],
-			             @"Wrong group(%@) for key(%@) at index(%d)", fetchedGroup, key, index);
+			XCTAssertTrue([fetchedGroup isEqualToString:@""],
+			             @"Wrong group(%@) for key(%@) at index(%d)", fetchedGroup, key, (int)index);
 			
-			STAssertTrue(fetchedIndex == index,
-			             @"Wrong index(%d) for key(%@) at index(%d)", fetchedIndex, key, index);
+			XCTAssertTrue(fetchedIndex == index,
+			             @"Wrong index(%d) for key(%@) at index(%d)", (int)fetchedIndex, key, (int)index);
 			
 			index++;
 		}
@@ -810,11 +812,11 @@
 		
 		// Read the changes
 		
-		STAssertTrue([[transaction ext:@"order"] numberOfGroups] == 1, @"Wrong group count");
-		STAssertTrue([[[transaction ext:@"order"] allGroups] count] == 1, @"Wrong array count");
+		XCTAssertTrue([[transaction ext:@"order"] numberOfGroups] == 1, @"Wrong group count");
+		XCTAssertTrue([[[transaction ext:@"order"] allGroups] count] == 1, @"Wrong array count");
 		
-		STAssertTrue([[transaction ext:@"order"] numberOfKeysInGroup:@""] == keysCount, @"Wrong count");
-		STAssertTrue([[transaction ext:@"order"] numberOfKeysInAllGroups] == keysCount, @"Wrong count");
+		XCTAssertTrue([[transaction ext:@"order"] numberOfKeysInGroup:@""] == keysCount, @"Wrong count");
+		XCTAssertTrue([[transaction ext:@"order"] numberOfKeysInAllGroups] == keysCount, @"Wrong count");
 		
 		NSArray *keys = @[ key0, key1, key2, key3, key4 ]; // <-- Updated order (key1 moved to end)
 		
@@ -826,11 +828,11 @@
 			
 			[[transaction ext:@"order"] getKey:&fetchedKey collection:&fetchedCollection atIndex:index inGroup:@""];
 			
-			STAssertTrue([fetchedKey isEqualToString:key],
-						 @"Non-matching keys(%@ vs %@) at index %d", fetchedKey, key, index);
+			XCTAssertTrue([fetchedKey isEqualToString:key],
+						 @"Non-matching keys(%@ vs %@) at index %d", fetchedKey, key, (int)index);
 			
-			STAssertTrue([fetchedCollection isEqualToString:@""],
-						 @"Non-matching collections(%@ vs %@) at index %d", fetchedCollection, @"", index);
+			XCTAssertTrue([fetchedCollection isEqualToString:@""],
+						 @"Non-matching collections(%@ vs %@) at index %d", fetchedCollection, @"", (int)index);
 			
 			index++;
 		}
@@ -839,7 +841,7 @@
 		{
 			NSString *fetchedGroup = [[transaction ext:@"order"] groupForKey:key inCollection:nil];
 			
-			STAssertTrue([fetchedGroup isEqualToString:@""], @"Wrong group(%@) for key(%@)", fetchedGroup, key);
+			XCTAssertTrue([fetchedGroup isEqualToString:@""], @"Wrong group(%@) for key(%@)", fetchedGroup, key);
 		}
 		
 		index = 0;
@@ -851,13 +853,13 @@
 			BOOL result =
 			    [[transaction ext:@"order"] getGroup:&fetchedGroup index:&fetchedIndex forKey:key inCollection:nil];
 			
-			STAssertTrue(result, @"Wrong result for key(%@) at index(%d)", key, index);
+			XCTAssertTrue(result, @"Wrong result for key(%@) at index(%d)", key, (int)index);
 			
-			STAssertTrue([fetchedGroup isEqualToString:@""],
-			             @"Wrong group(%@) for key(%@) at index(%d)", fetchedGroup, key, index);
+			XCTAssertTrue([fetchedGroup isEqualToString:@""],
+			             @"Wrong group(%@) for key(%@) at index(%d)", fetchedGroup, key, (int)index);
 			
-			STAssertTrue(fetchedIndex == index,
-			             @"Wrong index(%d) for key(%@) at index(%d)", fetchedIndex, key, index);
+			XCTAssertTrue(fetchedIndex == index,
+			             @"Wrong index(%d) for key(%@) at index(%d)", (int)fetchedIndex, key, (int)index);
 			
 			index++;
 		}
@@ -873,11 +875,11 @@
 		[transaction setObject:object1 forKey:key1 inCollection:nil]; keysCount++; // Included
 		[transaction setObject:object0 forKey:key0 inCollection:nil]; keysCount++; // Included
 		
-		STAssertTrue([[transaction ext:@"order"] numberOfGroups] == 1, @"Wrong group count");
-		STAssertTrue([[[transaction ext:@"order"] allGroups] count] == 1, @"Wrong array count");
+		XCTAssertTrue([[transaction ext:@"order"] numberOfGroups] == 1, @"Wrong group count");
+		XCTAssertTrue([[[transaction ext:@"order"] allGroups] count] == 1, @"Wrong array count");
 		
-		STAssertTrue([[transaction ext:@"order"] numberOfKeysInGroup:@""] == keysCount, @"Wrong count");
-		STAssertTrue([[transaction ext:@"order"] numberOfKeysInAllGroups] == keysCount, @"Wrong count");
+		XCTAssertTrue([[transaction ext:@"order"] numberOfKeysInGroup:@""] == keysCount, @"Wrong count");
+		XCTAssertTrue([[transaction ext:@"order"] numberOfKeysInAllGroups] == keysCount, @"Wrong count");
 		
 		NSArray *keys = @[ key0, key1 ];
 		
@@ -889,11 +891,11 @@
 			
 			[[transaction ext:@"order"] getKey:&fetchedKey collection:&fetchedCollection atIndex:index inGroup:@""];
 			
-			STAssertTrue([fetchedKey isEqualToString:key],
-						 @"Non-matching keys(%@ vs %@) at index %d", fetchedKey, key, index);
+			XCTAssertTrue([fetchedKey isEqualToString:key],
+						 @"Non-matching keys(%@ vs %@) at index %d", fetchedKey, key, (int)index);
 			
-			STAssertTrue([fetchedCollection isEqualToString:@""],
-						 @"Non-matching collections(%@ vs %@) at index %d", fetchedCollection, @"", index);
+			XCTAssertTrue([fetchedCollection isEqualToString:@""],
+						 @"Non-matching collections(%@ vs %@) at index %d", fetchedCollection, @"", (int)index);
 			
 			index++;
 		}
@@ -902,7 +904,7 @@
 		{
 			NSString *fetchedGroup = [[transaction ext:@"order"] groupForKey:key inCollection:nil];
 			
-			STAssertTrue([fetchedGroup isEqualToString:@""], @"Wrong group(%@) for key(%@)", fetchedGroup, key);
+			XCTAssertTrue([fetchedGroup isEqualToString:@""], @"Wrong group(%@) for key(%@)", fetchedGroup, key);
 		}
 		
 		index = 0;
@@ -914,13 +916,13 @@
 			BOOL result =
 			    [[transaction ext:@"order"] getGroup:&fetchedGroup index:&fetchedIndex forKey:key inCollection:nil];
 			
-			STAssertTrue(result, @"Wrong result for key(%@) at index(%d)", key, index);
+			XCTAssertTrue(result, @"Wrong result for key(%@) at index(%d)", key, (int)index);
 			
-			STAssertTrue([fetchedGroup isEqualToString:@""],
-			             @"Wrong group(%@) for key(%@) at index(%d)", fetchedGroup, key, index);
+			XCTAssertTrue([fetchedGroup isEqualToString:@""],
+			             @"Wrong group(%@) for key(%@) at index(%d)", fetchedGroup, key, (int)index);
 			
-			STAssertTrue(fetchedIndex == index,
-			             @"Wrong index(%d) for key(%@) at index(%d)", fetchedIndex, key, index);
+			XCTAssertTrue(fetchedIndex == index,
+			             @"Wrong index(%d) for key(%@) at index(%d)", (int)fetchedIndex, key, (int)index);
 			
 			index++;
 		}
@@ -930,11 +932,11 @@
 		
 		// Read the changes
 		
-		STAssertTrue([[transaction ext:@"order"] numberOfGroups] == 1, @"Wrong group count");
-		STAssertTrue([[[transaction ext:@"order"] allGroups] count] == 1, @"Wrong array count");
+		XCTAssertTrue([[transaction ext:@"order"] numberOfGroups] == 1, @"Wrong group count");
+		XCTAssertTrue([[[transaction ext:@"order"] allGroups] count] == 1, @"Wrong array count");
 		
-		STAssertTrue([[transaction ext:@"order"] numberOfKeysInGroup:@""] == keysCount, @"Wrong count");
-		STAssertTrue([[transaction ext:@"order"] numberOfKeysInAllGroups] == keysCount, @"Wrong count");
+		XCTAssertTrue([[transaction ext:@"order"] numberOfKeysInGroup:@""] == keysCount, @"Wrong count");
+		XCTAssertTrue([[transaction ext:@"order"] numberOfKeysInAllGroups] == keysCount, @"Wrong count");
 		
 		NSArray *keys = @[ key0, key1 ];
 		
@@ -946,11 +948,11 @@
 			
 			[[transaction ext:@"order"] getKey:&fetchedKey collection:&fetchedCollection atIndex:index inGroup:@""];
 			
-			STAssertTrue([fetchedKey isEqualToString:key],
-						 @"Non-matching keys(%@ vs %@) at index %d", fetchedKey, key, index);
+			XCTAssertTrue([fetchedKey isEqualToString:key],
+						 @"Non-matching keys(%@ vs %@) at index %d", fetchedKey, key, (int)index);
 			
-			STAssertTrue([fetchedCollection isEqualToString:@""],
-						 @"Non-matching collections(%@ vs %@) at index %d", fetchedCollection, @"", index);
+			XCTAssertTrue([fetchedCollection isEqualToString:@""],
+						 @"Non-matching collections(%@ vs %@) at index %d", fetchedCollection, @"", (int)index);
 			
 			index++;
 		}
@@ -959,7 +961,7 @@
 		{
 			NSString *fetchedGroup = [[transaction ext:@"order"] groupForKey:key inCollection:nil];
 			
-			STAssertTrue([fetchedGroup isEqualToString:@""], @"Wrong group(%@) for key(%@)", fetchedGroup, key);
+			XCTAssertTrue([fetchedGroup isEqualToString:@""], @"Wrong group(%@) for key(%@)", fetchedGroup, key);
 		}
 		
 		index = 0;
@@ -971,13 +973,13 @@
 			BOOL result =
 			    [[transaction ext:@"order"] getGroup:&fetchedGroup index:&fetchedIndex forKey:key inCollection:nil];
 			
-			STAssertTrue(result, @"Wrong result for key(%@) at index(%d)", key, index);
+			XCTAssertTrue(result, @"Wrong result for key(%@) at index(%d)", key, (int)index);
 			
-			STAssertTrue([fetchedGroup isEqualToString:@""],
-			             @"Wrong group(%@) for key(%@) at index(%d)", fetchedGroup, key, index);
+			XCTAssertTrue([fetchedGroup isEqualToString:@""],
+			             @"Wrong group(%@) for key(%@) at index(%d)", fetchedGroup, key, (int)index);
 			
-			STAssertTrue(fetchedIndex == index,
-			             @"Wrong index(%d) for key(%@) at index(%d)", fetchedIndex, key, index);
+			XCTAssertTrue(fetchedIndex == index,
+			             @"Wrong index(%d) for key(%@) at index(%d)", (int)fetchedIndex, key, (int)index);
 			
 			index++;
 		}
@@ -994,11 +996,11 @@
 		[transaction setObject:object4 forKey:key4 inCollection:nil]; keysCount++; // Included
 		[transaction setObject:objectX forKey:keyX inCollection:nil];              // Excluded !
 		
-		STAssertTrue([[transaction ext:@"order"] numberOfGroups] == 1, @"Wrong group count");
-		STAssertTrue([[[transaction ext:@"order"] allGroups] count] == 1, @"Wrong array count");
+		XCTAssertTrue([[transaction ext:@"order"] numberOfGroups] == 1, @"Wrong group count");
+		XCTAssertTrue([[[transaction ext:@"order"] allGroups] count] == 1, @"Wrong array count");
 		
-		STAssertTrue([[transaction ext:@"order"] numberOfKeysInGroup:@""] == keysCount, @"Wrong count");
-		STAssertTrue([[transaction ext:@"order"] numberOfKeysInAllGroups] == keysCount, @"Wrong count");
+		XCTAssertTrue([[transaction ext:@"order"] numberOfKeysInGroup:@""] == keysCount, @"Wrong count");
+		XCTAssertTrue([[transaction ext:@"order"] numberOfKeysInAllGroups] == keysCount, @"Wrong count");
 		
 		NSArray *keys = @[ key0, key1, key2, key3, key4 ];
 		
@@ -1010,11 +1012,11 @@
 			
 			[[transaction ext:@"order"] getKey:&fetchedKey collection:&fetchedCollection atIndex:index inGroup:@""];
 			
-			STAssertTrue([fetchedKey isEqualToString:key],
-						 @"Non-matching keys(%@ vs %@) at index %d", fetchedKey, key, index);
+			XCTAssertTrue([fetchedKey isEqualToString:key],
+						 @"Non-matching keys(%@ vs %@) at index %d", fetchedKey, key, (int)index);
 			
-			STAssertTrue([fetchedCollection isEqualToString:@""],
-						 @"Non-matching collections(%@ vs %@) at index %d", fetchedCollection, @"", index);
+			XCTAssertTrue([fetchedCollection isEqualToString:@""],
+						 @"Non-matching collections(%@ vs %@) at index %d", fetchedCollection, @"", (int)index);
 			
 			index++;
 		}
@@ -1023,7 +1025,7 @@
 		{
 			NSString *fetchedGroup = [[transaction ext:@"order"] groupForKey:key inCollection:nil];
 			
-			STAssertTrue([fetchedGroup isEqualToString:@""], @"Wrong group(%@) for key(%@)", fetchedGroup, key);
+			XCTAssertTrue([fetchedGroup isEqualToString:@""], @"Wrong group(%@) for key(%@)", fetchedGroup, key);
 		}
 		
 		index = 0;
@@ -1035,13 +1037,13 @@
 			BOOL result =
 			    [[transaction ext:@"order"] getGroup:&fetchedGroup index:&fetchedIndex forKey:key inCollection:nil];
 			
-			STAssertTrue(result, @"Wrong result for key(%@) at index(%d)", key, index);
+			XCTAssertTrue(result, @"Wrong result for key(%@) at index(%d)", key, (int)index);
 			
-			STAssertTrue([fetchedGroup isEqualToString:@""],
-			             @"Wrong group(%@) for key(%@) at index(%d)", fetchedGroup, key, index);
+			XCTAssertTrue([fetchedGroup isEqualToString:@""],
+			             @"Wrong group(%@) for key(%@) at index(%d)", fetchedGroup, key, (int)index);
 			
-			STAssertTrue(fetchedIndex == index,
-			             @"Wrong index(%d) for key(%@) at index(%d)", fetchedIndex, key, index);
+			XCTAssertTrue(fetchedIndex == index,
+			             @"Wrong index(%d) for key(%@) at index(%d)", (int)fetchedIndex, key, (int)index);
 			
 			index++;
 		}
@@ -1051,11 +1053,11 @@
 		
 		// Read the changes
 		
-		STAssertTrue([[transaction ext:@"order"] numberOfGroups] == 1, @"Wrong group count");
-		STAssertTrue([[[transaction ext:@"order"] allGroups] count] == 1, @"Wrong array count");
+		XCTAssertTrue([[transaction ext:@"order"] numberOfGroups] == 1, @"Wrong group count");
+		XCTAssertTrue([[[transaction ext:@"order"] allGroups] count] == 1, @"Wrong array count");
 		
-		STAssertTrue([[transaction ext:@"order"] numberOfKeysInGroup:@""] == keysCount, @"Wrong count");
-		STAssertTrue([[transaction ext:@"order"] numberOfKeysInAllGroups] == keysCount, @"Wrong count");
+		XCTAssertTrue([[transaction ext:@"order"] numberOfKeysInGroup:@""] == keysCount, @"Wrong count");
+		XCTAssertTrue([[transaction ext:@"order"] numberOfKeysInAllGroups] == keysCount, @"Wrong count");
 		
 		NSArray *keys = @[ key0, key1, key2, key3, key4 ];
 		
@@ -1067,11 +1069,11 @@
 			
 			[[transaction ext:@"order"] getKey:&fetchedKey collection:&fetchedCollection atIndex:index inGroup:@""];
 			
-			STAssertTrue([fetchedKey isEqualToString:key],
-						 @"Non-matching keys(%@ vs %@) at index %d", fetchedKey, key, index);
+			XCTAssertTrue([fetchedKey isEqualToString:key],
+						 @"Non-matching keys(%@ vs %@) at index %d", fetchedKey, key, (int)index);
 			
-			STAssertTrue([fetchedCollection isEqualToString:@""],
-						 @"Non-matching collections(%@ vs %@) at index %d", fetchedCollection, @"", index);
+			XCTAssertTrue([fetchedCollection isEqualToString:@""],
+						 @"Non-matching collections(%@ vs %@) at index %d", fetchedCollection, @"", (int)index);
 			
 			index++;
 		}
@@ -1080,7 +1082,7 @@
 		{
 			NSString *fetchedGroup = [[transaction ext:@"order"] groupForKey:key inCollection:nil];
 			
-			STAssertTrue([fetchedGroup isEqualToString:@""], @"Wrong group(%@) for key(%@)", fetchedGroup, key);
+			XCTAssertTrue([fetchedGroup isEqualToString:@""], @"Wrong group(%@) for key(%@)", fetchedGroup, key);
 		}
 		
 		index = 0;
@@ -1092,13 +1094,13 @@
 			BOOL result =
 			    [[transaction ext:@"order"] getGroup:&fetchedGroup index:&fetchedIndex forKey:key inCollection:nil];
 			
-			STAssertTrue(result, @"Wrong result for key(%@) at index(%d)", key, index);
+			XCTAssertTrue(result, @"Wrong result for key(%@) at index(%d)", key, (int)index);
 			
-			STAssertTrue([fetchedGroup isEqualToString:@""],
-			             @"Wrong group(%@) for key(%@) at index(%d)", fetchedGroup, key, index);
+			XCTAssertTrue([fetchedGroup isEqualToString:@""],
+			             @"Wrong group(%@) for key(%@) at index(%d)", fetchedGroup, key, (int)index);
 			
-			STAssertTrue(fetchedIndex == index,
-			             @"Wrong index(%d) for key(%@) at index(%d)", fetchedIndex, key, index);
+			XCTAssertTrue(fetchedIndex == index,
+			             @"Wrong index(%d) for key(%@) at index(%d)", (int)fetchedIndex, key, (int)index);
 			
 			index++;
 		}
@@ -1118,12 +1120,12 @@
 		[[transaction ext:@"order"] enumerateKeysInGroup:@""
 		                              usingBlock:^(NSString *collection, NSString *key, NSUInteger index, BOOL *stop) {
 			
-			STAssertTrue(index == correctIndex,
+			XCTAssertTrue(index == correctIndex,
 						 @"Index mismatch: %lu vs %lu", (unsigned long)index, (unsigned long)correctIndex);
 			correctIndex++;
 			
 			NSString *correctKey = [keys objectAtIndex:index];
-			STAssertTrue([key isEqual:correctKey],
+			XCTAssertTrue([key isEqual:correctKey],
 						 @"Enumeration mismatch: (%@) vs (%@) at index %lu", key, correctKey, (unsigned long)index);
 		}];
 		
@@ -1134,12 +1136,12 @@
 		                                     withOptions:0
 		                              usingBlock:^(NSString *collection, NSString *key, NSUInteger index, BOOL *stop) {
 			
-			STAssertTrue(index == correctIndex,
+			XCTAssertTrue(index == correctIndex,
 						 @"Index mismatch: %lu vs %lu", (unsigned long)index, (unsigned long)correctIndex);
 			correctIndex++;
 			
 			NSString *correctKey = [keys objectAtIndex:index];
-			STAssertTrue([key isEqual:correctKey],
+			XCTAssertTrue([key isEqual:correctKey],
 						 @"Enumeration mismatch: (%@) vs (%@) at index %lu", key, correctKey, (unsigned long)index);
 		}];
 		
@@ -1150,12 +1152,12 @@
 		                                     withOptions:NSEnumerationReverse
 		                              usingBlock:^(NSString *collection, NSString *key, NSUInteger index, BOOL *stop) {
 			
-			STAssertTrue(index == correctIndex,
+			XCTAssertTrue(index == correctIndex,
 						 @"Index mismatch: %lu vs %lu", (unsigned long)index, (unsigned long)correctIndex);
 			correctIndex--;
 			
 			NSString *correctKey = [keys objectAtIndex:index];
-			STAssertTrue([key isEqual:correctKey],
+			XCTAssertTrue([key isEqual:correctKey],
 						 @"Enumeration mismatch: (%@) vs (%@) at index %lu", key, correctKey, (unsigned long)index);
 		}];
 		
@@ -1167,12 +1169,12 @@
 		                                           range:NSMakeRange(0, 5)
 		                              usingBlock:^(NSString *collection, NSString *key, NSUInteger index, BOOL *stop) {
 			
-			STAssertTrue(index == correctIndex,
+			XCTAssertTrue(index == correctIndex,
 						 @"Index mismatch: %lu vs %lu", (unsigned long)index, (unsigned long)correctIndex);
 			correctIndex++;
 			
 			NSString *correctKey = [keys objectAtIndex:index];
-			STAssertTrue([key isEqual:correctKey],
+			XCTAssertTrue([key isEqual:correctKey],
 						 @"Enumeration mismatch: (%@) vs (%@) at index %lu", key, correctKey, (unsigned long)index);
 		}];
 		
@@ -1184,12 +1186,12 @@
 		                                           range:NSMakeRange(0, 5)
 		                              usingBlock:^(NSString *collection, NSString *key, NSUInteger index, BOOL *stop) {
 			
-			STAssertTrue(index == correctIndex,
+			XCTAssertTrue(index == correctIndex,
 						 @"Index mismatch: %lu vs %lu", (unsigned long)index, (unsigned long)correctIndex);
 			correctIndex--;
 			
 			NSString *correctKey = [keys objectAtIndex:index];
-			STAssertTrue([key isEqual:correctKey],
+			XCTAssertTrue([key isEqual:correctKey],
 						 @"Enumeration mismatch: (%@) vs (%@) at index %lu", key, correctKey, (unsigned long)index);
 		}];
 		
@@ -1201,12 +1203,12 @@
 		                                           range:NSMakeRange(1, 3)
 		                              usingBlock:^(NSString *collection, NSString *key, NSUInteger index, BOOL *stop) {
 			
-			STAssertTrue(index == correctIndex,
+			XCTAssertTrue(index == correctIndex,
 						 @"Index mismatch: %lu vs %lu", (unsigned long)index, (unsigned long)correctIndex);
 			correctIndex++;
 			
 			NSString *correctKey = [keys objectAtIndex:index];
-			STAssertTrue([key isEqual:correctKey],
+			XCTAssertTrue([key isEqual:correctKey],
 						 @"Enumeration mismatch: (%@) vs (%@) at index %lu", key, correctKey, (unsigned long)index);
 		}];
 		
@@ -1218,12 +1220,12 @@
 		                                           range:NSMakeRange(1, 3)
 		                              usingBlock:^(NSString *collection, NSString *key, NSUInteger index, BOOL *stop) {
 			
-			STAssertTrue(index == correctIndex,
+			XCTAssertTrue(index == correctIndex,
 						 @"Index mismatch: %lu vs %lu", (unsigned long)index, (unsigned long)correctIndex);
 			correctIndex--;
 			
 			NSString *correctKey = [keys objectAtIndex:index];
-			STAssertTrue([key isEqual:correctKey],
+			XCTAssertTrue([key isEqual:correctKey],
 						 @"Enumeration mismatch: (%@) vs (%@) at index %lu", key, correctKey, (unsigned long)index);
 		}];
 	}];
@@ -1232,7 +1234,9 @@
 	connection2 = nil;
 }
 
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 #pragma mark -
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 - (void)testMultiPage_persistent
 {
@@ -1263,7 +1267,7 @@
 	[[NSFileManager defaultManager] removeItemAtPath:databasePath error:NULL];
 	YapDatabase *database = [[YapDatabase alloc] initWithPath:databasePath];
 	
-	STAssertNotNil(database, @"Oops");
+	XCTAssertNotNil(database, @"Oops");
 	
 	YapDatabaseConnection *connection1 = [database newConnection];
 	YapDatabaseConnection *connection2 = [database newConnection];
@@ -1295,12 +1299,12 @@
 	                               groupingBlockType:groupingBlockType
 	                                    sortingBlock:sortingBlock
 	                                sortingBlockType:sortingBlockType
-	                                         version:0
+	                                      versionTag:@"1"
 	                                         options:options];
 	
 	BOOL registerResult = [database registerExtension:databaseView withName:@"order"];
 	
-	STAssertTrue(registerResult, @"Failure registering extension");
+	XCTAssertTrue(registerResult, @"Failure registering extension");
 	
 	//
 	// Test adding a bunch of keys
@@ -1331,7 +1335,7 @@
 			
 			NSString *fetchedKey = [[transaction ext:@"order"] keyAtIndex:i inGroup:@""];
 			
-			STAssertTrue([expectedKey isEqualToString:fetchedKey],
+			XCTAssertTrue([expectedKey isEqualToString:fetchedKey],
 			             @"Key mismatch: expected(%@) fetched(%@)", expectedKey, fetchedKey);
 		}
 	}];
@@ -1344,7 +1348,7 @@
 			
 			NSString *fetchedKey = [[transaction ext:@"order"] keyAtIndex:i inGroup:@""];
 			
-			STAssertTrue([expectedKey isEqualToString:fetchedKey],
+			XCTAssertTrue([expectedKey isEqualToString:fetchedKey],
 			             @"Key mismatch: expected(%@) fetched(%@)", expectedKey, fetchedKey);
 		}
 	}];
@@ -1357,7 +1361,7 @@
 			
 			NSString *fetchedKey = [[transaction ext:@"order"] keyAtIndex:i inGroup:@""];
 			
-			STAssertTrue([expectedKey isEqualToString:fetchedKey],
+			XCTAssertTrue([expectedKey isEqualToString:fetchedKey],
 			             @"Key mismatch: expected(%@) fetched(%@)", expectedKey, fetchedKey);
 		}
 	}];
@@ -1395,7 +1399,7 @@
 			
 			NSString *fetchedKey = [[transaction ext:@"order"] keyAtIndex:i inGroup:@""];
 			
-			STAssertTrue([expectedKey isEqualToString:fetchedKey],
+			XCTAssertTrue([expectedKey isEqualToString:fetchedKey],
 			             @"Key mismatch: expected(%@) fetched(%@)", expectedKey, fetchedKey);
 		}
 	}];
@@ -1413,7 +1417,7 @@
 			
 			NSString *fetchedKey = [[transaction ext:@"order"] keyAtIndex:i inGroup:@""];
 			
-			STAssertTrue([expectedKey isEqualToString:fetchedKey],
+			XCTAssertTrue([expectedKey isEqualToString:fetchedKey],
 			             @"Key mismatch: expected(%@) fetched(%@)", expectedKey, fetchedKey);
 		}
 	}];
@@ -1431,7 +1435,7 @@
 			
 			NSString *fetchedKey = [[transaction ext:@"order"] keyAtIndex:i inGroup:@""];
 			
-			STAssertTrue([expectedKey isEqualToString:fetchedKey],
+			XCTAssertTrue([expectedKey isEqualToString:fetchedKey],
 			             @"Key mismatch: expected(%@) fetched(%@)", expectedKey, fetchedKey);
 		}
 	}];
@@ -1465,7 +1469,7 @@
 			
 			NSString *fetchedKey = [[transaction ext:@"order"] keyAtIndex:i inGroup:@""];
 			
-			STAssertTrue([expectedKey isEqualToString:fetchedKey],
+			XCTAssertTrue([expectedKey isEqualToString:fetchedKey],
 			             @"Key mismatch: expected(%@) fetched(%@)", expectedKey, fetchedKey);
 		}
 	}];
@@ -1478,7 +1482,7 @@
 			
 			NSString *fetchedKey = [[transaction ext:@"order"] keyAtIndex:i inGroup:@""];
 			
-			STAssertTrue([expectedKey isEqualToString:fetchedKey],
+			XCTAssertTrue([expectedKey isEqualToString:fetchedKey],
 			             @"Key mismatch: expected(%@) fetched(%@)", expectedKey, fetchedKey);
 		}
 	}];
@@ -1491,7 +1495,7 @@
 			
 			NSString *fetchedKey = [[transaction ext:@"order"] keyAtIndex:i inGroup:@""];
 			
-			STAssertTrue([expectedKey isEqualToString:fetchedKey],
+			XCTAssertTrue([expectedKey isEqualToString:fetchedKey],
 			             @"Key mismatch: expected(%@) fetched(%@)", expectedKey, fetchedKey);
 		}
 	}];
@@ -1527,7 +1531,7 @@
 				
 				NSString *fetchedKey = [[transaction ext:@"order"] keyAtIndex:index inGroup:@""];
 				
-				STAssertTrue([expectedKey isEqualToString:fetchedKey],
+				XCTAssertTrue([expectedKey isEqualToString:fetchedKey],
 				             @"Key mismatch: expected(%@) fetched(%@)", expectedKey, fetchedKey);
 			}
 		}
@@ -1548,7 +1552,7 @@
 				
 				NSString *fetchedKey = [[transaction ext:@"order"] keyAtIndex:index inGroup:@""];
 				
-				STAssertTrue([expectedKey isEqualToString:fetchedKey],
+				XCTAssertTrue([expectedKey isEqualToString:fetchedKey],
 				             @"Key mismatch: expected(%@) fetched(%@)", expectedKey, fetchedKey);
 			}
 		}
@@ -1569,7 +1573,7 @@
 				
 				NSString *fetchedKey = [[transaction ext:@"order"] keyAtIndex:index inGroup:@""];
 				
-				STAssertTrue([expectedKey isEqualToString:fetchedKey],
+				XCTAssertTrue([expectedKey isEqualToString:fetchedKey],
 				             @"Key mismatch: expected(%@) fetched(%@)", expectedKey, fetchedKey);
 			}
 		}
@@ -1588,21 +1592,21 @@
 		
 		NSUInteger count = [[transaction ext:@"order"] numberOfKeysInGroup:@""];
 		
-		STAssertTrue(count == 0, @"Wrong count. Expected zero, got %lu", (unsigned long)count);
+		XCTAssertTrue(count == 0, @"Wrong count. Expected zero, got %lu", (unsigned long)count);
 	}];
 
 	[connection2 readWithBlock:^(YapDatabaseReadTransaction *transaction) {
 		
 		NSUInteger count = [[transaction ext:@"order"] numberOfKeysInGroup:@""];
 		
-		STAssertTrue(count == 0, @"Wrong count. Expected zero, got %lu", (unsigned long)count);
+		XCTAssertTrue(count == 0, @"Wrong count. Expected zero, got %lu", (unsigned long)count);
 	}];
 	
 	[[database newConnection] readWithBlock:^(YapDatabaseReadTransaction *transaction) {
 		
 		NSUInteger count = [[transaction ext:@"order"] numberOfKeysInGroup:@""];
 		
-		STAssertTrue(count == 0, @"Wrong count. Expected zero, got %lu", (unsigned long)count);
+		XCTAssertTrue(count == 0, @"Wrong count. Expected zero, got %lu", (unsigned long)count);
 	}];
 	
 	//
@@ -1634,7 +1638,7 @@
 			
 			NSString *fetchedKey = [[transaction ext:@"order"] keyAtIndex:i inGroup:@""];
 			
-			STAssertTrue([expectedKey isEqualToString:fetchedKey],
+			XCTAssertTrue([expectedKey isEqualToString:fetchedKey],
 			             @"Key mismatch: expected(%@) fetched(%@)", expectedKey, fetchedKey);
 		}
 	}];
@@ -1647,7 +1651,7 @@
 			
 			NSString *fetchedKey = [[transaction ext:@"order"] keyAtIndex:i inGroup:@""];
 			
-			STAssertTrue([expectedKey isEqualToString:fetchedKey],
+			XCTAssertTrue([expectedKey isEqualToString:fetchedKey],
 			             @"Key mismatch: expected(%@) fetched(%@)", expectedKey, fetchedKey);
 		}
 	}];
@@ -1660,7 +1664,7 @@
 			
 			NSString *fetchedKey = [[transaction ext:@"order"] keyAtIndex:i inGroup:@""];
 			
-			STAssertTrue([expectedKey isEqualToString:fetchedKey],
+			XCTAssertTrue([expectedKey isEqualToString:fetchedKey],
 			             @"Key mismatch: expected(%@) fetched(%@)", expectedKey, fetchedKey);
 		}
 	}];
@@ -1700,7 +1704,7 @@
 				
 				NSString *fetchedKey = [[transaction ext:@"order"] keyAtIndex:index inGroup:@""];
 				
-				STAssertTrue([expectedKey isEqualToString:fetchedKey],
+				XCTAssertTrue([expectedKey isEqualToString:fetchedKey],
 				             @"Key mismatch: expected(%@) fetched(%@)", expectedKey, fetchedKey);
 			}
 		}
@@ -1721,7 +1725,7 @@
 				
 				NSString *fetchedKey = [[transaction ext:@"order"] keyAtIndex:index inGroup:@""];
 				
-				STAssertTrue([expectedKey isEqualToString:fetchedKey],
+				XCTAssertTrue([expectedKey isEqualToString:fetchedKey],
 				             @"Key mismatch: expected(%@) fetched(%@)", expectedKey, fetchedKey);
 			}
 		}
@@ -1742,7 +1746,7 @@
 				
 				NSString *fetchedKey = [[transaction ext:@"order"] keyAtIndex:index inGroup:@""];
 				
-				STAssertTrue([expectedKey isEqualToString:fetchedKey],
+				XCTAssertTrue([expectedKey isEqualToString:fetchedKey],
 				             @"Key mismatch: expected(%@) fetched(%@)", expectedKey, fetchedKey);
 			}
 		}
@@ -1820,7 +1824,7 @@
 			
 			NSString *fetchedKey = [[transaction ext:@"order"] keyAtIndex:index inGroup:@""];
 			
-			STAssertTrue([expectedKey isEqualToString:fetchedKey],
+			XCTAssertTrue([expectedKey isEqualToString:fetchedKey],
 						 @"Key mismatch: expected(%@) fetched(%@)", expectedKey, fetchedKey);
 			
 			index++;
@@ -1832,7 +1836,7 @@
 			
 			NSString *fetchedKey = [[transaction ext:@"order"] keyAtIndex:index inGroup:@""];
 			
-			STAssertTrue([expectedKey isEqualToString:fetchedKey],
+			XCTAssertTrue([expectedKey isEqualToString:fetchedKey],
 						 @"Key mismatch: expected(%@) fetched(%@)", expectedKey, fetchedKey);
 			
 			index++;
@@ -1844,7 +1848,7 @@
 			
 			NSString *fetchedKey = [[transaction ext:@"order"] keyAtIndex:index inGroup:@""];
 			
-			STAssertTrue([expectedKey isEqualToString:fetchedKey],
+			XCTAssertTrue([expectedKey isEqualToString:fetchedKey],
 						 @"Key mismatch: expected(%@) fetched(%@)", expectedKey, fetchedKey);
 			
 			index++;
@@ -1915,7 +1919,7 @@
 			
 			NSString *fetchedKey = [[transaction ext:@"order"] keyAtIndex:index inGroup:@""];
 			
-			STAssertTrue([expectedKey isEqualToString:fetchedKey],
+			XCTAssertTrue([expectedKey isEqualToString:fetchedKey],
 						 @"Key mismatch: expected(%@) fetched(%@)", expectedKey, fetchedKey);
 			
 			index++;
@@ -1927,7 +1931,7 @@
 			
 			NSString *fetchedKey = [[transaction ext:@"order"] keyAtIndex:index inGroup:@""];
 			
-			STAssertTrue([expectedKey isEqualToString:fetchedKey],
+			XCTAssertTrue([expectedKey isEqualToString:fetchedKey],
 						 @"Key mismatch: expected(%@) fetched(%@)", expectedKey, fetchedKey);
 			
 			index++;
@@ -1939,7 +1943,7 @@
 			
 			NSString *fetchedKey = [[transaction ext:@"order"] keyAtIndex:index inGroup:@""];
 			
-			STAssertTrue([expectedKey isEqualToString:fetchedKey],
+			XCTAssertTrue([expectedKey isEqualToString:fetchedKey],
 						 @"Key mismatch: expected(%@) fetched(%@)", expectedKey, fetchedKey);
 			
 			index++;
@@ -1947,7 +1951,9 @@
 	}];
 }
 
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 #pragma mark -
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 - (void)testViewPopulation_persistent
 {
@@ -1974,7 +1980,7 @@
 	[[NSFileManager defaultManager] removeItemAtPath:databasePath error:NULL];
 	YapDatabase *database = [[YapDatabase alloc] initWithPath:databasePath];
 	
-	STAssertNotNil(database, @"Oops");
+	XCTAssertNotNil(database, @"Oops");
 	
 	YapDatabaseConnection *connection1 = [database newConnection];
 	YapDatabaseConnection *connection2 = [database newConnection];
@@ -2006,7 +2012,7 @@
 	                               groupingBlockType:groupingBlockType
 	                                    sortingBlock:sortingBlock
 	                                sortingBlockType:sortingBlockType
-	                                         version:0
+	                                      versionTag:@"1"
 	                                         options:options];
 	
 	// Without registering the view,
@@ -2027,7 +2033,7 @@
 	
 	BOOL registerResult = [database registerExtension:databaseView withName:@"order"];
 	
-	STAssertTrue(registerResult, @"Failure registering extension");
+	XCTAssertTrue(registerResult, @"Failure registering extension");
 	
 	// Make sure both connections can see the view now
 	
@@ -2039,7 +2045,7 @@
 			
 			NSString *fetchedKey = [[transaction ext:@"order"] keyAtIndex:i inGroup:@""];
 			
-			STAssertTrue([expectedKey isEqualToString:fetchedKey],
+			XCTAssertTrue([expectedKey isEqualToString:fetchedKey],
 			             @"Key mismatch: expected(%@) fetched(%@)", expectedKey, fetchedKey);
 		}
 	}];
@@ -2052,13 +2058,15 @@
 			
 			NSString *fetchedKey = [[transaction ext:@"order"] keyAtIndex:i inGroup:@""];
 			
-			STAssertTrue([expectedKey isEqualToString:fetchedKey],
+			XCTAssertTrue([expectedKey isEqualToString:fetchedKey],
 			             @"Key mismatch: expected(%@) fetched(%@)", expectedKey, fetchedKey);
 		}
 	}];
 }
 
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 #pragma mark -
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 - (void)testMutationDuringEnumerationProtection_persistent
 {
@@ -2086,7 +2094,7 @@
 	[[NSFileManager defaultManager] removeItemAtPath:databasePath error:NULL];
 	YapDatabase *database = [[YapDatabase alloc] initWithPath:databasePath];
 	
-	STAssertNotNil(database, @"Oops");
+	XCTAssertNotNil(database, @"Oops");
 	
 	YapDatabaseConnection *connection = [database newConnection];
 	
@@ -2120,12 +2128,12 @@
 	                               groupingBlockType:groupingBlockType
 	                                    sortingBlock:sortingBlock
 	                                sortingBlockType:sortingBlockType
-	                                         version:0
+	                                      versionTag:@"1"
 	                                         options:options];
 	
 	BOOL registerResult = [database registerExtension:databaseView withName:@"order"];
 	
-	STAssertTrue(registerResult, @"Failure registering extension");
+	XCTAssertTrue(registerResult, @"Failure registering extension");
 	
 	// Add a bunch of keys to the database.
 	
@@ -2210,11 +2218,11 @@
 			}];
 		};
 		
-		STAssertThrows(exceptionBlock1A(), @"Should throw exception");
-		STAssertThrows(exceptionBlock1B(), @"Should throw exception");
-		STAssertNoThrow(noExceptionBlock1A(), @"Should NOT throw exception. Proper use of stop.");
-		STAssertNoThrow(noExceptionBlock1B(), @"Should NOT throw exception. Proper use of stop.");
-		STAssertNoThrow(noExceptionBlock1C(), @"Should NOT throw exception. Mutating different group.");
+		XCTAssertThrows(exceptionBlock1A(), @"Should throw exception");
+		XCTAssertThrows(exceptionBlock1B(), @"Should throw exception");
+		XCTAssertNoThrow(noExceptionBlock1A(), @"Should NOT throw exception. Proper use of stop.");
+		XCTAssertNoThrow(noExceptionBlock1B(), @"Should NOT throw exception. Proper use of stop.");
+		XCTAssertNoThrow(noExceptionBlock1C(), @"Should NOT throw exception. Mutating different group.");
 		
 		// enumerateKeysInGroup:withOptions:usingBlock:
 		
@@ -2285,11 +2293,11 @@
 			}];
 		};
 		
-		STAssertThrows(exceptionBlock2A(), @"Should throw exception");
-		STAssertThrows(exceptionBlock2B(), @"Should throw exception");
-		STAssertNoThrow(noExceptionBlock2A(), @"Should NOT throw exception. Proper use of stop.");
-		STAssertNoThrow(noExceptionBlock2B(), @"Should NOT throw exception. Proper use of stop.");
-		STAssertNoThrow(noExceptionBlock2C(), @"Should NOT throw exception. Mutating different group.");
+		XCTAssertThrows(exceptionBlock2A(), @"Should throw exception");
+		XCTAssertThrows(exceptionBlock2B(), @"Should throw exception");
+		XCTAssertNoThrow(noExceptionBlock2A(), @"Should NOT throw exception. Proper use of stop.");
+		XCTAssertNoThrow(noExceptionBlock2B(), @"Should NOT throw exception. Proper use of stop.");
+		XCTAssertNoThrow(noExceptionBlock2C(), @"Should NOT throw exception. Mutating different group.");
 		
 		// enumerateKeysInGroup:withOptions:range:usingBlock:
 		
@@ -2365,11 +2373,11 @@
 			}];
 		};
 		
-		STAssertThrows(exceptionBlock3A(), @"Should throw exception");
-		STAssertThrows(exceptionBlock3B(), @"Should throw exception");
-		STAssertNoThrow(noExceptionBlock3A(), @"Should NOT throw exception. Proper use of stop.");
-		STAssertNoThrow(noExceptionBlock3B(), @"Should NOT throw exception. Proper use of stop.");
-		STAssertNoThrow(noExceptionBlock3C(), @"Should NOT throw exception. Mutating different group.");
+		XCTAssertThrows(exceptionBlock3A(), @"Should throw exception");
+		XCTAssertThrows(exceptionBlock3B(), @"Should throw exception");
+		XCTAssertNoThrow(noExceptionBlock3A(), @"Should NOT throw exception. Proper use of stop.");
+		XCTAssertNoThrow(noExceptionBlock3B(), @"Should NOT throw exception. Proper use of stop.");
+		XCTAssertNoThrow(noExceptionBlock3C(), @"Should NOT throw exception. Mutating different group.");
 	}];
 	
 	[connection readWriteWithBlock:^(YapDatabaseReadWriteTransaction *transaction) {
@@ -2395,7 +2403,7 @@
 			}];
 		};
 		
-		STAssertThrows(exceptionBlock1(), @"Should throw exception");
+		XCTAssertThrows(exceptionBlock1(), @"Should throw exception");
 		
 		for (int i = 0; i < 100; i++)
 		{
@@ -2416,11 +2424,13 @@
 			}];
 		};
 		
-		STAssertNoThrow(noExceptionBlock1(), @"Should NOT throw exception. Proper use of stop.");
+		XCTAssertNoThrow(noExceptionBlock1(), @"Should NOT throw exception. Proper use of stop.");
 	}];
 }
 
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 #pragma mark -
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 - (void)testDropView_persistent
 {
@@ -2447,7 +2457,7 @@
 	[[NSFileManager defaultManager] removeItemAtPath:databasePath error:NULL];
 	YapDatabase *database = [[YapDatabase alloc] initWithPath:databasePath];
 	
-	STAssertNotNil(database, @"Oops");
+	XCTAssertNotNil(database, @"Oops");
 	
 	YapDatabaseConnection *connection = [database newConnection];
 	
@@ -2478,12 +2488,12 @@
 	                               groupingBlockType:groupingBlockType
 	                                    sortingBlock:sortingBlock
 	                                sortingBlockType:sortingBlockType
-	                                         version:0
+	                                      versionTag:@"1"
 	                                         options:options];
 	
 	BOOL registerResult = [database registerExtension:databaseView withName:@"order"];
 	
-	STAssertTrue(registerResult, @"Failure registering extension");
+	XCTAssertTrue(registerResult, @"Failure registering extension");
 	
 	// Add a bunch of keys to the database & to the view
 	
@@ -2504,7 +2514,7 @@
 	
 	[connection readWithBlock:^(YapDatabaseReadTransaction *transaction) {
 		
-		STAssertTrue([[transaction ext:@"order"] numberOfKeysInGroup:@""] == count, @"View count is wrong");
+		XCTAssertTrue([[transaction ext:@"order"] numberOfKeysInGroup:@""] == count, @"View count is wrong");
 	}];
 	
 	// Now drop the view
@@ -2515,11 +2525,13 @@
 	
 	[connection readWithBlock:^(YapDatabaseReadTransaction *transaction) {
 		
-		STAssertNil([transaction ext:@"order"], @"Expected nil extension");
+		XCTAssertNil([transaction ext:@"order"], @"Expected nil extension");
 	}];
 }
 
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 #pragma mark -
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 - (void)testFind_persistent
 {
@@ -2546,7 +2558,7 @@
 	[[NSFileManager defaultManager] removeItemAtPath:databasePath error:NULL];
 	YapDatabase *database = [[YapDatabase alloc] initWithPath:databasePath];
 	
-	STAssertNotNil(database, @"Oops");
+	XCTAssertNotNil(database, @"Oops");
 	
 	YapDatabaseConnection *connection = [database newConnection];
 	
@@ -2577,12 +2589,12 @@
 	                               groupingBlockType:groupingBlockType
 	                                    sortingBlock:sortingBlock
 	                                sortingBlockType:sortingBlockType
-	                                         version:0
+	                                      versionTag:@"1"
 	                                         options:options];
 	
 	BOOL registerResult = [database registerExtension:databaseView withName:@"order"];
 	
-	STAssertTrue(registerResult, @"Failure registering extension");
+	XCTAssertTrue(registerResult, @"Failure registering extension");
 	
 	// Add a bunch of values to the database & to the view
 	
@@ -2603,7 +2615,7 @@
 	
 	[connection readWithBlock:^(YapDatabaseReadTransaction *transaction) {
 		
-		STAssertTrue([[transaction ext:@"order"] numberOfKeysInGroup:@""] == count, @"View count is wrong");
+		XCTAssertTrue([[transaction ext:@"order"] numberOfKeysInGroup:@""] == count, @"View count is wrong");
 	}];
 	
 	// Now test finding different ranges
@@ -2631,8 +2643,8 @@
 		NSUInteger location = (max > min) ? min : NSNotFound;
 		NSUInteger length = (max > min) ? (max - min) : 0;
 		
-		STAssertTrue(range.location == location, @"Bad range location: %d", (int)range.location);
-		STAssertTrue(range.length == length, @"Bad range length: %d", (int)range.length);
+		XCTAssertTrue(range.location == location, @"Bad range location: %d", (int)range.location);
+		XCTAssertTrue(range.length == length, @"Bad range length: %d", (int)range.length);
 	}];
 	
 	[connection readWithBlock:^(YapDatabaseReadTransaction *transaction) {
@@ -2658,8 +2670,8 @@
 		NSUInteger location = (max > min) ? min : NSNotFound;
 		NSUInteger length = (max > min) ? (max - min) : 0;
 		
-		STAssertTrue(range.location == location, @"Bad range location: %d", (int)range.location);
-		STAssertTrue(range.length == length, @"Bad range length: %d", (int)range.length);
+		XCTAssertTrue(range.location == location, @"Bad range location: %d", (int)range.location);
+		XCTAssertTrue(range.length == length, @"Bad range length: %d", (int)range.length);
 	}];
 	
 	[connection readWithBlock:^(YapDatabaseReadTransaction *transaction) {
@@ -2685,8 +2697,8 @@
 		NSUInteger location = (max > min) ? min : NSNotFound;
 		NSUInteger length = (max > min) ? (max - min) : 0;
 		
-		STAssertTrue(range.location == location, @"Bad range location: %d", (int)range.location);
-		STAssertTrue(range.length == length, @"Bad range length: %d", (int)range.length);
+		XCTAssertTrue(range.location == location, @"Bad range location: %d", (int)range.location);
+		XCTAssertTrue(range.length == length, @"Bad range length: %d", (int)range.length);
 	}];
 	
 	[connection readWithBlock:^(YapDatabaseReadTransaction *transaction) {
@@ -2712,9 +2724,147 @@
 		NSUInteger location = (max > min) ? min : NSNotFound;
 		NSUInteger length = (max > min) ? (max - min) : 0;
 		
-		STAssertTrue(range.location == location, @"Bad range location: %d", (int)range.location);
-		STAssertTrue(range.length == length, @"Bad range length: %d", (int)range.length);
+		XCTAssertTrue(range.location == location, @"Bad range location: %d", (int)range.location);
+		XCTAssertTrue(range.length == length, @"Bad range length: %d", (int)range.length);
 	}];
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+#pragma mark -
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+- (void)testChangeBlocks_persistent
+{
+	NSString *databasePath = [self databasePath:NSStringFromSelector(_cmd)];
+	
+	YapDatabaseViewOptions *options = [[YapDatabaseViewOptions alloc] init];
+	options.isPersistent = YES;
+	
+	[self _testChangeBlocks_withPath:databasePath options:options];
+}
+
+- (void)testChangeBlocks_nonPersistent
+{
+	NSString *databasePath = [self databasePath:NSStringFromSelector(_cmd)];
+	
+	YapDatabaseViewOptions *options = [[YapDatabaseViewOptions alloc] init];
+	options.isPersistent = NO;
+	
+	[self _testChangeBlocks_withPath:databasePath options:options];
+}
+
+- (void)_testChangeBlocks_withPath:(NSString *)databasePath options:(YapDatabaseViewOptions *)options
+{
+	[[NSFileManager defaultManager] removeItemAtPath:databasePath error:NULL];
+	YapDatabase *database = [[YapDatabase alloc] initWithPath:databasePath];
+	
+	XCTAssertNotNil(database, @"Oops");
+	
+	YapDatabaseConnection *connection1 = [database newConnection];
+	YapDatabaseConnection *connection2 = [database newConnection];
+	
+	YapDatabaseViewBlockType groupingBlockType;
+	YapDatabaseViewGroupingWithObjectBlock groupingBlock;
+	
+	YapDatabaseViewBlockType sortingBlockType;
+	YapDatabaseViewSortingWithObjectBlock sortingBlock;
+	
+	groupingBlockType = YapDatabaseViewBlockTypeWithObject;
+	groupingBlock = ^NSString *(NSString *collection, NSString *key, id obj){
+		
+		__unsafe_unretained NSNumber *number = (NSNumber *)obj;
+		
+		if ([number intValue] % 2 == 0)
+			return @"";
+		else
+			return nil;
+	};
+	
+	sortingBlockType = YapDatabaseViewBlockTypeWithObject;
+	sortingBlock = ^(NSString *group, NSString *collection1, NSString *key1, id obj1,
+	                                  NSString *collection2, NSString *key2, id obj2){
+		
+		__unsafe_unretained NSNumber *number1 = (NSNumber *)obj1;
+		__unsafe_unretained NSNumber *number2 = (NSNumber *)obj2;
+		
+		return [number1 compare:number2];
+	};
+	
+	YapDatabaseView *databaseView =
+	  [[YapDatabaseView alloc] initWithGroupingBlock:groupingBlock
+	                               groupingBlockType:groupingBlockType
+	                                    sortingBlock:sortingBlock
+	                                sortingBlockType:sortingBlockType
+	                                      versionTag:@"1"
+	                                         options:options];
+	
+	BOOL registerResult = [database registerExtension:databaseView withName:@"order"];
+	
+	XCTAssertTrue(registerResult, @"Failure registering extension");
+	
+	// Add a bunch of values to the database & to the view
+	
+	NSUInteger count = 10;
+	
+	[connection1 readWriteWithBlock:^(YapDatabaseReadWriteTransaction *transaction) {
+		
+		for (int i = 0; i < count; i++)
+		{
+			NSString *key = [NSString stringWithFormat:@"key-%d", i];
+			NSNumber *num = [NSNumber numberWithInt:i];
+			
+			[transaction setObject:num forKey:key inCollection:nil];
+		}
+	}];
+	
+	// Make sure the view is populated
+	
+	[connection1 readWithBlock:^(YapDatabaseReadTransaction *transaction) {
+		
+		XCTAssertTrue([[transaction ext:@"order"] numberOfKeysInGroup:@""] == 5, @"View count is wrong");
+	}];
+	
+	// Now change the groupingBlock
+	
+	YapDatabaseViewMappings *mappings = [YapDatabaseViewMappings mappingsWithGroups:@[ @"" ] view:@"order"];
+	
+	[connection2 beginLongLivedReadTransaction];
+	[connection2 readWithBlock:^(YapDatabaseReadTransaction *transaction) {
+		
+		[mappings updateWithTransaction:transaction];
+	}];
+	
+	groupingBlock = ^NSString *(NSString *collection, NSString *key, id obj){
+		
+		__unsafe_unretained NSNumber *number = (NSNumber *)obj;
+		
+		if ([number intValue] % 2 == 0)
+			return @"";
+		else
+			return @""; // <<-- Allow odd numbers now too
+	};
+	
+	[connection1 readWriteWithBlock:^(YapDatabaseReadWriteTransaction *transaction) {
+		
+		[[transaction ext:@"order"] setGroupingBlock:groupingBlock
+		                           groupingBlockType:groupingBlockType
+		                                sortingBlock:sortingBlock
+		                            sortingBlockType:sortingBlockType
+		                                  versionTag:@"2"];
+	}];
+	
+	NSArray *notifications =[connection2 beginLongLivedReadTransaction];
+	
+	NSArray *sectionChanges = nil;
+	NSArray *rowChanges = nil;
+	
+	[[connection2 ext:@"order"] getSectionChanges:&sectionChanges
+	                                   rowChanges:&rowChanges
+	                             forNotifications:notifications
+	                                 withMappings:mappings];
+	
+	XCTAssertTrue([sectionChanges count] == 0, @"Bad count");
+	XCTAssertTrue([rowChanges count] == 10, @"Bad count");
 }
 
 @end

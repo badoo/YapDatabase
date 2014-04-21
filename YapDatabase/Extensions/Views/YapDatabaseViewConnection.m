@@ -70,6 +70,11 @@ static NSString *const key_changes                  = @"changes";
 
 - (void)dealloc
 {
+	[self _flushStatements];
+}
+
+- (void)_flushStatements
+{
 	sqlite_finalize_null(&mapTable_getPageKeyForRowidStatement);
 	sqlite_finalize_null(&mapTable_setPageKeyForRowidStatement);
 	sqlite_finalize_null(&mapTable_removeForRowidStatement);
@@ -87,33 +92,17 @@ static NSString *const key_changes                  = @"changes";
 /**
  * Required override method from YapDatabaseExtensionConnection
 **/
-- (void)_flushMemoryWithLevel:(int)level
+- (void)_flushMemoryWithFlags:(YapDatabaseConnectionFlushMemoryFlags)flags
 {
-	if (level >= YapDatabaseConnectionFlushMemoryLevelMild)
+	if (flags & YapDatabaseConnectionFlushMemoryFlags_Caches)
 	{
 		[mapCache removeAllObjects];
 		[pageCache removeAllObjects];
 	}
 	
-	if (level >= YapDatabaseConnectionFlushMemoryLevelModerate)
+	if (flags & YapDatabaseConnectionFlushMemoryFlags_Statements)
 	{
-		sqlite_finalize_null(&mapTable_setPageKeyForRowidStatement);
-		sqlite_finalize_null(&mapTable_removeForRowidStatement);
-		sqlite_finalize_null(&mapTable_removeAllStatement);
-		
-		sqlite_finalize_null(&pageTable_insertForPageKeyStatement);
-		sqlite_finalize_null(&pageTable_updateAllForPageKeyStatement);
-		sqlite_finalize_null(&pageTable_updatePageForPageKeyStatement);
-		sqlite_finalize_null(&pageTable_updateLinkForPageKeyStatement);
-		sqlite_finalize_null(&pageTable_removeForPageKeyStatement);
-		sqlite_finalize_null(&pageTable_removeAllStatement);
-	}
-	
-	if (level >= YapDatabaseConnectionFlushMemoryLevelFull)
-	{
-		sqlite_finalize_null(&mapTable_getPageKeyForRowidStatement);
-		
-		sqlite_finalize_null(&pageTable_getDataForPageKeyStatement);
+		[self _flushStatements];
 	}
 }
 
@@ -293,7 +282,9 @@ static NSString *const key_changes                  = @"changes";
 	NSMutableDictionary *externalChangeset = nil;
 	BOOL hasDiskChanges = NO;
 	
-	if ([dirtyMaps count] || [dirtyPages count] || [dirtyLinks count] || reset)
+	if ([dirtyMaps count]  > 0 ||
+	    [dirtyPages count] > 0 ||
+	    [dirtyLinks count] > 0 || reset)
 	{
 		hasDiskChanges = view->options.isPersistent;
 		internalChangeset = [NSMutableDictionary dictionaryWithSharedKeySet:sharedKeySetForInternalChangeset];
@@ -323,7 +314,7 @@ static NSString *const key_changes                  = @"changes";
 		[internalChangeset setObject:pageKey_group_dict_copy       forKey:key_pageKey_group_dict];
 	}
 	
-	if ([changes count])
+	if ([changes count] > 0)
 	{
 		externalChangeset = [NSMutableDictionary dictionaryWithSharedKeySet:sharedKeySetForExternalChangeset];
 		
@@ -488,8 +479,16 @@ static NSString *const key_changes                  = @"changes";
 		@throw [NSException exceptionWithName:@"YapDatabaseException" reason:reason userInfo:userInfo];
 	}
 	
+	if ([notifications count] == 0)
+	{
+		if (sectionChangesPtr) *sectionChangesPtr = nil;
+		if (rowChangesPtr) *rowChangesPtr = nil;
+		
+		return;
+	}
+	
 	NSString *registeredName = self.view.registeredName;
-	NSMutableArray *all_changes = [NSMutableArray array];
+	NSMutableArray *all_changes = [NSMutableArray arrayWithCapacity:[notifications count]];
 	
 	for (NSNotification *notification in notifications)
 	{
@@ -510,83 +509,80 @@ static NSString *const key_changes                  = @"changes";
 		[mappings updateWithTransaction:transaction];
 	}];
 	
-	if ([notifications count] > 0)
+	if (!isLongLivedReadTransaction)
 	{
-		NSDictionary *firstChangeset = [[notifications objectAtIndex:0] userInfo];
-		NSDictionary *lastChangeset = [[notifications lastObject] userInfo];
+		YDBLogWarn(@"%@ - The databaseConnection is NOT in a longLivedReadTransaction."
+		           @" It needs to be in order to guarantee"
+				   @" (A) you can provide a stable data-source for your UI thread and"
+				   @" (B) you can get changesets which match the movement from one"
+				   @" stable data-source state to another. If you think your databaseConnection IS"
+				   @" in a longLivedReadTransaction, then perhaps you aborted it by accident."
+				   @" This generally happens when you use a databaseConnection,"
+				   @" which is in a longLivedReadTransaction, to perform a read-write transaction."
+				   @" Doing so implicitly forces the connection out of the longLivedReadTransaction,"
+				   @" and moves it to the most recent snapshot. If this is the case,"
+				   @" be sure to use a separate connection for your read-write transaction.", THIS_METHOD);
+	}
+	
+	NSDictionary *firstChangeset = [[notifications objectAtIndex:0] userInfo];
+	NSDictionary *lastChangeset = [[notifications lastObject] userInfo];
+	
+	uint64_t firstSnapshot = [[firstChangeset objectForKey:YapDatabaseSnapshotKey] unsignedLongLongValue];
+	uint64_t lastSnapshot  = [[lastChangeset  objectForKey:YapDatabaseSnapshotKey] unsignedLongLongValue];
+	
+	if ((originalMappings.snapshotOfLastUpdate != (firstSnapshot - 1)) ||
+	    (mappings.snapshotOfLastUpdate != lastSnapshot))
+	{
+		NSString *reason = [NSString stringWithFormat:
+		    @"ViewConnection[%p, RegisteredName=%@] was asked for changes,"
+			@" but given mismatched mappings & notifications.", self, view.registeredName];
 		
-		uint64_t firstSnapshot = [[firstChangeset objectForKey:YapDatabaseSnapshotKey] unsignedLongLongValue];
-		uint64_t lastSnapshot  = [[lastChangeset  objectForKey:YapDatabaseSnapshotKey] unsignedLongLongValue];
+		NSString *failureReason = [NSString stringWithFormat:
+		    @"preMappings.snapshotOfLastUpdate: expected(%llu) != found(%llu), "
+			@"postMappings.snapshotOfLastUpdate: expected(%llu) != found(%llu), "
+			@"isLongLivedReadTransaction = %@",
+			originalMappings.snapshotOfLastUpdate, (firstSnapshot - 1),
+			mappings.snapshotOfLastUpdate, lastSnapshot,
+			(isLongLivedReadTransaction ? @"YES" : @"NO")];
 		
-		if ((originalMappings.snapshotOfLastUpdate != (firstSnapshot - 1)) ||
-		    (mappings.snapshotOfLastUpdate != lastSnapshot))
-		{
-			NSString *reason = [NSString stringWithFormat:
-			    @"ViewConnection[%p, RegisteredName=%@] was asked for changes,"
-				@" but given mismatched mappings & notifications.", self, view.registeredName];
-			
-			NSString *failureReason = [NSString stringWithFormat:
-			    @"preMappings.snapshotOfLastUpdate: expected(%llu) != found(%llu), "
-				@"postMappings.snapshotOfLastUpdate: expected(%llu) != found(%llu), "
-				@"isLongLivedReadTransaction = %@",
-				originalMappings.snapshotOfLastUpdate, (firstSnapshot - 1),
-				mappings.snapshotOfLastUpdate, lastSnapshot,
-				(isLongLivedReadTransaction ? @"YES" : @"NO")];
-			
-			NSString *suggestion = [NSString stringWithFormat:
-			    @"When you initialize the database, the snapshot (uint64) is set to zero."
-				@" Every read-write transaction (that makes modifications) increments the snapshot."
-				@" Now, when you ask the viewConnection for a changeset, "
-				@" you need to pass matching mappings & notifications. That is, the mappings need to represent the"
-				@" database at snapshot X, and the notifications need to represent the database at snapshots"
-				@" @[ X+1, X+2, ...]. This does not appear to be the case. This most often happens when the"
-				@" databaseConnection isn't using a longLivedReadTransaction. And this happens by accident"
-				@" most often when you use a databaseConnection, which is in a longLivedReadTransaction, to perform"
-				@" a read-write transaction. Doing so implicitly forces the connection out of the"
-				@" longLivedReadTransaction, and moves it to the most recent snapshot. If this is the case,"
-				@" be sure to use a separate connection for your read-write transaction."];
-			
-			NSDictionary *userInfo = @{
-				NSLocalizedFailureReasonErrorKey: failureReason,
-				NSLocalizedRecoverySuggestionErrorKey: suggestion };
+		NSString *suggestion = [NSString stringWithFormat:
+		    @"When you initialize the database, the snapshot (uint64) is set to zero."
+			@" Every read-write transaction (that makes modifications) increments the snapshot."
+			@" Now, when you ask the viewConnection for a changeset, "
+			@" you need to pass matching mappings & notifications. That is, the mappings need to represent the"
+			@" database at snapshot X, and the notifications need to represent the database at snapshots"
+			@" @[ X+1, X+2, ...]. This does not appear to be the case. This most often happens when the"
+			@" databaseConnection isn't using a longLivedReadTransaction. And this happens by accident"
+			@" most often when you use a databaseConnection, which is in a longLivedReadTransaction, to perform"
+			@" a read-write transaction. Doing so implicitly forces the connection out of the"
+			@" longLivedReadTransaction, and moves it to the most recent snapshot. If this is the case,"
+			@" be sure to use a separate connection for your read-write transaction."];
 		
-			// If we don't throw the exception here,
-			// then you'll just get an exception later from the tableView or collectionView.
-			// It will look something like this:
-			//
-			// > Invalid update: invalid number of rows in section X. The number of rows contained in an
-			// > existing section after the update (Y) must be equal to the number of rows contained in that section
-			// > before the update (Z), plus or minus the number of rows inserted or deleted from that
-			// > section (# inserted, # deleted).
-			//
-			// In order to guarantee you DON'T get an exception (either from YapDatabase or from Apple),
-			// then you need to follow the instructions for setting up your connection, mappings, & notifications.
-			//
-			// For complete code samples, check out the wiki:
-			// https://github.com/yaptv/YapDatabase/wiki/Views
-			//
-			// You may be tempted to simply comment out the exception below.
-			// If you do, you're not fixing the root cause of your problem.
-			// Furthermore, you're simply trading this exception, which comes with documented steps on how
-			// to fix the problem, for an exception from Apple which will be even harder to diagnose.
-			
-			@throw [NSException exceptionWithName:@"YapDatabaseException" reason:reason userInfo:userInfo];
-		}
+		NSDictionary *userInfo = @{
+			NSLocalizedFailureReasonErrorKey: failureReason,
+			NSLocalizedRecoverySuggestionErrorKey: suggestion };
+	
+		// If we don't throw the exception here,
+		// then you'll just get an exception later from the tableView or collectionView.
+		// It will look something like this:
+		//
+		// > Invalid update: invalid number of rows in section X. The number of rows contained in an
+		// > existing section after the update (Y) must be equal to the number of rows contained in that section
+		// > before the update (Z), plus or minus the number of rows inserted or deleted from that
+		// > section (# inserted, # deleted).
+		//
+		// In order to guarantee you DON'T get an exception (either from YapDatabase or from Apple),
+		// then you need to follow the instructions for setting up your connection, mappings, & notifications.
+		//
+		// For complete code samples, check out the wiki:
+		// https://github.com/yaptv/YapDatabase/wiki/Views
+		//
+		// You may be tempted to simply comment out the exception below.
+		// If you do, you're not fixing the root cause of your problem.
+		// Furthermore, you're simply trading this exception, which comes with documented steps on how
+		// to fix the problem, for an exception from Apple which will be even harder to diagnose.
 		
-		if (!isLongLivedReadTransaction)
-		{
-			YDBLogWarn(@"%@ - The databaseConnection is NOT in a longLivedReadTransaction."
-			           @" It needs to be in order to guarantee"
-					   @" (A) you can provide a stable data-source for your UI thread and"
-					   @" (B) you can get changesets which match the movement from one"
-					   @" stable data-source state to another. If you think your databaseConnection IS"
-					   @" in a longLivedReadTransaction, then perhaps you aborted it by accident."
-					   @" This generally happens when you use a databaseConnection,"
-					   @" which is in a longLivedReadTransaction, to perform a read-write transaction."
-					   @" Doing so implicitly forces the connection out of the longLivedReadTransaction,"
-					   @" and moves it to the most recent snapshot. If this is the case,"
-					   @" be sure to use a separate connection for your read-write transaction.", THIS_METHOD);
-		}
+		@throw [NSException exceptionWithName:@"YapDatabaseException" reason:reason userInfo:userInfo];
 	}
 	
 	[YapDatabaseViewChange getSectionChanges:sectionChangesPtr

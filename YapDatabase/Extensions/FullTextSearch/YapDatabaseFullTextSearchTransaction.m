@@ -20,11 +20,11 @@
 #endif
 
 /**
- * This version number is stored in the yap2 table.
- * If there is a major re-write to this class, then the version number will be incremented,
- * and the class can automatically rebuild the tables as needed.
+ * Declare that this class implements YapDatabaseExtensionTransaction_Hooks protocol.
+ * This is done privately, as the protocol is internal.
 **/
-#define YAP_DATABASE_FTS_CLASS_VERSION 1
+@interface YapDatabaseFullTextSearchTransaction () <YapDatabaseExtensionTransaction_Hooks>
+@end
 
 
 @implementation YapDatabaseFullTextSearchTransaction
@@ -52,14 +52,17 @@
 **/
 - (BOOL)createIfNeeded
 {
-	int oldClassVersion = [self intValueForExtensionKey:@"classVersion"];
+	int oldClassVersion = 0;
+	BOOL hasOldClassVersion = [self getIntValue:&oldClassVersion forExtensionKey:@"classVersion"];
 	int classVersion = YAP_DATABASE_FTS_CLASS_VERSION;
 	
 	if (oldClassVersion != classVersion)
 	{
-		// First time registration
+		// First time registration (or at least for this version)
 		
-		[self upgradeFromForOldClassVersion:oldClassVersion];
+		if (hasOldClassVersion) {
+			if (![self dropTable]) return NO;
+		}
 		
 		if (![self createTable]) return NO;
 		if (![self populate]) return NO;
@@ -104,16 +107,6 @@
 - (BOOL)prepareIfNeeded
 {
 	return YES;
-}
-
-/**
- * Internal method.
- *
- * This method is used to handle the upgrade process from earlier architectures of this class.
-**/
-- (void)upgradeFromForOldClassVersion:(int)oldClassVersion
-{
-	// Reserved for future use...
 }
 
 /**
@@ -526,14 +519,16 @@
  * This method is invoked by a YapDatabaseReadWriteTransaction as a post-operation-hook.
 **/
 - (void)handleInsertObject:(id)object
-                    forKey:(NSString *)key
-              inCollection:(NSString *)collection
+          forCollectionKey:(YapCollectionKey *)collectionKey
               withMetadata:(id)metadata
                      rowid:(int64_t)rowid
 {
 	YDBLogAutoTrace();
 	
 	__unsafe_unretained YapDatabaseFullTextSearch *fts = ftsConnection->fts;
+	
+	__unsafe_unretained NSString *collection = collectionKey.collection;
+	__unsafe_unretained NSString *key = collectionKey.key;
 	
 	// Invoke the block to find out if the object should be included in the index.
 	
@@ -585,14 +580,16 @@
  * This method is invoked by a YapDatabaseReadWriteTransaction as a post-operation-hook.
 **/
 - (void)handleUpdateObject:(id)object
-                    forKey:(NSString *)key
-              inCollection:(NSString *)collection
+          forCollectionKey:(YapCollectionKey *)collectionKey
               withMetadata:(id)metadata
                      rowid:(int64_t)rowid
 {
 	YDBLogAutoTrace();
 	
 	__unsafe_unretained YapDatabaseFullTextSearch *fts = ftsConnection->fts;
+	
+	__unsafe_unretained NSString *collection = collectionKey.collection;
+	__unsafe_unretained NSString *key = collectionKey.key;
 	
 	// Invoke the block to find out if the object should be included in the index.
 	
@@ -646,45 +643,45 @@
  * YapDatabase extension hook.
  * This method is invoked by a YapDatabaseReadWriteTransaction as a post-operation-hook.
 **/
-- (void)handleUpdateMetadata:(id)metadata
-                      forKey:(NSString *)key
-                inCollection:(NSString *)collection
-                   withRowid:(int64_t)rowid
+- (void)handleReplaceObject:(id)object forCollectionKey:(YapCollectionKey *)collectionKey withRowid:(int64_t)rowid
 {
 	YDBLogAutoTrace();
 	
 	__unsafe_unretained YapDatabaseFullTextSearch *fts = ftsConnection->fts;
 	
+	__unsafe_unretained NSString *collection = collectionKey.collection;
+	__unsafe_unretained NSString *key = collectionKey.key;
+	
 	// Invoke the block to find out if the object should be included in the index.
 	
-	id object = nil;
+	id metadata = nil;
 	
 	if (fts->blockType == YapDatabaseFullTextSearchBlockTypeWithKey ||
-	    fts->blockType == YapDatabaseFullTextSearchBlockTypeWithObject)
+	    fts->blockType == YapDatabaseFullTextSearchBlockTypeWithMetadata)
 	{
-		// Index values are based on the key or object.
+		// Index values are based on the key or metadata.
 		// Neither have changed, and thus the values haven't changed.
 		
 		return;
 	}
 	else
 	{
-		// Index values are based on metadata or objectAndMetadata.
+		// Index values are based on object or row (object+metadata).
 		// Invoke block to see what the new values are.
 		
-		if (fts->blockType == YapDatabaseFullTextSearchBlockTypeWithMetadata)
+		if (fts->blockType == YapDatabaseFullTextSearchBlockTypeWithObject)
 		{
-			__unsafe_unretained YapDatabaseFullTextSearchWithMetadataBlock block =
-		        (YapDatabaseFullTextSearchWithMetadataBlock)fts->block;
+			__unsafe_unretained YapDatabaseFullTextSearchWithObjectBlock block =
+		        (YapDatabaseFullTextSearchWithObjectBlock)fts->block;
 			
-			block(ftsConnection->blockDict, collection, key, metadata);
+			block(ftsConnection->blockDict, collection, key, object);
 		}
 		else
 		{
 			__unsafe_unretained YapDatabaseFullTextSearchWithRowBlock block =
 		        (YapDatabaseFullTextSearchWithRowBlock)fts->block;
 			
-			object = [databaseTransaction objectForKey:key inCollection:collection];
+			metadata = [databaseTransaction metadataForCollectionKey:collectionKey withRowid:rowid];
 			block(ftsConnection->blockDict, collection, key, object, metadata);
 		}
 		
@@ -710,7 +707,71 @@
  * YapDatabase extension hook.
  * This method is invoked by a YapDatabaseReadWriteTransaction as a post-operation-hook.
 **/
-- (void)handleTouchObjectForKey:(NSString *)key inCollection:(NSString *)collection withRowid:(int64_t)rowid
+- (void)handleReplaceMetadata:(id)metadata forCollectionKey:(YapCollectionKey *)collectionKey withRowid:(int64_t)rowid
+{
+	YDBLogAutoTrace();
+	
+	__unsafe_unretained YapDatabaseFullTextSearch *fts = ftsConnection->fts;
+	
+	__unsafe_unretained NSString *collection = collectionKey.collection;
+	__unsafe_unretained NSString *key = collectionKey.key;
+	
+	// Invoke the block to find out if the object should be included in the index.
+	
+	id object = nil;
+	
+	if (fts->blockType == YapDatabaseFullTextSearchBlockTypeWithKey ||
+	    fts->blockType == YapDatabaseFullTextSearchBlockTypeWithObject)
+	{
+		// Index values are based on the key or object.
+		// Neither have changed, and thus the values haven't changed.
+		
+		return;
+	}
+	else
+	{
+		// Index values are based on metadata or row (object+metadata).
+		// Invoke block to see what the new values are.
+		
+		if (fts->blockType == YapDatabaseFullTextSearchBlockTypeWithMetadata)
+		{
+			__unsafe_unretained YapDatabaseFullTextSearchWithMetadataBlock block =
+		        (YapDatabaseFullTextSearchWithMetadataBlock)fts->block;
+			
+			block(ftsConnection->blockDict, collection, key, metadata);
+		}
+		else
+		{
+			__unsafe_unretained YapDatabaseFullTextSearchWithRowBlock block =
+		        (YapDatabaseFullTextSearchWithRowBlock)fts->block;
+			
+			object = [databaseTransaction objectForCollectionKey:collectionKey withRowid:rowid];
+			block(ftsConnection->blockDict, collection, key, object, metadata);
+		}
+		
+		if ([ftsConnection->blockDict count] == 0)
+		{
+			// Remove associated values from index (if needed).
+			// This was an update operation, so the rowid may have previously had values in the index.
+			
+			[self removeRowid:rowid];
+		}
+		else
+		{
+			// Add values to index (or update them).
+			// This was an update operation, so we need to insert or update.
+			
+			[self addRowid:rowid isNew:NO];
+			[ftsConnection->blockDict removeAllObjects];
+		}
+	}
+}
+
+/**
+ * YapDatabase extension hook.
+ * This method is invoked by a YapDatabaseReadWriteTransaction as a post-operation-hook.
+**/
+- (void)handleTouchObjectForCollectionKey:(YapCollectionKey *)collectionKey withRowid:(int64_t)rowid
 {
 	// Nothing to do for this extension
 }
@@ -719,7 +780,7 @@
  * YapDatabase extension hook.
  * This method is invoked by a YapDatabaseReadWriteTransaction as a post-operation-hook.
 **/
-- (void)handleTouchMetadataForKey:(NSString *)key inCollection:(NSString *)collection withRowid:(int64_t)rowid
+- (void)handleTouchMetadataForCollectionKey:(YapCollectionKey *)collectionKey withRowid:(int64_t)rowid
 {
 	// Nothing to do for this extension
 }
@@ -728,7 +789,7 @@
  * YapDatabase extension hook.
  * This method is invoked by a YapDatabaseReadWriteTransaction as a post-operation-hook.
 **/
-- (void)handleRemoveObjectForKey:(NSString *)key inCollection:(NSString *)collection withRowid:(int64_t)rowid
+- (void)handleRemoveObjectForCollectionKey:(YapCollectionKey *)collectionKey withRowid:(int64_t)rowid
 {
 	YDBLogAutoTrace();
 	
@@ -785,11 +846,9 @@
 		{
 			int64_t rowid = sqlite3_column_int64(statement, 0);
 			
-			NSString *key = nil;
-			NSString *collection = nil;
-			[databaseTransaction getKey:&key collection:&collection forRowid:rowid];
+			YapCollectionKey *ck = [databaseTransaction collectionKeyForRowid:rowid];
 			
-			block(collection, key, &stop);
+			block(ck.collection, ck.key, &stop);
 			
 			if (stop || isMutated) break;
 			
@@ -836,12 +895,11 @@
 		{
 			int64_t rowid = sqlite3_column_int64(statement, 0);
 			
-			NSString *key = nil;
-			NSString *collection = nil;
+			YapCollectionKey *ck = nil;
 			id metadata = nil;
-			[databaseTransaction getKey:&key collection:&collection metadata:&metadata forRowid:rowid];
+			[databaseTransaction getCollectionKey:&ck metadata:&metadata forRowid:rowid];
 			
-			block(collection, key, metadata, &stop);
+			block(ck.collection, ck.key, metadata, &stop);
 			
 			if (stop || isMutated) break;
 			
@@ -888,12 +946,11 @@
 		{
 			int64_t rowid = sqlite3_column_int64(statement, 0);
 			
-			NSString *key = nil;
-			NSString *collection = nil;
+			YapCollectionKey *ck = nil;
 			id object = nil;
-			[databaseTransaction getKey:&key collection:&collection object:&object forRowid:rowid];
+			[databaseTransaction getCollectionKey:&ck object:&object forRowid:rowid];
 			
-			block(collection, key, object, &stop);
+			block(ck.collection, ck.key, object, &stop);
 			
 			if (stop || isMutated) break;
 			
@@ -940,13 +997,12 @@
 		{
 			int64_t rowid = sqlite3_column_int64(statement, 0);
 			
-			NSString *key = nil;
-			NSString *collection = nil;
+			YapCollectionKey *ck = nil;
 			id object = nil;
 			id metadata = nil;
-			[databaseTransaction getKey:&key collection:&collection object:&object metadata:&metadata forRowid:rowid];
+			[databaseTransaction getCollectionKey:&ck object:&object metadata:&metadata forRowid:rowid];
 			
-			block(collection, key, object, metadata, &stop);
+			block(ck.collection, ck.key, object, metadata, &stop);
 			
 			if (stop || isMutated) break;
 			
@@ -1035,11 +1091,9 @@
 			
 			NSString *snippet = [[NSString alloc] initWithBytes:text length:textSize encoding:NSUTF8StringEncoding];
 			
-			NSString *key = nil;
-			NSString *collection = nil;
-			[databaseTransaction getKey:&key collection:&collection forRowid:rowid];
+			YapCollectionKey *ck = [databaseTransaction collectionKeyForRowid:rowid];
 			
-			block(snippet, collection, key, &stop);
+			block(snippet, ck.collection, ck.key, &stop);
 			
 			if (stop || isMutated) break;
 			
@@ -1128,12 +1182,11 @@
 			
 			NSString *snippet = [[NSString alloc] initWithBytes:text length:textSize encoding:NSUTF8StringEncoding];
 			
-			NSString *key = nil;
-			NSString *collection = nil;
+			YapCollectionKey *ck = nil;
 			id metadata = nil;
-			[databaseTransaction getKey:&key collection:&collection metadata:&metadata forRowid:rowid];
+			[databaseTransaction getCollectionKey:&ck metadata:&metadata forRowid:rowid];
 			
-			block(snippet, collection, key, metadata, &stop);
+			block(snippet, ck.collection, ck.key, metadata, &stop);
 			
 			if (stop || isMutated) break;
 			
@@ -1222,12 +1275,11 @@
 			
 			NSString *snippet = [[NSString alloc] initWithBytes:text length:textSize encoding:NSUTF8StringEncoding];
 			
-			NSString *key = nil;
-			NSString *collection = nil;
+			YapCollectionKey *ck = nil;
 			id object = nil;
-			[databaseTransaction getKey:&key collection:&collection object:&object forRowid:rowid];
+			[databaseTransaction getCollectionKey:&ck object:&object forRowid:rowid];
 			
-			block(snippet, collection, key, object, &stop);
+			block(snippet, ck.collection, ck.key, object, &stop);
 			
 			if (stop || isMutated) break;
 			
@@ -1316,13 +1368,12 @@
 			
 			NSString *snippet = [[NSString alloc] initWithBytes:text length:textSize encoding:NSUTF8StringEncoding];
 			
-			NSString *key = nil;
-			NSString *collection = nil;
+			YapCollectionKey *ck = nil;
 			id object = nil;
 			id metadata = nil;
-			[databaseTransaction getKey:&key collection:&collection object:&object metadata:&metadata forRowid:rowid];
+			[databaseTransaction getCollectionKey:&ck object:&object metadata:&metadata forRowid:rowid];
 			
-			block(snippet, collection, key, object, metadata, &stop);
+			block(snippet, ck.collection, ck.key, object, metadata, &stop);
 			
 			if (stop || isMutated) break;
 			

@@ -7,6 +7,7 @@
 #import "YapDatabase.h"
 #import "YapDatabaseConnection.h"
 #import "YapDatabaseTransaction.h"
+#import "YapCollectionKey.h"
 
 #import "sqlite3.h"
 
@@ -136,34 +137,19 @@
  * This method will be invoked in order to flush memory.
  * Subclasses are encouraged to do something similar to the following:
  * 
- * if (level >= YapDatabaseConnectionFlushMemoryLevelMild)
+ * if (flags & YapDatabaseConnectionFlushMemoryFlags_Caches)
  * {
  *     // Dump all caches
  * }
  * 
- * if (level >= YapDatabaseConnectionFlushMemoryLevelModerate)
+ * if (flags & YapDatabaseConnectionFlushMemoryFlags_Statements)
  * {
- *     // Release any prepared statements that aren't constantly used.
- *     //
- *     // For example, any statements that make modifications to the database,
- *     // and any other statements that are likely to be used infrequently.
+ *     // Dump all pre-compiled statements
  *
  *     sqlite_finalize_null(&myStatement);
  * }
- * 
- * if (level >= YapDatabaseConnectionFlushMemoryLevelFull)
- * {
- *     // Release all other prepared statements
- *     
- *     sqlite_finalize_null(&myOtherStatement);
- *     
- *     // And flush any state that may have been prepared via 
- *     // the extTransaction's prepareIfNeeded method.
- * 
- *     viewGroups = nil;
- * }
 **/
-- (void)_flushMemoryWithLevel:(int)level;
+- (void)_flushMemoryWithFlags:(YapDatabaseConnectionFlushMemoryFlags)flags;
 
 /**
  * Subclasses MUST implement this method.
@@ -329,10 +315,25 @@
  * Subclasses may OPTIONALLY implement this method.
  * This method is only called if within a readwrite transaction.
  *
+ * Subclasses should ONLY implement this method if they need to make changes to the 'database' table.
+ * That is, the main collection/key/value table that directly stores the user's objects.
+ *
+ * Return NO if the extension does not directly modify the main database table.
+ * Return YES if the extension does modify the main database table,
+ * regardless of whether it made changes during this invocation.
+ *
+ * This method may be invoked several times in a row.
+**/
+- (BOOL)flushPendingChangesToMainDatabaseTable;
+
+/**
+ * Subclasses may OPTIONALLY implement this method.
+ * This method is only called if within a readwrite transaction.
+ *
  * Subclasses may implement it to perform any "cleanup" before the changeset is requested.
  * Remember, the changeset is requested before the commitTransaction method is invoked.
 **/
-- (void)preCommitReadWriteTransaction;
+- (void)prepareChangeset;
 
 /**
  * Subclasses MUST implement this method.
@@ -400,6 +401,8 @@
 - (NSData *)dataValueForExtensionKey:(NSString *)key;
 - (void)setDataValue:(NSData *)value forExtensionKey:(NSString *)key;
 
+- (void)removeValueForExtensionKey:(NSString *)key;
+
 @end
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -413,26 +416,27 @@
 @required
 
 - (void)handleInsertObject:(id)object
-                    forKey:(NSString *)key
-              inCollection:(NSString *)collection
+          forCollectionKey:(YapCollectionKey *)collectionKey
               withMetadata:(id)metadata
                      rowid:(int64_t)rowid;
 
 - (void)handleUpdateObject:(id)object
-                    forKey:(NSString *)key
-              inCollection:(NSString *)collection
+          forCollectionKey:(YapCollectionKey *)collectionKey
               withMetadata:(id)metadata
                      rowid:(int64_t)rowid;
 
-- (void)handleUpdateMetadata:(id)metadata
-                      forKey:(NSString *)key
-                inCollection:(NSString *)collection
-                   withRowid:(int64_t)rowid;
+- (void)handleReplaceObject:(id)object
+           forCollectionKey:(YapCollectionKey *)collectionKey
+                  withRowid:(int64_t)rowid;
 
-- (void)handleTouchObjectForKey:(NSString *)key inCollection:(NSString *)collection withRowid:(int64_t)rowid;
-- (void)handleTouchMetadataForKey:(NSString *)key inCollection:(NSString *)collection withRowid:(int64_t)rowid;
+- (void)handleReplaceMetadata:(id)metadata
+             forCollectionKey:(YapCollectionKey *)collectionKey
+                    withRowid:(int64_t)rowid;
 
-- (void)handleRemoveObjectForKey:(NSString *)key inCollection:(NSString *)collection withRowid:(int64_t)rowid;
+- (void)handleTouchObjectForCollectionKey:(YapCollectionKey *)collectionKey withRowid:(int64_t)rowid;
+- (void)handleTouchMetadataForCollectionKey:(YapCollectionKey *)collectionKey withRowid:(int64_t)rowid;
+
+- (void)handleRemoveObjectForCollectionKey:(YapCollectionKey *)collectionKey withRowid:(int64_t)rowid;
 - (void)handleRemoveObjectsForKeys:(NSArray *)keys inCollection:(NSString *)collection withRowids:(NSArray *)rowids;
 
 - (void)handleRemoveAllObjectsInAllCollections;

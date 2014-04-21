@@ -1,16 +1,9 @@
-#import <SenTestingKit/SenTestingKit.h>
+#import <XCTest/XCTest.h>
 
 #import "YapDatabaseViewChangePrivate.h"
 #import "YapDatabaseViewMappingsPrivate.h"
 
-@interface TestViewMappingsLogic : SenTestCase
-@end
-
-@implementation TestViewMappingsLogic
-
-static NSMutableArray *changes;
-
-static YapDatabaseViewSectionChange* (^SectionOp)(NSArray*, NSUInteger) = ^(NSArray *sChanges, NSUInteger index){
+YapDatabaseViewSectionChange* SectionOp(NSArray*sChanges, NSUInteger index){
 	
 	if (index < [sChanges count])
 		return (YapDatabaseViewSectionChange *)[sChanges objectAtIndex:index];
@@ -18,13 +11,19 @@ static YapDatabaseViewSectionChange* (^SectionOp)(NSArray*, NSUInteger) = ^(NSAr
 		return (YapDatabaseViewSectionChange *)nil;
 };
 
-static YapDatabaseViewRowChange* (^RowOp)(NSArray*, NSUInteger) = ^(NSArray *rChanges, NSUInteger index){
+YapDatabaseViewRowChange* RowOp(NSArray *rChanges, NSUInteger index){
 	
 	if (index < [rChanges count])
 		return (YapDatabaseViewRowChange *)[rChanges objectAtIndex:index];
 	else
 		return (YapDatabaseViewRowChange *)nil;
 };
+
+@interface TestViewMappingsBase : XCTestCase
+@end
+@implementation TestViewMappingsBase
+
+static NSMutableArray *changes;
 
 + (void)initialize
 {
@@ -42,12 +41,22 @@ static YapDatabaseViewRowChange* (^RowOp)(NSArray*, NSUInteger) = ^(NSArray *rCh
 	[super tearDown];
 }
 
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+@end
 #pragma mark -
-#pragma mark Fixed Range: Insert
+#pragma mark Fixed Range Beginning
+
+@interface TestViewMappingsFixedRangeBeginning : TestViewMappingsBase
+@end
+
+@implementation TestViewMappingsFixedRangeBeginning
+
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+#pragma mark Fixed Range Beginning: Insert
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-- (void)test_fixedRange_beginning_1A
+- (void)test_inserting_row_inside_range_deletes_the_row_previously_at_the_end_of_the_range
 {
 	YapDatabaseViewRangeOptions *rangeOpts =
 	    [YapDatabaseViewRangeOptions fixedRangeWithLength:20 offset:0 from:YapDatabaseViewBeginning];
@@ -77,18 +86,18 @@ static YapDatabaseViewRowChange* (^RowOp)(NSArray*, NSUInteger) = ^(NSArray *rCh
 	
 	// Verify
 	
-	STAssertTrue([mappings numberOfItemsInGroup:@""] == 20, @"");
+	XCTAssertTrue([mappings numberOfItemsInGroup:@""] == 20, @"");
 	
-	STAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeInsert, @"");
-	STAssertTrue(RowOp(rowChanges, 0).finalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 0).finalIndex == 2, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeInsert, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).finalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).finalIndex == 2, @"");
 	
-	STAssertTrue(RowOp(rowChanges, 1).type == YapDatabaseViewChangeDelete, @"");
-	STAssertTrue(RowOp(rowChanges, 1).originalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 1).originalIndex == 19, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).type == YapDatabaseViewChangeDelete, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).originalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).originalIndex == 19, @"");
 }
 
-- (void)test_fixedRange_beginning_1B
+- (void)test_insert_row_at_beginning_deletes_the_row_previously_at_the_end_of_the_range
 {
 	YapDatabaseViewRangeOptions *rangeOpts =
 	    [YapDatabaseViewRangeOptions fixedRangeWithLength:20 offset:0 from:YapDatabaseViewBeginning];
@@ -118,18 +127,18 @@ static YapDatabaseViewRowChange* (^RowOp)(NSArray*, NSUInteger) = ^(NSArray *rCh
 	
 	// Verify
 	
-	STAssertTrue([mappings numberOfItemsInGroup:@""] == 20, @"");
+	XCTAssertTrue([mappings numberOfItemsInGroup:@""] == 20, @"");
 	
-	STAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeInsert, @"");
-	STAssertTrue(RowOp(rowChanges, 0).finalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 0).finalIndex == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeInsert, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).finalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).finalIndex == 0, @"");
 	
-	STAssertTrue(RowOp(rowChanges, 1).type == YapDatabaseViewChangeDelete, @"");
-	STAssertTrue(RowOp(rowChanges, 1).originalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 1).originalIndex == 19, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).type == YapDatabaseViewChangeDelete, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).originalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).originalIndex == 19, @"");
 }
 
-- (void)test_fixedRange_beginning_1C
+- (void)test_insert_row_at_end_of_range_cause_insert_and_delete_of_row
 {
 	YapDatabaseViewRangeOptions *rangeOpts =
 	    [YapDatabaseViewRangeOptions fixedRangeWithLength:20 offset:0 from:YapDatabaseViewBeginning];
@@ -159,18 +168,18 @@ static YapDatabaseViewRowChange* (^RowOp)(NSArray*, NSUInteger) = ^(NSArray *rCh
 	
 	// Verify
 	
-	STAssertTrue([mappings numberOfItemsInGroup:@""] == 20, @"");
+	XCTAssertTrue([mappings numberOfItemsInGroup:@""] == 20, @"");
 	
-	STAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeInsert, @"");
-	STAssertTrue(RowOp(rowChanges, 0).finalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 0).finalIndex == 19, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeInsert, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).finalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).finalIndex == 19, @"");
 	
-	STAssertTrue(RowOp(rowChanges, 1).type == YapDatabaseViewChangeDelete, @"");
-	STAssertTrue(RowOp(rowChanges, 1).originalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 1).originalIndex == 19, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).type == YapDatabaseViewChangeDelete, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).originalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).originalIndex == 19, @"");
 }
 
-- (void)test_fixedRange_beginning_1D
+- (void)test_insert_row_outside_of_the_range_causes_no_row_changes
 {
 	YapDatabaseViewRangeOptions *rangeOpts =
 	    [YapDatabaseViewRangeOptions fixedRangeWithLength:20 offset:0 from:YapDatabaseViewBeginning];
@@ -200,12 +209,956 @@ static YapDatabaseViewRowChange* (^RowOp)(NSArray*, NSUInteger) = ^(NSArray *rCh
 	
 	// Verify
 	
-	STAssertTrue([mappings numberOfItemsInGroup:@""] == 20, @"");
+	XCTAssertTrue([mappings numberOfItemsInGroup:@""] == 20, @"");
 	
-	STAssertTrue([rowChanges count] == 0, @"");
+	XCTAssertTrue([rowChanges count] == 0, @"");
 }
 
-- (void)test_fixedRange_end_1A
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+#pragma mark Fixed Range Beginning: Delete
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+- (void)test_delete_row_in_range_adds_a_new_row_at_the_end
+{
+	YapDatabaseViewRangeOptions *rangeOpts =
+    [YapDatabaseViewRangeOptions fixedRangeWithLength:20 offset:0 from:YapDatabaseViewBeginning];
+	
+	YapDatabaseViewMappings *mappings = [[YapDatabaseViewMappings alloc] initWithGroups:@[@""] view:@"view"];
+	
+	[mappings setRangeOptions:rangeOpts forGroup:@""];
+	[mappings updateWithCounts:@{ @"":@(40) }];
+	
+	YapDatabaseViewMappings *originalMappings = [mappings copy];
+	
+	// Delete item in the middle of the range
+	
+	[changes addObject:[YapDatabaseViewRowChange deleteKey:@"key" inGroup:@"" atIndex:2]];
+	
+	[mappings updateWithCounts:@{ @"":@(39) }];
+	
+	// Fetch changeset
+	
+	NSArray *rowChanges = nil;
+	
+	[YapDatabaseViewChange getSectionChanges:NULL
+	                              rowChanges:&rowChanges
+	                    withOriginalMappings:originalMappings
+	                           finalMappings:mappings
+	                             fromChanges:changes];
+	
+	// Verify
+	
+	XCTAssertTrue([mappings numberOfItemsInGroup:@""] == 20, @"");
+	
+	XCTAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeDelete, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).originalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).originalIndex == 2, @"");
+	
+	XCTAssertTrue(RowOp(rowChanges, 1).type == YapDatabaseViewChangeInsert, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).finalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).finalIndex == 19, @"");
+}
+
+- (void)test_delete_row_at_beginning_of_range_adds_a_new_row_at_the_end_of_the_range
+{
+	YapDatabaseViewRangeOptions *rangeOpts =
+    [YapDatabaseViewRangeOptions fixedRangeWithLength:20 offset:0 from:YapDatabaseViewBeginning];
+	
+	YapDatabaseViewMappings *mappings = [[YapDatabaseViewMappings alloc] initWithGroups:@[@""] view:@"view"];
+	
+	[mappings setRangeOptions:rangeOpts forGroup:@""];
+	[mappings updateWithCounts:@{ @"":@(40) }];
+	
+	YapDatabaseViewMappings *originalMappings = [mappings copy];
+	
+	// Delete item in the beginning of the range
+	
+	[changes addObject:[YapDatabaseViewRowChange deleteKey:@"key" inGroup:@"" atIndex:0]];
+	
+	[mappings updateWithCounts:@{ @"":@(39) }];
+	
+	// Fetch changeset
+	
+	NSArray *rowChanges = nil;
+	
+	[YapDatabaseViewChange getSectionChanges:NULL
+	                              rowChanges:&rowChanges
+	                    withOriginalMappings:originalMappings
+	                           finalMappings:mappings
+	                             fromChanges:changes];
+	
+	// Verify
+	
+	XCTAssertTrue([mappings numberOfItemsInGroup:@""] == 20, @"");
+	
+	XCTAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeDelete, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).originalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).originalIndex == 0, @"");
+	
+	XCTAssertTrue(RowOp(rowChanges, 1).type == YapDatabaseViewChangeInsert, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).finalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).finalIndex == 19, @"");
+}
+
+- (void)test_deleting_row_at_end_of_range_causes_the_last_item_to_update
+{
+	YapDatabaseViewRangeOptions *rangeOpts =
+    [YapDatabaseViewRangeOptions fixedRangeWithLength:20 offset:0 from:YapDatabaseViewBeginning];
+	
+	YapDatabaseViewMappings *mappings = [[YapDatabaseViewMappings alloc] initWithGroups:@[@""] view:@"view"];
+	
+	[mappings setRangeOptions:rangeOpts forGroup:@""];
+	[mappings updateWithCounts:@{ @"":@(40) }];
+	
+	YapDatabaseViewMappings *originalMappings = [mappings copy];
+	
+	// Delete item at the end of the range
+	
+	[changes addObject:[YapDatabaseViewRowChange deleteKey:@"key" inGroup:@"" atIndex:19]];
+	
+	[mappings updateWithCounts:@{ @"":@(39) }];
+	
+	// Fetch changeset
+	
+	NSArray *rowChanges = nil;
+	
+	[YapDatabaseViewChange getSectionChanges:NULL
+	                              rowChanges:&rowChanges
+	                    withOriginalMappings:originalMappings
+	                           finalMappings:mappings
+	                             fromChanges:changes];
+	
+	// Verify
+	
+	XCTAssertTrue([mappings numberOfItemsInGroup:@""] == 20, @"");
+	
+	XCTAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeDelete, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).originalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).originalIndex == 19, @"");
+	
+	XCTAssertTrue(RowOp(rowChanges, 1).type == YapDatabaseViewChangeInsert, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).finalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).finalIndex == 19, @"");
+}
+
+- (void)test_deleting_row_outside_of_range_causes_no_row_changes
+{
+	YapDatabaseViewRangeOptions *rangeOpts =
+    [YapDatabaseViewRangeOptions fixedRangeWithLength:20 offset:0 from:YapDatabaseViewBeginning];
+	
+	YapDatabaseViewMappings *mappings = [[YapDatabaseViewMappings alloc] initWithGroups:@[@""] view:@"view"];
+	
+	[mappings setRangeOptions:rangeOpts forGroup:@""];
+	[mappings updateWithCounts:@{ @"":@(40) }];
+	
+	YapDatabaseViewMappings *originalMappings = [mappings copy];
+	
+	// Delete item outside the range
+	
+	[changes addObject:[YapDatabaseViewRowChange deleteKey:@"key" inGroup:@"" atIndex:20]];
+	
+	[mappings updateWithCounts:@{ @"":@(39) }];
+	
+	// Fetch changeset
+	
+	NSArray *rowChanges = nil;
+	
+	[YapDatabaseViewChange getSectionChanges:NULL
+	                              rowChanges:&rowChanges
+	                    withOriginalMappings:originalMappings
+	                           finalMappings:mappings
+	                             fromChanges:changes];
+	
+	// Verify
+	
+	XCTAssertTrue([mappings numberOfItemsInGroup:@""] == 20, @"");
+	
+	XCTAssertTrue([rowChanges count] == 0, @"");
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+#pragma mark Fixed Range Beginning: Insert, Insert, ...
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+- (void)test_insert_twice_at_same_position_in_range_bumps_two_rows_off_end_of_range
+{
+	YapDatabaseViewRangeOptions *rangeOpts =
+    [YapDatabaseViewRangeOptions fixedRangeWithLength:20 offset:0 from:YapDatabaseViewBeginning];
+	
+	YapDatabaseViewMappings *mappings = [[YapDatabaseViewMappings alloc] initWithGroups:@[@""] view:@"view"];
+	
+	[mappings setRangeOptions:rangeOpts forGroup:@""];
+	[mappings updateWithCounts:@{ @"":@(40) }];
+	
+	YapDatabaseViewMappings *originalMappings = [mappings copy];
+	
+	// Insert multiple items inside the range
+	
+	[changes addObject:[YapDatabaseViewRowChange insertKey:@"key1" inGroup:@"" atIndex:10]];
+	[changes addObject:[YapDatabaseViewRowChange insertKey:@"key2" inGroup:@"" atIndex:10]];
+	
+	[mappings updateWithCounts:@{ @"":@(42) }];
+	
+	// Fetch changeset
+	
+	NSArray *rowChanges = nil;
+	
+	[YapDatabaseViewChange getSectionChanges:NULL
+	                              rowChanges:&rowChanges
+	                    withOriginalMappings:originalMappings
+	                           finalMappings:mappings
+	                             fromChanges:changes];
+	
+	// Verify
+	
+	XCTAssertTrue([mappings numberOfItemsInGroup:@""] == 20, @"");
+	
+	XCTAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeInsert, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).finalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).finalIndex == 11, @"");
+	
+	XCTAssertTrue(RowOp(rowChanges, 1).type == YapDatabaseViewChangeInsert, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).finalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).finalIndex == 10, @"");
+	
+	XCTAssertTrue(RowOp(rowChanges, 2).type == YapDatabaseViewChangeDelete, @"");
+	XCTAssertTrue(RowOp(rowChanges, 2).originalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 2).originalIndex == 19, @"");
+	
+	XCTAssertTrue(RowOp(rowChanges, 3).type == YapDatabaseViewChangeDelete, @"");
+	XCTAssertTrue(RowOp(rowChanges, 3).originalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 3).originalIndex == 18, @"");
+}
+
+- (void)test_insert_twice_at_beginning_of_range_bumps_two_rows_off_end_of_range
+{
+	YapDatabaseViewRangeOptions *rangeOpts =
+    [YapDatabaseViewRangeOptions fixedRangeWithLength:20 offset:0 from:YapDatabaseViewBeginning];
+	
+	YapDatabaseViewMappings *mappings = [[YapDatabaseViewMappings alloc] initWithGroups:@[@""] view:@"view"];
+	
+	[mappings setRangeOptions:rangeOpts forGroup:@""];
+	[mappings updateWithCounts:@{ @"":@(40) }];
+	
+	YapDatabaseViewMappings *originalMappings = [mappings copy];
+	
+	// Insert multiple items at the beginning of the range
+	
+	[changes addObject:[YapDatabaseViewRowChange insertKey:@"key1" inGroup:@"" atIndex:0]];
+	[changes addObject:[YapDatabaseViewRowChange insertKey:@"key2" inGroup:@"" atIndex:0]];
+	
+	[mappings updateWithCounts:@{ @"":@(42) }];
+	
+	// Fetch changeset
+	
+	NSArray *rowChanges = nil;
+	
+	[YapDatabaseViewChange getSectionChanges:NULL
+	                              rowChanges:&rowChanges
+	                    withOriginalMappings:originalMappings
+	                           finalMappings:mappings
+	                             fromChanges:changes];
+	
+	// Verify
+	
+	XCTAssertTrue([mappings numberOfItemsInGroup:@""] == 20, @"");
+	
+	XCTAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeInsert, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).finalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).finalIndex == 1, @"");
+	
+	XCTAssertTrue(RowOp(rowChanges, 1).type == YapDatabaseViewChangeInsert, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).finalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).finalIndex == 0, @"");
+	
+	XCTAssertTrue(RowOp(rowChanges, 2).type == YapDatabaseViewChangeDelete, @"");
+	XCTAssertTrue(RowOp(rowChanges, 2).originalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 2).originalIndex == 19, @"");
+	
+	XCTAssertTrue(RowOp(rowChanges, 3).type == YapDatabaseViewChangeDelete, @"");
+	XCTAssertTrue(RowOp(rowChanges, 3).originalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 3).originalIndex == 18, @"");
+}
+
+- (void)test_insert_twice_at_end_of_range_bumps_two_rows_off_end_of_range
+{
+	YapDatabaseViewRangeOptions *rangeOpts =
+    [YapDatabaseViewRangeOptions fixedRangeWithLength:20 offset:0 from:YapDatabaseViewBeginning];
+	
+	YapDatabaseViewMappings *mappings = [[YapDatabaseViewMappings alloc] initWithGroups:@[@""] view:@"view"];
+	
+	[mappings setRangeOptions:rangeOpts forGroup:@""];
+	[mappings updateWithCounts:@{ @"":@(40) }];
+	
+	YapDatabaseViewMappings *originalMappings = [mappings copy];
+	
+	// Insert multiple items at the end of the range
+	
+	[changes addObject:[YapDatabaseViewRowChange insertKey:@"key1" inGroup:@"" atIndex:18]];
+	[changes addObject:[YapDatabaseViewRowChange insertKey:@"key2" inGroup:@"" atIndex:18]];
+	
+	[mappings updateWithCounts:@{ @"":@(42) }];
+	
+	// Fetch changeset
+	
+	NSArray *rowChanges = nil;
+	
+	[YapDatabaseViewChange getSectionChanges:NULL
+	                              rowChanges:&rowChanges
+	                    withOriginalMappings:originalMappings
+	                           finalMappings:mappings
+	                             fromChanges:changes];
+	
+	// Verify
+	
+	XCTAssertTrue([mappings numberOfItemsInGroup:@""] == 20, @"");
+	
+	XCTAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeInsert, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).finalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).finalIndex == 19, @"");
+	
+	XCTAssertTrue(RowOp(rowChanges, 1).type == YapDatabaseViewChangeInsert, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).finalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).finalIndex == 18, @"");
+	
+	XCTAssertTrue(RowOp(rowChanges, 2).type == YapDatabaseViewChangeDelete, @"");
+	XCTAssertTrue(RowOp(rowChanges, 2).originalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 2).originalIndex == 19, @"");
+	
+	XCTAssertTrue(RowOp(rowChanges, 3).type == YapDatabaseViewChangeDelete, @"");
+	XCTAssertTrue(RowOp(rowChanges, 3).originalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 3).originalIndex == 18, @"");
+}
+
+- (void)test_inserting_four_times_at_end_of_range_bumps_four_items_two_items_off_end_of_range
+{
+	YapDatabaseViewRangeOptions *rangeOpts =
+    [YapDatabaseViewRangeOptions fixedRangeWithLength:20 offset:0 from:YapDatabaseViewBeginning];
+	
+	YapDatabaseViewMappings *mappings = [[YapDatabaseViewMappings alloc] initWithGroups:@[@""] view:@"view"];
+	
+	[mappings setRangeOptions:rangeOpts forGroup:@""];
+	[mappings updateWithCounts:@{ @"":@(40) }];
+	
+	YapDatabaseViewMappings *originalMappings = [mappings copy];
+	
+	// Insert multiple items at the end of the range, some of them end out outside the range
+	
+	[changes addObject:[YapDatabaseViewRowChange insertKey:@"key1" inGroup:@"" atIndex:18]];
+	[changes addObject:[YapDatabaseViewRowChange insertKey:@"key2" inGroup:@"" atIndex:18]];
+	[changes addObject:[YapDatabaseViewRowChange insertKey:@"key3" inGroup:@"" atIndex:18]];
+	[changes addObject:[YapDatabaseViewRowChange insertKey:@"key4" inGroup:@"" atIndex:18]];
+	
+	[mappings updateWithCounts:@{ @"":@(44) }];
+	
+	// Fetch changeset
+	
+	NSArray *rowChanges = nil;
+	
+	[YapDatabaseViewChange getSectionChanges:NULL
+	                              rowChanges:&rowChanges
+	                    withOriginalMappings:originalMappings
+	                           finalMappings:mappings
+	                             fromChanges:changes];
+	
+	// Verify
+	
+	XCTAssertTrue([mappings numberOfItemsInGroup:@""] == 20, @"");
+	
+	XCTAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeInsert, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).finalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).finalIndex == 19, @"");
+	
+	XCTAssertTrue(RowOp(rowChanges, 1).type == YapDatabaseViewChangeInsert, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).finalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).finalIndex == 18, @"");
+	
+	XCTAssertTrue(RowOp(rowChanges, 2).type == YapDatabaseViewChangeDelete, @"");
+	XCTAssertTrue(RowOp(rowChanges, 2).originalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 2).originalIndex == 19, @"");
+	
+	XCTAssertTrue(RowOp(rowChanges, 3).type == YapDatabaseViewChangeDelete, @"");
+	XCTAssertTrue(RowOp(rowChanges, 3).originalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 3).originalIndex == 18, @"");
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+#pragma mark Fixed Range Beginning: Delete, Delete, ...
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+- (void)test_deleting_two_rows_in_middle_of_range_adds_two_rows_to_the_end
+{
+	YapDatabaseViewRangeOptions *rangeOpts =
+    [YapDatabaseViewRangeOptions fixedRangeWithLength:20 offset:0 from:YapDatabaseViewBeginning];
+	
+	YapDatabaseViewMappings *mappings = [[YapDatabaseViewMappings alloc] initWithGroups:@[@""] view:@"view"];
+	
+	[mappings setRangeOptions:rangeOpts forGroup:@""];
+	[mappings updateWithCounts:@{ @"":@(40) }];
+	
+	YapDatabaseViewMappings *originalMappings = [mappings copy];
+	
+	XCTAssertTrue([mappings numberOfItemsInGroup:@""] == 20, @"");
+	
+	// Delete multiple items inside the range
+	
+	[changes addObject:[YapDatabaseViewRowChange deleteKey:@"key1" inGroup:@"" atIndex:10]];
+	[changes addObject:[YapDatabaseViewRowChange deleteKey:@"key2" inGroup:@"" atIndex:10]];
+	
+	[mappings updateWithCounts:@{ @"":@(38) }];
+	
+	// Fetch changeset
+	
+	NSArray *rowChanges = nil;
+	
+	[YapDatabaseViewChange getSectionChanges:NULL
+	                              rowChanges:&rowChanges
+	                    withOriginalMappings:originalMappings
+	                           finalMappings:mappings
+	                             fromChanges:changes];
+	
+	// Verify
+	
+	XCTAssertTrue([mappings numberOfItemsInGroup:@""] == 20, @"");
+	
+	XCTAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeDelete, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).originalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).originalIndex == 10, @"");
+	
+	XCTAssertTrue(RowOp(rowChanges, 1).type == YapDatabaseViewChangeDelete, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).originalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).originalIndex == 11, @"");
+	
+	XCTAssertTrue(RowOp(rowChanges, 2).type == YapDatabaseViewChangeInsert, @"");
+	XCTAssertTrue(RowOp(rowChanges, 2).finalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 2).finalIndex == 19, @"");
+	
+	XCTAssertTrue(RowOp(rowChanges, 3).type == YapDatabaseViewChangeInsert, @"");
+	XCTAssertTrue(RowOp(rowChanges, 3).finalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 3).finalIndex == 18, @"");
+}
+
+- (void)test_deleting_two_rows_at_beginning_of_range_adds_two_rows_to_the_end
+{
+	YapDatabaseViewRangeOptions *rangeOpts =
+    [YapDatabaseViewRangeOptions fixedRangeWithLength:20 offset:0 from:YapDatabaseViewBeginning];
+	
+	YapDatabaseViewMappings *mappings = [[YapDatabaseViewMappings alloc] initWithGroups:@[@""] view:@"view"];
+	
+	[mappings setRangeOptions:rangeOpts forGroup:@""];
+	[mappings updateWithCounts:@{ @"":@(40) }];
+	
+	YapDatabaseViewMappings *originalMappings = [mappings copy];
+	
+	// Delete multiple items at the beginning of the range
+	
+	[changes addObject:[YapDatabaseViewRowChange deleteKey:@"key1" inGroup:@"" atIndex:0]];
+	[changes addObject:[YapDatabaseViewRowChange deleteKey:@"key2" inGroup:@"" atIndex:0]];
+	
+	[mappings updateWithCounts:@{ @"":@(38) }];
+	
+	XCTAssertTrue([mappings numberOfItemsInGroup:@""] == 20, @"");
+	
+	// Fetch changeset
+	
+	NSArray *rowChanges = nil;
+	
+	[YapDatabaseViewChange getSectionChanges:NULL
+	                              rowChanges:&rowChanges
+	                    withOriginalMappings:originalMappings
+	                           finalMappings:mappings
+	                             fromChanges:changes];
+	
+	// Verify
+	
+	XCTAssertTrue([mappings numberOfItemsInGroup:@""] == 20, @"");
+	
+	XCTAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeDelete, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).originalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).originalIndex == 0, @"");
+	
+	XCTAssertTrue(RowOp(rowChanges, 1).type == YapDatabaseViewChangeDelete, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).originalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).originalIndex == 1, @"");
+	
+	XCTAssertTrue(RowOp(rowChanges, 2).type == YapDatabaseViewChangeInsert, @"");
+	XCTAssertTrue(RowOp(rowChanges, 2).finalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 2).finalIndex == 19, @"");
+	
+	XCTAssertTrue(RowOp(rowChanges, 3).type == YapDatabaseViewChangeInsert, @"");
+	XCTAssertTrue(RowOp(rowChanges, 3).finalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 3).finalIndex == 18, @"");
+}
+
+- (void)test_deleteing_two_rows_at_end_of_range_adds_two_rows_to_the_end
+{
+	YapDatabaseViewRangeOptions *rangeOpts =
+    [YapDatabaseViewRangeOptions fixedRangeWithLength:20 offset:0 from:YapDatabaseViewBeginning];
+	
+	YapDatabaseViewMappings *mappings = [[YapDatabaseViewMappings alloc] initWithGroups:@[@""] view:@"view"];
+	
+	[mappings setRangeOptions:rangeOpts forGroup:@""];
+	[mappings updateWithCounts:@{ @"":@(40) }];
+	
+	YapDatabaseViewMappings *originalMappings = [mappings copy];
+	
+	// Delete multiple items at the end of the range
+	
+	[changes addObject:[YapDatabaseViewRowChange deleteKey:@"key1" inGroup:@"" atIndex:19]];
+	[changes addObject:[YapDatabaseViewRowChange deleteKey:@"key2" inGroup:@"" atIndex:18]];
+	
+	[mappings updateWithCounts:@{ @"":@(38) }];
+	
+	XCTAssertTrue([mappings numberOfItemsInGroup:@""] == 20, @"");
+	
+	// Fetch changeset
+	
+	NSArray *rowChanges = nil;
+	
+	[YapDatabaseViewChange getSectionChanges:NULL
+	                              rowChanges:&rowChanges
+	                    withOriginalMappings:originalMappings
+	                           finalMappings:mappings
+	                             fromChanges:changes];
+	
+	// Verify
+	
+	XCTAssertTrue([mappings numberOfItemsInGroup:@""] == 20, @"");
+	
+	XCTAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeDelete, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).originalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).originalIndex == 19, @"");
+	
+	XCTAssertTrue(RowOp(rowChanges, 1).type == YapDatabaseViewChangeDelete, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).originalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).originalIndex == 18, @"");
+	
+	XCTAssertTrue(RowOp(rowChanges, 2).type == YapDatabaseViewChangeInsert, @"");
+	XCTAssertTrue(RowOp(rowChanges, 2).finalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 2).finalIndex == 19, @"");
+	
+	XCTAssertTrue(RowOp(rowChanges, 3).type == YapDatabaseViewChangeInsert, @"");
+	XCTAssertTrue(RowOp(rowChanges, 3).finalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 3).finalIndex == 18, @"");
+}
+
+- (void)test_deleting_the_same_row_four_times_pulls_rows_up_and_deletes_them
+{
+	YapDatabaseViewRangeOptions *rangeOpts =
+    [YapDatabaseViewRangeOptions fixedRangeWithLength:20 offset:0 from:YapDatabaseViewBeginning];
+	
+	YapDatabaseViewMappings *mappings = [[YapDatabaseViewMappings alloc] initWithGroups:@[@""] view:@"view"];
+	
+	[mappings setRangeOptions:rangeOpts forGroup:@""];
+	[mappings updateWithCounts:@{ @"":@(40) }];
+	
+	YapDatabaseViewMappings *originalMappings = [mappings copy];
+	
+	XCTAssertTrue([mappings numberOfItemsInGroup:@""] == 20, @"");
+	
+	// Delete multiple items at the end of the range, and some outside the range
+	
+	[changes addObject:[YapDatabaseViewRowChange deleteKey:@"key1" inGroup:@"" atIndex:18]];
+	[changes addObject:[YapDatabaseViewRowChange deleteKey:@"key2" inGroup:@"" atIndex:18]];
+	[changes addObject:[YapDatabaseViewRowChange deleteKey:@"key3" inGroup:@"" atIndex:18]];
+	[changes addObject:[YapDatabaseViewRowChange deleteKey:@"key4" inGroup:@"" atIndex:18]];
+	
+	[mappings updateWithCounts:@{ @"":@(36) }];
+	
+	// Fetch changeset
+	
+	NSArray *rowChanges = nil;
+	
+	[YapDatabaseViewChange getSectionChanges:NULL
+	                              rowChanges:&rowChanges
+	                    withOriginalMappings:originalMappings
+	                           finalMappings:mappings
+	                             fromChanges:changes];
+	
+	// Verify
+	
+	XCTAssertTrue([mappings numberOfItemsInGroup:@""] == 20, @"");
+	
+	XCTAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeDelete, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).originalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).originalIndex == 18, @"");
+	
+	XCTAssertTrue(RowOp(rowChanges, 1).type == YapDatabaseViewChangeDelete, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).originalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).originalIndex == 19, @"");
+	
+	XCTAssertTrue(RowOp(rowChanges, 2).type == YapDatabaseViewChangeInsert, @"");
+	XCTAssertTrue(RowOp(rowChanges, 2).finalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 2).finalIndex == 19, @"");
+	
+	XCTAssertTrue(RowOp(rowChanges, 3).type == YapDatabaseViewChangeInsert, @"");
+	XCTAssertTrue(RowOp(rowChanges, 3).finalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 3).finalIndex == 18, @"");
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+#pragma mark Fixed Range Beginning: Changing Length
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+- (void)test_adding_two_rows_when_range_contents_are_empty_results_in_count_of_two_rows
+{
+	YapDatabaseViewRangeOptions *rangeOpts =
+    [YapDatabaseViewRangeOptions fixedRangeWithLength:20 offset:0 from:YapDatabaseViewBeginning];
+	
+	YapDatabaseViewMappings *mappings = [[YapDatabaseViewMappings alloc] initWithGroups:@[@""] view:@"view"];
+	
+	[mappings setRangeOptions:rangeOpts forGroup:@""];
+	[mappings updateWithCounts:@{ @"":@(0) }];
+	
+	YapDatabaseViewMappings *originalMappings = [mappings copy];
+	
+	XCTAssertTrue([mappings numberOfItemsInGroup:@""] == 0, @"");
+	
+	// Insert multiple items into an empty view
+	
+	[changes addObject:[YapDatabaseViewRowChange insertKey:@"key1" inGroup:@"" atIndex:0]];
+	[changes addObject:[YapDatabaseViewRowChange insertKey:@"key2" inGroup:@"" atIndex:1]];
+	
+	[mappings updateWithCounts:@{ @"":@(2) }];
+	
+	// Fetch changeset
+	
+	NSArray *rowChanges = nil;
+	
+	[YapDatabaseViewChange getSectionChanges:NULL
+	                              rowChanges:&rowChanges
+	                    withOriginalMappings:originalMappings
+	                           finalMappings:mappings
+	                             fromChanges:changes];
+	
+	// Verify
+	
+	XCTAssertTrue([mappings numberOfItemsInGroup:@""] == 2, @"");
+	
+	XCTAssertTrue([rowChanges count] == 2, @"");
+	
+	XCTAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeInsert, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).finalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).finalIndex == 0, @"");
+	
+	XCTAssertTrue(RowOp(rowChanges, 1).type == YapDatabaseViewChangeInsert, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).finalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).finalIndex == 1, @"");
+}
+
+- (void)test_adding_two_rows_when_range_is_partially_full_increases_count_by_two
+{
+	YapDatabaseViewRangeOptions *rangeOpts =
+    [YapDatabaseViewRangeOptions fixedRangeWithLength:20 offset:0 from:YapDatabaseViewBeginning];
+	
+	YapDatabaseViewMappings *mappings = [[YapDatabaseViewMappings alloc] initWithGroups:@[@""] view:@"view"];
+	
+	[mappings setRangeOptions:rangeOpts forGroup:@""];
+	[mappings updateWithCounts:@{ @"":@(10) }];
+	
+	YapDatabaseViewMappings *originalMappings = [mappings copy];
+	
+	XCTAssertTrue([mappings numberOfItemsInGroup:@""] == 10, @"");
+	
+	// Delete multiple items inside the range
+	
+	[changes addObject:[YapDatabaseViewRowChange insertKey:@"key1" inGroup:@"" atIndex:0]];
+	[changes addObject:[YapDatabaseViewRowChange insertKey:@"key2" inGroup:@"" atIndex:1]];
+	
+	[mappings updateWithCounts:@{ @"":@(12) }];
+	
+	// Fetch changeset
+	
+	NSArray *rowChanges = nil;
+	
+	[YapDatabaseViewChange getSectionChanges:NULL
+	                              rowChanges:&rowChanges
+	                    withOriginalMappings:originalMappings
+	                           finalMappings:mappings
+	                             fromChanges:changes];
+	
+	// Verify
+	
+	XCTAssertTrue([mappings numberOfItemsInGroup:@""] == 12, @"");
+	
+	XCTAssertTrue([rowChanges count] == 2, @"");
+	
+	XCTAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeInsert, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).finalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).finalIndex == 0, @"");
+	
+	XCTAssertTrue(RowOp(rowChanges, 1).type == YapDatabaseViewChangeInsert, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).finalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).finalIndex == 1, @"");
+}
+
+- (void)test_adding_two_rows_when_range_only_has_nineteen_returns_correct_count_of_twenty
+{
+	YapDatabaseViewRangeOptions *rangeOpts =
+    [YapDatabaseViewRangeOptions fixedRangeWithLength:20 offset:0 from:YapDatabaseViewBeginning];
+	
+	YapDatabaseViewMappings *mappings = [[YapDatabaseViewMappings alloc] initWithGroups:@[@""] view:@"view"];
+	
+	[mappings setRangeOptions:rangeOpts forGroup:@""];
+	[mappings updateWithCounts:@{ @"":@(19) }];
+	
+	YapDatabaseViewMappings *originalMappings = [mappings copy];
+	
+	XCTAssertTrue([mappings numberOfItemsInGroup:@""] == 19, @"");
+	
+	// Delete multiple items inside the range
+	
+	[changes addObject:[YapDatabaseViewRowChange insertKey:@"key1" inGroup:@"" atIndex:0]];
+	[changes addObject:[YapDatabaseViewRowChange insertKey:@"key2" inGroup:@"" atIndex:1]];
+	
+	[mappings updateWithCounts:@{ @"":@(21) }];
+	
+	// Fetch changeset
+	
+	NSArray *rowChanges = nil;
+	
+	[YapDatabaseViewChange getSectionChanges:NULL
+	                              rowChanges:&rowChanges
+	                    withOriginalMappings:originalMappings
+	                           finalMappings:mappings
+	                             fromChanges:changes];
+	
+	// Verify
+	
+	XCTAssertTrue([mappings numberOfItemsInGroup:@""] == 20, @"");
+	
+	XCTAssertTrue([rowChanges count] == 3, @"");
+	
+	XCTAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeInsert, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).finalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).finalIndex == 0, @"");
+	
+	XCTAssertTrue(RowOp(rowChanges, 1).type == YapDatabaseViewChangeInsert, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).finalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).finalIndex == 1, @"");
+	
+	XCTAssertTrue(RowOp(rowChanges, 2).type == YapDatabaseViewChangeDelete, @"");
+	XCTAssertTrue(RowOp(rowChanges, 2).originalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 2).originalIndex == 18, @"");
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+#pragma mark Fixed Range Beginning: Reset
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+- (void)test_resetting_group_results_in_count_zero_with_corresponding_delete_changes_for_all_rows
+{
+	YapDatabaseViewRangeOptions *rangeOpts =
+    [YapDatabaseViewRangeOptions fixedRangeWithLength:20 offset:0 from:YapDatabaseViewBeginning];
+	
+	YapDatabaseViewMappings *mappings = [[YapDatabaseViewMappings alloc] initWithGroups:@[@""] view:@"view"];
+	
+	[mappings setRangeOptions:rangeOpts forGroup:@""];
+	[mappings updateWithCounts:@{ @"":@(2) }];
+	
+	YapDatabaseViewMappings *originalMappings = [mappings copy];
+	
+	XCTAssertTrue([mappings numberOfItemsInGroup:@""] == 2, @"");
+	
+	// Delete all items via removeAllObjectsInAllCollections
+	
+	[changes addObject:[YapDatabaseViewSectionChange resetGroup:@""]];
+	
+	[mappings updateWithCounts:@{ @"":@(0) }];
+	
+	// Fetch changeset
+	
+	NSArray *rowChanges = nil;
+	
+	[YapDatabaseViewChange getSectionChanges:NULL
+	                              rowChanges:&rowChanges
+	                    withOriginalMappings:originalMappings
+	                           finalMappings:mappings
+	                             fromChanges:changes];
+	
+	// Verify
+	
+	XCTAssertTrue([mappings numberOfItemsInGroup:@""] == 0, @"");
+	
+	XCTAssertTrue([rowChanges count] == 2, @"");
+	
+	XCTAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeDelete, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).originalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).originalIndex == 1, @"");
+	
+	XCTAssertTrue(RowOp(rowChanges, 1).type == YapDatabaseViewChangeDelete, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).originalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).originalIndex == 0, @"");
+}
+
+- (void)test_resetting_group_when_group_has_more_rows_than_range_only_results_in_delete_actions_for_rows_in_range
+{
+	YapDatabaseViewRangeOptions *rangeOpts =
+    [YapDatabaseViewRangeOptions fixedRangeWithLength:2 offset:0 from:YapDatabaseViewBeginning];
+	
+	YapDatabaseViewMappings *mappings = [[YapDatabaseViewMappings alloc] initWithGroups:@[@""] view:@"view"];
+	[mappings setIsDynamicSectionForAllGroups:YES];
+	
+	[mappings setRangeOptions:rangeOpts forGroup:@""];
+	[mappings updateWithCounts:@{ @"":@(4) }];
+	
+	YapDatabaseViewMappings *originalMappings = [mappings copy];
+	
+	XCTAssertTrue([mappings numberOfItemsInGroup:@""] == 2, @"");
+	
+	// Delete all items via removeAllObjectsInAllCollections
+	
+	[changes addObject:[YapDatabaseViewSectionChange resetGroup:@""]];
+	
+	[mappings updateWithCounts:@{ @"":@(0) }];
+	
+	// Fetch changeset
+	
+	NSArray *sectionChanges = nil;
+	NSArray *rowChanges = nil;
+	
+	[YapDatabaseViewChange getSectionChanges:&sectionChanges
+	                              rowChanges:&rowChanges
+	                    withOriginalMappings:originalMappings
+	                           finalMappings:mappings
+	                             fromChanges:changes];
+	
+	// Verify
+	
+	XCTAssertTrue([mappings numberOfItemsInGroup:@""] == 0, @"");
+	
+	XCTAssertTrue([sectionChanges count] == 1, @"");
+	
+	XCTAssertTrue(SectionOp(sectionChanges, 0).type == YapDatabaseViewChangeDelete, @"");
+	XCTAssertTrue(SectionOp(sectionChanges, 0).index == 0, @"");
+	
+	XCTAssertTrue([rowChanges count] == 2, @"");
+	
+	XCTAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeDelete, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).originalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).originalIndex == 1, @"");
+	
+	XCTAssertTrue(RowOp(rowChanges, 1).type == YapDatabaseViewChangeDelete, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).originalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).originalIndex == 0, @"");
+}
+
+- (void)test_reset_group_and_add_row_results_in_delete_actions_for_original_rows_and_insert_action_for_newly_added_row
+{
+	YapDatabaseViewRangeOptions *rangeOpts =
+    [YapDatabaseViewRangeOptions fixedRangeWithLength:20 offset:0 from:YapDatabaseViewBeginning];
+	
+	YapDatabaseViewMappings *mappings = [[YapDatabaseViewMappings alloc] initWithGroups:@[@""] view:@"view"];
+	
+	[mappings setRangeOptions:rangeOpts forGroup:@""];
+	[mappings updateWithCounts:@{ @"":@(2) }];
+	
+	YapDatabaseViewMappings *originalMappings = [mappings copy];
+	
+	XCTAssertTrue([mappings numberOfItemsInGroup:@""] == 2, @"");
+	
+	// Delete multiple items inside the range
+	
+	[changes addObject:[YapDatabaseViewSectionChange resetGroup:@""]];
+	[changes addObject:[YapDatabaseViewRowChange insertKey:@"key" inGroup:@"" atIndex:0]];
+	
+	[mappings updateWithCounts:@{ @"":@(1) }];
+	
+	// Fetch changeset
+	
+	NSArray *rowChanges = nil;
+	
+	[YapDatabaseViewChange getSectionChanges:NULL
+	                              rowChanges:&rowChanges
+	                    withOriginalMappings:originalMappings
+	                           finalMappings:mappings
+	                             fromChanges:changes];
+	
+	// Verify
+	
+	XCTAssertTrue([mappings numberOfItemsInGroup:@""] == 1, @"");
+	
+	XCTAssertTrue([rowChanges count] == 3, @"");
+	
+	XCTAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeDelete, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).originalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).originalIndex == 1, @"");
+	
+	XCTAssertTrue(RowOp(rowChanges, 1).type == YapDatabaseViewChangeDelete, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).originalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).originalIndex == 0, @"");
+	
+	XCTAssertTrue(RowOp(rowChanges, 2).type == YapDatabaseViewChangeInsert, @"");
+	XCTAssertTrue(RowOp(rowChanges, 2).finalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 2).finalIndex == 0, @"");
+}
+
+- (void)test_insert_change_before_reset_with_insert_after_doesnt_return_delete_action_for_pre_reset_insert
+{
+	YapDatabaseViewRangeOptions *rangeOpts =
+    [YapDatabaseViewRangeOptions fixedRangeWithLength:20 offset:0 from:YapDatabaseViewBeginning];
+	
+	YapDatabaseViewMappings *mappings = [[YapDatabaseViewMappings alloc] initWithGroups:@[@""] view:@"view"];
+	
+	[mappings setRangeOptions:rangeOpts forGroup:@""];
+	[mappings updateWithCounts:@{ @"":@(2) }];
+	
+	YapDatabaseViewMappings *originalMappings = [mappings copy];
+	
+	XCTAssertTrue([mappings numberOfItemsInGroup:@""] == 2, @"");
+	
+	// Test multiple changes, forcing some change-consolidation processing
+	
+	[changes addObject:[YapDatabaseViewRowChange insertKey:@"key" inGroup:@"" atIndex:0]];
+	[changes addObject:[YapDatabaseViewSectionChange resetGroup:@""]];
+	[changes addObject:[YapDatabaseViewRowChange insertKey:@"key" inGroup:@"" atIndex:0]];
+	
+	[mappings updateWithCounts:@{ @"":@(1) }];
+	
+	// Fetch changeset
+	
+	NSArray *rowChanges = nil;
+	
+	[YapDatabaseViewChange getSectionChanges:NULL
+	                              rowChanges:&rowChanges
+	                    withOriginalMappings:originalMappings
+	                           finalMappings:mappings
+	                             fromChanges:changes];
+	
+	// Verify
+	
+	XCTAssertTrue([mappings numberOfItemsInGroup:@""] == 1, @"");
+	
+	XCTAssertTrue([rowChanges count] == 3, @"");
+	
+	XCTAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeDelete, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).originalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).originalIndex == 1, @"");
+	
+	XCTAssertTrue(RowOp(rowChanges, 1).type == YapDatabaseViewChangeDelete, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).originalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).originalIndex == 0, @"");
+	
+	XCTAssertTrue(RowOp(rowChanges, 2).type == YapDatabaseViewChangeInsert, @"");
+	XCTAssertTrue(RowOp(rowChanges, 2).finalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 2).finalIndex == 0, @"");
+}
+
+@end
+
+#pragma mark -
+#pragma mark Fixed Range End
+
+@interface TestViewMappingsFixedRangeEnd : TestViewMappingsBase
+@end
+
+@implementation TestViewMappingsFixedRangeEnd
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+#pragma mark Fixed Range End: Insert
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+- (void)test_inserting_row_inside_range_deletes_the_row_previously_at_the_beginning_of_the_range
 {
 	YapDatabaseViewRangeOptions *rangeOpts =
 	    [YapDatabaseViewRangeOptions fixedRangeWithLength:20 offset:0 from:YapDatabaseViewEnd];
@@ -237,18 +1190,18 @@ static YapDatabaseViewRowChange* (^RowOp)(NSArray*, NSUInteger) = ^(NSArray *rCh
 	
 	// Verify
 	
-	STAssertTrue([mappings numberOfItemsInGroup:@""] == 20, @"");
+	XCTAssertTrue([mappings numberOfItemsInGroup:@""] == 20, @"");
 	
-	STAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeInsert, @"");
-	STAssertTrue(RowOp(rowChanges, 0).finalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 0).finalIndex == 9, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeInsert, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).finalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).finalIndex == 9, @"");
 	
-	STAssertTrue(RowOp(rowChanges, 1).type == YapDatabaseViewChangeDelete, @"");
-	STAssertTrue(RowOp(rowChanges, 1).originalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 1).originalIndex == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).type == YapDatabaseViewChangeDelete, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).originalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).originalIndex == 0, @"");
 }
 
-- (void)test_fixedRange_end_1B
+- (void)test_insert_row_at_end_deletes_row_at_beginning_and_adds_row_at_end
 {
 	YapDatabaseViewRangeOptions *rangeOpts =
 	    [YapDatabaseViewRangeOptions fixedRangeWithLength:20 offset:0 from:YapDatabaseViewEnd];
@@ -278,18 +1231,18 @@ static YapDatabaseViewRowChange* (^RowOp)(NSArray*, NSUInteger) = ^(NSArray *rCh
 	
 	// Verify
 	
-	STAssertTrue([mappings numberOfItemsInGroup:@""] == 20, @"");
+	XCTAssertTrue([mappings numberOfItemsInGroup:@""] == 20, @"");
 	
-	STAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeInsert, @"");
-	STAssertTrue(RowOp(rowChanges, 0).finalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 0).finalIndex == 19, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeInsert, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).finalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).finalIndex == 19, @"");
 	
-	STAssertTrue(RowOp(rowChanges, 1).type == YapDatabaseViewChangeDelete, @"");
-	STAssertTrue(RowOp(rowChanges, 1).originalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 1).originalIndex == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).type == YapDatabaseViewChangeDelete, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).originalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).originalIndex == 0, @"");
 }
 
-- (void)test_fixedRange_end_1C
+- (void)test_inserting_at_beginning_of_range_inserts_row_at_the_beginning_and_deletes_the_old_row_at_the_beginning
 {
 	YapDatabaseViewRangeOptions *rangeOpts =
 	    [YapDatabaseViewRangeOptions fixedRangeWithLength:20 offset:0 from:YapDatabaseViewEnd];
@@ -319,18 +1272,18 @@ static YapDatabaseViewRowChange* (^RowOp)(NSArray*, NSUInteger) = ^(NSArray *rCh
 	
 	// Verify
 	
-	STAssertTrue([mappings numberOfItemsInGroup:@""] == 20, @"");
+	XCTAssertTrue([mappings numberOfItemsInGroup:@""] == 20, @"");
 	
-	STAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeInsert, @"");
-	STAssertTrue(RowOp(rowChanges, 0).finalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 0).finalIndex == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeInsert, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).finalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).finalIndex == 0, @"");
 	
-	STAssertTrue(RowOp(rowChanges, 1).type == YapDatabaseViewChangeDelete, @"");
-	STAssertTrue(RowOp(rowChanges, 1).originalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 1).originalIndex == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).type == YapDatabaseViewChangeDelete, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).originalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).originalIndex == 0, @"");
 }
 
-- (void)test_fixedRange_end_1D
+- (void)test_inserting_row_outside_of_range_causes_no_change
 {
 	YapDatabaseViewRangeOptions *rangeOpts =
 	    [YapDatabaseViewRangeOptions fixedRangeWithLength:20 offset:0 from:YapDatabaseViewEnd];
@@ -360,172 +1313,14 @@ static YapDatabaseViewRowChange* (^RowOp)(NSArray*, NSUInteger) = ^(NSArray *rCh
 	
 	// Verify
 	
-	STAssertTrue([mappings numberOfItemsInGroup:@""] == 20, @"");
+	XCTAssertTrue([mappings numberOfItemsInGroup:@""] == 20, @"");
 	
-	STAssertTrue([rowChanges count] == 0, @"");
+	XCTAssertTrue([rowChanges count] == 0, @"");
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-#pragma mark Fixed Range: Delete
+#pragma mark Fixed Range End: Delete
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-- (void)test_fixedRange_beginning_2A
-{
-	YapDatabaseViewRangeOptions *rangeOpts =
-	    [YapDatabaseViewRangeOptions fixedRangeWithLength:20 offset:0 from:YapDatabaseViewBeginning];
-	
-	YapDatabaseViewMappings *mappings = [[YapDatabaseViewMappings alloc] initWithGroups:@[@""] view:@"view"];
-	
-	[mappings setRangeOptions:rangeOpts forGroup:@""];
-	[mappings updateWithCounts:@{ @"":@(40) }];
-	
-	YapDatabaseViewMappings *originalMappings = [mappings copy];
-	
-	// Delete item in the middle of the range
-	
-	[changes addObject:[YapDatabaseViewRowChange deleteKey:@"key" inGroup:@"" atIndex:2]];
-	
-	[mappings updateWithCounts:@{ @"":@(39) }];
-	
-	// Fetch changeset
-	
-	NSArray *rowChanges = nil;
-	
-	[YapDatabaseViewChange getSectionChanges:NULL
-	                              rowChanges:&rowChanges
-	                    withOriginalMappings:originalMappings
-	                           finalMappings:mappings
-	                             fromChanges:changes];
-	
-	// Verify
-	
-	STAssertTrue([mappings numberOfItemsInGroup:@""] == 20, @"");
-	
-	STAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeDelete, @"");
-	STAssertTrue(RowOp(rowChanges, 0).originalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 0).originalIndex == 2, @"");
-	
-	STAssertTrue(RowOp(rowChanges, 1).type == YapDatabaseViewChangeInsert, @"");
-	STAssertTrue(RowOp(rowChanges, 1).finalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 1).finalIndex == 19, @"");
-}
-
-- (void)test_fixedRange_beginning_2B
-{
-	YapDatabaseViewRangeOptions *rangeOpts =
-	    [YapDatabaseViewRangeOptions fixedRangeWithLength:20 offset:0 from:YapDatabaseViewBeginning];
-	
-	YapDatabaseViewMappings *mappings = [[YapDatabaseViewMappings alloc] initWithGroups:@[@""] view:@"view"];
-	
-	[mappings setRangeOptions:rangeOpts forGroup:@""];
-	[mappings updateWithCounts:@{ @"":@(40) }];
-	
-	YapDatabaseViewMappings *originalMappings = [mappings copy];
-	
-	// Delete item in the beginning of the range
-	
-	[changes addObject:[YapDatabaseViewRowChange deleteKey:@"key" inGroup:@"" atIndex:0]];
-	
-	[mappings updateWithCounts:@{ @"":@(39) }];
-	
-	// Fetch changeset
-	
-	NSArray *rowChanges = nil;
-	
-	[YapDatabaseViewChange getSectionChanges:NULL
-	                              rowChanges:&rowChanges
-	                    withOriginalMappings:originalMappings
-	                           finalMappings:mappings
-	                             fromChanges:changes];
-	
-	// Verify
-	
-	STAssertTrue([mappings numberOfItemsInGroup:@""] == 20, @"");
-	
-	STAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeDelete, @"");
-	STAssertTrue(RowOp(rowChanges, 0).originalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 0).originalIndex == 0, @"");
-	
-	STAssertTrue(RowOp(rowChanges, 1).type == YapDatabaseViewChangeInsert, @"");
-	STAssertTrue(RowOp(rowChanges, 1).finalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 1).finalIndex == 19, @"");
-}
-
-- (void)test_fixedRange_beginning_2C
-{
-	YapDatabaseViewRangeOptions *rangeOpts =
-	    [YapDatabaseViewRangeOptions fixedRangeWithLength:20 offset:0 from:YapDatabaseViewBeginning];
-	
-	YapDatabaseViewMappings *mappings = [[YapDatabaseViewMappings alloc] initWithGroups:@[@""] view:@"view"];
-	
-	[mappings setRangeOptions:rangeOpts forGroup:@""];
-	[mappings updateWithCounts:@{ @"":@(40) }];
-	
-	YapDatabaseViewMappings *originalMappings = [mappings copy];
-	
-	// Delete item at the end of the range
-	
-	[changes addObject:[YapDatabaseViewRowChange deleteKey:@"key" inGroup:@"" atIndex:19]];
-	
-	[mappings updateWithCounts:@{ @"":@(39) }];
-	
-	// Fetch changeset
-	
-	NSArray *rowChanges = nil;
-	
-	[YapDatabaseViewChange getSectionChanges:NULL
-	                              rowChanges:&rowChanges
-	                    withOriginalMappings:originalMappings
-	                           finalMappings:mappings
-	                             fromChanges:changes];
-	
-	// Verify
-	
-	STAssertTrue([mappings numberOfItemsInGroup:@""] == 20, @"");
-	
-	STAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeDelete, @"");
-	STAssertTrue(RowOp(rowChanges, 0).originalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 0).originalIndex == 19, @"");
-	
-	STAssertTrue(RowOp(rowChanges, 1).type == YapDatabaseViewChangeInsert, @"");
-	STAssertTrue(RowOp(rowChanges, 1).finalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 1).finalIndex == 19, @"");
-}
-
-- (void)test_fixedRange_beginning_2D
-{
-	YapDatabaseViewRangeOptions *rangeOpts =
-	    [YapDatabaseViewRangeOptions fixedRangeWithLength:20 offset:0 from:YapDatabaseViewBeginning];
-	
-	YapDatabaseViewMappings *mappings = [[YapDatabaseViewMappings alloc] initWithGroups:@[@""] view:@"view"];
-	
-	[mappings setRangeOptions:rangeOpts forGroup:@""];
-	[mappings updateWithCounts:@{ @"":@(40) }];
-	
-	YapDatabaseViewMappings *originalMappings = [mappings copy];
-	
-	// Delete item outside the range
-	
-	[changes addObject:[YapDatabaseViewRowChange deleteKey:@"key" inGroup:@"" atIndex:20]];
-	
-	[mappings updateWithCounts:@{ @"":@(39) }];
-	
-	// Fetch changeset
-	
-	NSArray *rowChanges = nil;
-	
-	[YapDatabaseViewChange getSectionChanges:NULL
-	                              rowChanges:&rowChanges
-	                    withOriginalMappings:originalMappings
-	                           finalMappings:mappings
-	                             fromChanges:changes];
-	
-	// Verify
-	
-	STAssertTrue([mappings numberOfItemsInGroup:@""] == 20, @"");
-	
-	STAssertTrue([rowChanges count] == 0, @"");
-}
 
 - (void)test_fixedRange_end_2A
 {
@@ -557,15 +1352,15 @@ static YapDatabaseViewRowChange* (^RowOp)(NSArray*, NSUInteger) = ^(NSArray *rCh
 	
 	// Verify
 	
-	STAssertTrue([mappings numberOfItemsInGroup:@""] == 20, @"");
+	XCTAssertTrue([mappings numberOfItemsInGroup:@""] == 20, @"");
 	
-	STAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeDelete, @"");
-	STAssertTrue(RowOp(rowChanges, 0).originalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 0).originalIndex == 10, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeDelete, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).originalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).originalIndex == 10, @"");
 	
-	STAssertTrue(RowOp(rowChanges, 1).type == YapDatabaseViewChangeInsert, @"");
-	STAssertTrue(RowOp(rowChanges, 1).finalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 1).finalIndex == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).type == YapDatabaseViewChangeInsert, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).finalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).finalIndex == 0, @"");
 }
 
 - (void)test_fixedRange_end_2B
@@ -598,15 +1393,15 @@ static YapDatabaseViewRowChange* (^RowOp)(NSArray*, NSUInteger) = ^(NSArray *rCh
 	
 	// Verify
 	
-	STAssertTrue([mappings numberOfItemsInGroup:@""] == 20, @"");
+	XCTAssertTrue([mappings numberOfItemsInGroup:@""] == 20, @"");
 	
-	STAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeDelete, @"");
-	STAssertTrue(RowOp(rowChanges, 0).originalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 0).originalIndex == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeDelete, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).originalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).originalIndex == 0, @"");
 	
-	STAssertTrue(RowOp(rowChanges, 1).type == YapDatabaseViewChangeInsert, @"");
-	STAssertTrue(RowOp(rowChanges, 1).finalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 1).finalIndex == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).type == YapDatabaseViewChangeInsert, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).finalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).finalIndex == 0, @"");
 }
 
 - (void)test_fixedRange_end_2C
@@ -639,15 +1434,15 @@ static YapDatabaseViewRowChange* (^RowOp)(NSArray*, NSUInteger) = ^(NSArray *rCh
 	
 	// Verify
 	
-	STAssertTrue([mappings numberOfItemsInGroup:@""] == 20, @"");
+	XCTAssertTrue([mappings numberOfItemsInGroup:@""] == 20, @"");
 	
-	STAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeDelete, @"");
-	STAssertTrue(RowOp(rowChanges, 0).originalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 0).originalIndex == 19, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeDelete, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).originalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).originalIndex == 19, @"");
 	
-	STAssertTrue(RowOp(rowChanges, 1).type == YapDatabaseViewChangeInsert, @"");
-	STAssertTrue(RowOp(rowChanges, 1).finalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 1).finalIndex == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).type == YapDatabaseViewChangeInsert, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).finalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).finalIndex == 0, @"");
 }
 
 - (void)test_fixedRange_end_2D
@@ -680,216 +1475,14 @@ static YapDatabaseViewRowChange* (^RowOp)(NSArray*, NSUInteger) = ^(NSArray *rCh
 	
 	// Verify
 	
-	STAssertTrue([mappings numberOfItemsInGroup:@""] == 20, @"");
+	XCTAssertTrue([mappings numberOfItemsInGroup:@""] == 20, @"");
 	
-	STAssertTrue([rowChanges count] == 0, @"");
+	XCTAssertTrue([rowChanges count] == 0, @"");
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-#pragma mark Fixed Range: Insert, Insert, ...
+#pragma mark Fixed Range End: Insert, Insert, ...
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-- (void)test_fixedRange_beginning_3A
-{
-	YapDatabaseViewRangeOptions *rangeOpts =
-	    [YapDatabaseViewRangeOptions fixedRangeWithLength:20 offset:0 from:YapDatabaseViewBeginning];
-	
-	YapDatabaseViewMappings *mappings = [[YapDatabaseViewMappings alloc] initWithGroups:@[@""] view:@"view"];
-	
-	[mappings setRangeOptions:rangeOpts forGroup:@""];
-	[mappings updateWithCounts:@{ @"":@(40) }];
-	
-	YapDatabaseViewMappings *originalMappings = [mappings copy];
-	
-	// Insert multiple items inside the range
-	
-	[changes addObject:[YapDatabaseViewRowChange insertKey:@"key1" inGroup:@"" atIndex:10]];
-	[changes addObject:[YapDatabaseViewRowChange insertKey:@"key2" inGroup:@"" atIndex:10]];
-	
-	[mappings updateWithCounts:@{ @"":@(42) }];
-	
-	// Fetch changeset
-	
-	NSArray *rowChanges = nil;
-	
-	[YapDatabaseViewChange getSectionChanges:NULL
-	                              rowChanges:&rowChanges
-	                    withOriginalMappings:originalMappings
-	                           finalMappings:mappings
-	                             fromChanges:changes];
-	
-	// Verify
-	
-	STAssertTrue([mappings numberOfItemsInGroup:@""] == 20, @"");
-	
-	STAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeInsert, @"");
-	STAssertTrue(RowOp(rowChanges, 0).finalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 0).finalIndex == 11, @"");
-	
-	STAssertTrue(RowOp(rowChanges, 1).type == YapDatabaseViewChangeInsert, @"");
-	STAssertTrue(RowOp(rowChanges, 1).finalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 1).finalIndex == 10, @"");
-	
-	STAssertTrue(RowOp(rowChanges, 2).type == YapDatabaseViewChangeDelete, @"");
-	STAssertTrue(RowOp(rowChanges, 2).originalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 2).originalIndex == 19, @"");
-	
-	STAssertTrue(RowOp(rowChanges, 3).type == YapDatabaseViewChangeDelete, @"");
-	STAssertTrue(RowOp(rowChanges, 3).originalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 3).originalIndex == 18, @"");
-}
-
-- (void)test_fixedRange_beginning_3B
-{
-	YapDatabaseViewRangeOptions *rangeOpts =
-	    [YapDatabaseViewRangeOptions fixedRangeWithLength:20 offset:0 from:YapDatabaseViewBeginning];
-	
-	YapDatabaseViewMappings *mappings = [[YapDatabaseViewMappings alloc] initWithGroups:@[@""] view:@"view"];
-	
-	[mappings setRangeOptions:rangeOpts forGroup:@""];
-	[mappings updateWithCounts:@{ @"":@(40) }];
-	
-	YapDatabaseViewMappings *originalMappings = [mappings copy];
-	
-	// Insert multiple items at the beginning of the range
-	
-	[changes addObject:[YapDatabaseViewRowChange insertKey:@"key1" inGroup:@"" atIndex:0]];
-	[changes addObject:[YapDatabaseViewRowChange insertKey:@"key2" inGroup:@"" atIndex:0]];
-	
-	[mappings updateWithCounts:@{ @"":@(42) }];
-	
-	// Fetch changeset
-	
-	NSArray *rowChanges = nil;
-	
-	[YapDatabaseViewChange getSectionChanges:NULL
-	                              rowChanges:&rowChanges
-	                    withOriginalMappings:originalMappings
-	                           finalMappings:mappings
-	                             fromChanges:changes];
-	
-	// Verify
-	
-	STAssertTrue([mappings numberOfItemsInGroup:@""] == 20, @"");
-	
-	STAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeInsert, @"");
-	STAssertTrue(RowOp(rowChanges, 0).finalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 0).finalIndex == 1, @"");
-	
-	STAssertTrue(RowOp(rowChanges, 1).type == YapDatabaseViewChangeInsert, @"");
-	STAssertTrue(RowOp(rowChanges, 1).finalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 1).finalIndex == 0, @"");
-	
-	STAssertTrue(RowOp(rowChanges, 2).type == YapDatabaseViewChangeDelete, @"");
-	STAssertTrue(RowOp(rowChanges, 2).originalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 2).originalIndex == 19, @"");
-	
-	STAssertTrue(RowOp(rowChanges, 3).type == YapDatabaseViewChangeDelete, @"");
-	STAssertTrue(RowOp(rowChanges, 3).originalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 3).originalIndex == 18, @"");
-}
-
-- (void)test_fixedRange_beginning_3C
-{
-	YapDatabaseViewRangeOptions *rangeOpts =
-	    [YapDatabaseViewRangeOptions fixedRangeWithLength:20 offset:0 from:YapDatabaseViewBeginning];
-	
-	YapDatabaseViewMappings *mappings = [[YapDatabaseViewMappings alloc] initWithGroups:@[@""] view:@"view"];
-	
-	[mappings setRangeOptions:rangeOpts forGroup:@""];
-	[mappings updateWithCounts:@{ @"":@(40) }];
-	
-	YapDatabaseViewMappings *originalMappings = [mappings copy];
-	
-	// Insert multiple items at the end of the range
-	
-	[changes addObject:[YapDatabaseViewRowChange insertKey:@"key1" inGroup:@"" atIndex:18]];
-	[changes addObject:[YapDatabaseViewRowChange insertKey:@"key2" inGroup:@"" atIndex:18]];
-	
-	[mappings updateWithCounts:@{ @"":@(42) }];
-	
-	// Fetch changeset
-	
-	NSArray *rowChanges = nil;
-	
-	[YapDatabaseViewChange getSectionChanges:NULL
-	                              rowChanges:&rowChanges
-	                    withOriginalMappings:originalMappings
-	                           finalMappings:mappings
-	                             fromChanges:changes];
-	
-	// Verify
-	
-	STAssertTrue([mappings numberOfItemsInGroup:@""] == 20, @"");
-	
-	STAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeInsert, @"");
-	STAssertTrue(RowOp(rowChanges, 0).finalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 0).finalIndex == 19, @"");
-	
-	STAssertTrue(RowOp(rowChanges, 1).type == YapDatabaseViewChangeInsert, @"");
-	STAssertTrue(RowOp(rowChanges, 1).finalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 1).finalIndex == 18, @"");
-	
-	STAssertTrue(RowOp(rowChanges, 2).type == YapDatabaseViewChangeDelete, @"");
-	STAssertTrue(RowOp(rowChanges, 2).originalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 2).originalIndex == 19, @"");
-	
-	STAssertTrue(RowOp(rowChanges, 3).type == YapDatabaseViewChangeDelete, @"");
-	STAssertTrue(RowOp(rowChanges, 3).originalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 3).originalIndex == 18, @"");
-}
-
-- (void)test_fixedRange_beginning_3D
-{
-	YapDatabaseViewRangeOptions *rangeOpts =
-	    [YapDatabaseViewRangeOptions fixedRangeWithLength:20 offset:0 from:YapDatabaseViewBeginning];
-	
-	YapDatabaseViewMappings *mappings = [[YapDatabaseViewMappings alloc] initWithGroups:@[@""] view:@"view"];
-	
-	[mappings setRangeOptions:rangeOpts forGroup:@""];
-	[mappings updateWithCounts:@{ @"":@(40) }];
-	
-	YapDatabaseViewMappings *originalMappings = [mappings copy];
-	
-	// Insert multiple items at the end of the range, some of them end out outside the range
-	
-	[changes addObject:[YapDatabaseViewRowChange insertKey:@"key1" inGroup:@"" atIndex:18]];
-	[changes addObject:[YapDatabaseViewRowChange insertKey:@"key2" inGroup:@"" atIndex:18]];
-	[changes addObject:[YapDatabaseViewRowChange insertKey:@"key3" inGroup:@"" atIndex:18]];
-	[changes addObject:[YapDatabaseViewRowChange insertKey:@"key4" inGroup:@"" atIndex:18]];
-	
-	[mappings updateWithCounts:@{ @"":@(44) }];
-	
-	// Fetch changeset
-	
-	NSArray *rowChanges = nil;
-	
-	[YapDatabaseViewChange getSectionChanges:NULL
-	                              rowChanges:&rowChanges
-	                    withOriginalMappings:originalMappings
-	                           finalMappings:mappings
-	                             fromChanges:changes];
-	
-	// Verify
-	
-	STAssertTrue([mappings numberOfItemsInGroup:@""] == 20, @"");
-	
-	STAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeInsert, @"");
-	STAssertTrue(RowOp(rowChanges, 0).finalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 0).finalIndex == 19, @"");
-	
-	STAssertTrue(RowOp(rowChanges, 1).type == YapDatabaseViewChangeInsert, @"");
-	STAssertTrue(RowOp(rowChanges, 1).finalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 1).finalIndex == 18, @"");
-	
-	STAssertTrue(RowOp(rowChanges, 2).type == YapDatabaseViewChangeDelete, @"");
-	STAssertTrue(RowOp(rowChanges, 2).originalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 2).originalIndex == 19, @"");
-	
-	STAssertTrue(RowOp(rowChanges, 3).type == YapDatabaseViewChangeDelete, @"");
-	STAssertTrue(RowOp(rowChanges, 3).originalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 3).originalIndex == 18, @"");
-}
 
 - (void)test_fixedRange_end_3A
 {
@@ -922,23 +1515,23 @@ static YapDatabaseViewRowChange* (^RowOp)(NSArray*, NSUInteger) = ^(NSArray *rCh
 	
 	// Verify
 	
-	STAssertTrue([mappings numberOfItemsInGroup:@""] == 20, @"");
+	XCTAssertTrue([mappings numberOfItemsInGroup:@""] == 20, @"");
 	
-	STAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeInsert, @"");
-	STAssertTrue(RowOp(rowChanges, 0).finalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 0).finalIndex == 8, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeInsert, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).finalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).finalIndex == 8, @"");
 	
-	STAssertTrue(RowOp(rowChanges, 1).type == YapDatabaseViewChangeInsert, @"");
-	STAssertTrue(RowOp(rowChanges, 1).finalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 1).finalIndex == 9, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).type == YapDatabaseViewChangeInsert, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).finalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).finalIndex == 9, @"");
 	
-	STAssertTrue(RowOp(rowChanges, 2).type == YapDatabaseViewChangeDelete, @"");
-	STAssertTrue(RowOp(rowChanges, 2).originalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 2).originalIndex == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 2).type == YapDatabaseViewChangeDelete, @"");
+	XCTAssertTrue(RowOp(rowChanges, 2).originalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 2).originalIndex == 0, @"");
 	
-	STAssertTrue(RowOp(rowChanges, 3).type == YapDatabaseViewChangeDelete, @"");
-	STAssertTrue(RowOp(rowChanges, 3).originalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 3).originalIndex == 1, @"");
+	XCTAssertTrue(RowOp(rowChanges, 3).type == YapDatabaseViewChangeDelete, @"");
+	XCTAssertTrue(RowOp(rowChanges, 3).originalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 3).originalIndex == 1, @"");
 }
 
 - (void)test_fixedRange_end_3B
@@ -972,23 +1565,23 @@ static YapDatabaseViewRowChange* (^RowOp)(NSArray*, NSUInteger) = ^(NSArray *rCh
 	
 	// Verify
 	
-	STAssertTrue([mappings numberOfItemsInGroup:@""] == 20, @"");
+	XCTAssertTrue([mappings numberOfItemsInGroup:@""] == 20, @"");
 	
-	STAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeInsert, @"");
-	STAssertTrue(RowOp(rowChanges, 0).finalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 0).finalIndex == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeInsert, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).finalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).finalIndex == 0, @"");
 	
-	STAssertTrue(RowOp(rowChanges, 1).type == YapDatabaseViewChangeInsert, @"");
-	STAssertTrue(RowOp(rowChanges, 1).finalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 1).finalIndex == 1, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).type == YapDatabaseViewChangeInsert, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).finalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).finalIndex == 1, @"");
 	
-	STAssertTrue(RowOp(rowChanges, 2).type == YapDatabaseViewChangeDelete, @"");
-	STAssertTrue(RowOp(rowChanges, 2).originalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 2).originalIndex == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 2).type == YapDatabaseViewChangeDelete, @"");
+	XCTAssertTrue(RowOp(rowChanges, 2).originalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 2).originalIndex == 0, @"");
 	
-	STAssertTrue(RowOp(rowChanges, 3).type == YapDatabaseViewChangeDelete, @"");
-	STAssertTrue(RowOp(rowChanges, 3).originalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 3).originalIndex == 1, @"");
+	XCTAssertTrue(RowOp(rowChanges, 3).type == YapDatabaseViewChangeDelete, @"");
+	XCTAssertTrue(RowOp(rowChanges, 3).originalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 3).originalIndex == 1, @"");
 }
 
 - (void)test_fixedRange_end_3C
@@ -1022,23 +1615,23 @@ static YapDatabaseViewRowChange* (^RowOp)(NSArray*, NSUInteger) = ^(NSArray *rCh
 	
 	// Verify
 	
-	STAssertTrue([mappings numberOfItemsInGroup:@""] == 20, @"");
+	XCTAssertTrue([mappings numberOfItemsInGroup:@""] == 20, @"");
 	
-	STAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeInsert, @"");
-	STAssertTrue(RowOp(rowChanges, 0).finalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 0).finalIndex == 18, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeInsert, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).finalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).finalIndex == 18, @"");
 	
-	STAssertTrue(RowOp(rowChanges, 1).type == YapDatabaseViewChangeInsert, @"");
-	STAssertTrue(RowOp(rowChanges, 1).finalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 1).finalIndex == 19, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).type == YapDatabaseViewChangeInsert, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).finalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).finalIndex == 19, @"");
 	
-	STAssertTrue(RowOp(rowChanges, 2).type == YapDatabaseViewChangeDelete, @"");
-	STAssertTrue(RowOp(rowChanges, 2).originalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 2).originalIndex == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 2).type == YapDatabaseViewChangeDelete, @"");
+	XCTAssertTrue(RowOp(rowChanges, 2).originalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 2).originalIndex == 0, @"");
 	
-	STAssertTrue(RowOp(rowChanges, 3).type == YapDatabaseViewChangeDelete, @"");
-	STAssertTrue(RowOp(rowChanges, 3).originalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 3).originalIndex == 1, @"");
+	XCTAssertTrue(RowOp(rowChanges, 3).type == YapDatabaseViewChangeDelete, @"");
+	XCTAssertTrue(RowOp(rowChanges, 3).originalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 3).originalIndex == 1, @"");
 }
 
 - (void)test_fixedRange_end_3D
@@ -1074,238 +1667,28 @@ static YapDatabaseViewRowChange* (^RowOp)(NSArray*, NSUInteger) = ^(NSArray *rCh
 	
 	// Verify
 	
-	STAssertTrue([mappings numberOfItemsInGroup:@""] == 20, @"");
+	XCTAssertTrue([mappings numberOfItemsInGroup:@""] == 20, @"");
 	
-	STAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeInsert, @"");
-	STAssertTrue(RowOp(rowChanges, 0).finalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 0).finalIndex == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeInsert, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).finalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).finalIndex == 0, @"");
 	
-	STAssertTrue(RowOp(rowChanges, 1).type == YapDatabaseViewChangeInsert, @"");
-	STAssertTrue(RowOp(rowChanges, 1).finalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 1).finalIndex == 1, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).type == YapDatabaseViewChangeInsert, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).finalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).finalIndex == 1, @"");
 	
-	STAssertTrue(RowOp(rowChanges, 2).type == YapDatabaseViewChangeDelete, @"");
-	STAssertTrue(RowOp(rowChanges, 2).originalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 2).originalIndex == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 2).type == YapDatabaseViewChangeDelete, @"");
+	XCTAssertTrue(RowOp(rowChanges, 2).originalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 2).originalIndex == 0, @"");
 	
-	STAssertTrue(RowOp(rowChanges, 3).type == YapDatabaseViewChangeDelete, @"");
-	STAssertTrue(RowOp(rowChanges, 3).originalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 3).originalIndex == 1, @"");
+	XCTAssertTrue(RowOp(rowChanges, 3).type == YapDatabaseViewChangeDelete, @"");
+	XCTAssertTrue(RowOp(rowChanges, 3).originalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 3).originalIndex == 1, @"");
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-#pragma mark Fixed Range: Delete, Delete, ...
+#pragma mark Fixed Range End: Delete, Delete, ...
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-- (void)test_fixedRange_beginning_4A
-{
-	YapDatabaseViewRangeOptions *rangeOpts =
-	    [YapDatabaseViewRangeOptions fixedRangeWithLength:20 offset:0 from:YapDatabaseViewBeginning];
-	
-	YapDatabaseViewMappings *mappings = [[YapDatabaseViewMappings alloc] initWithGroups:@[@""] view:@"view"];
-	
-	[mappings setRangeOptions:rangeOpts forGroup:@""];
-	[mappings updateWithCounts:@{ @"":@(40) }];
-	
-	YapDatabaseViewMappings *originalMappings = [mappings copy];
-	
-	STAssertTrue([mappings numberOfItemsInGroup:@""] == 20, @"");
-	
-	// Delete multiple items inside the range
-	
-	[changes addObject:[YapDatabaseViewRowChange deleteKey:@"key1" inGroup:@"" atIndex:10]];
-	[changes addObject:[YapDatabaseViewRowChange deleteKey:@"key2" inGroup:@"" atIndex:10]];
-	
-	[mappings updateWithCounts:@{ @"":@(38) }];
-	
-	// Fetch changeset
-	
-	NSArray *rowChanges = nil;
-	
-	[YapDatabaseViewChange getSectionChanges:NULL
-	                              rowChanges:&rowChanges
-	                    withOriginalMappings:originalMappings
-	                           finalMappings:mappings
-	                             fromChanges:changes];
-	
-	// Verify
-	
-	STAssertTrue([mappings numberOfItemsInGroup:@""] == 20, @"");
-	
-	STAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeDelete, @"");
-	STAssertTrue(RowOp(rowChanges, 0).originalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 0).originalIndex == 10, @"");
-	
-	STAssertTrue(RowOp(rowChanges, 1).type == YapDatabaseViewChangeDelete, @"");
-	STAssertTrue(RowOp(rowChanges, 1).originalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 1).originalIndex == 11, @"");
-	
-	STAssertTrue(RowOp(rowChanges, 2).type == YapDatabaseViewChangeInsert, @"");
-	STAssertTrue(RowOp(rowChanges, 2).finalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 2).finalIndex == 19, @"");
-	
-	STAssertTrue(RowOp(rowChanges, 3).type == YapDatabaseViewChangeInsert, @"");
-	STAssertTrue(RowOp(rowChanges, 3).finalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 3).finalIndex == 18, @"");
-}
-
-- (void)test_fixedRange_beginning_4B
-{
-	YapDatabaseViewRangeOptions *rangeOpts =
-	    [YapDatabaseViewRangeOptions fixedRangeWithLength:20 offset:0 from:YapDatabaseViewBeginning];
-	
-	YapDatabaseViewMappings *mappings = [[YapDatabaseViewMappings alloc] initWithGroups:@[@""] view:@"view"];
-	
-	[mappings setRangeOptions:rangeOpts forGroup:@""];
-	[mappings updateWithCounts:@{ @"":@(40) }];
-	
-	YapDatabaseViewMappings *originalMappings = [mappings copy];
-	
-	// Delete multiple items at the beginning of the range
-	
-	[changes addObject:[YapDatabaseViewRowChange deleteKey:@"key1" inGroup:@"" atIndex:0]];
-	[changes addObject:[YapDatabaseViewRowChange deleteKey:@"key2" inGroup:@"" atIndex:0]];
-	
-	[mappings updateWithCounts:@{ @"":@(38) }];
-	
-	STAssertTrue([mappings numberOfItemsInGroup:@""] == 20, @"");
-	
-	// Fetch changeset
-	
-	NSArray *rowChanges = nil;
-	
-	[YapDatabaseViewChange getSectionChanges:NULL
-	                              rowChanges:&rowChanges
-	                    withOriginalMappings:originalMappings
-	                           finalMappings:mappings
-	                             fromChanges:changes];
-	
-	// Verify
-	
-	STAssertTrue([mappings numberOfItemsInGroup:@""] == 20, @"");
-	
-	STAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeDelete, @"");
-	STAssertTrue(RowOp(rowChanges, 0).originalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 0).originalIndex == 0, @"");
-	
-	STAssertTrue(RowOp(rowChanges, 1).type == YapDatabaseViewChangeDelete, @"");
-	STAssertTrue(RowOp(rowChanges, 1).originalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 1).originalIndex == 1, @"");
-	
-	STAssertTrue(RowOp(rowChanges, 2).type == YapDatabaseViewChangeInsert, @"");
-	STAssertTrue(RowOp(rowChanges, 2).finalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 2).finalIndex == 19, @"");
-	
-	STAssertTrue(RowOp(rowChanges, 3).type == YapDatabaseViewChangeInsert, @"");
-	STAssertTrue(RowOp(rowChanges, 3).finalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 3).finalIndex == 18, @"");
-}
-
-- (void)test_fixedRange_beginning_4C
-{
-	YapDatabaseViewRangeOptions *rangeOpts =
-	    [YapDatabaseViewRangeOptions fixedRangeWithLength:20 offset:0 from:YapDatabaseViewBeginning];
-	
-	YapDatabaseViewMappings *mappings = [[YapDatabaseViewMappings alloc] initWithGroups:@[@""] view:@"view"];
-	
-	[mappings setRangeOptions:rangeOpts forGroup:@""];
-	[mappings updateWithCounts:@{ @"":@(40) }];
-	
-	YapDatabaseViewMappings *originalMappings = [mappings copy];
-	
-	// Delete multiple items at the end of the range
-	
-	[changes addObject:[YapDatabaseViewRowChange deleteKey:@"key1" inGroup:@"" atIndex:19]];
-	[changes addObject:[YapDatabaseViewRowChange deleteKey:@"key2" inGroup:@"" atIndex:18]];
-	
-	[mappings updateWithCounts:@{ @"":@(38) }];
-	
-	STAssertTrue([mappings numberOfItemsInGroup:@""] == 20, @"");
-	
-	// Fetch changeset
-	
-	NSArray *rowChanges = nil;
-	
-	[YapDatabaseViewChange getSectionChanges:NULL
-	                              rowChanges:&rowChanges
-	                    withOriginalMappings:originalMappings
-	                           finalMappings:mappings
-	                             fromChanges:changes];
-	
-	// Verify
-	
-	STAssertTrue([mappings numberOfItemsInGroup:@""] == 20, @"");
-	
-	STAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeDelete, @"");
-	STAssertTrue(RowOp(rowChanges, 0).originalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 0).originalIndex == 19, @"");
-	
-	STAssertTrue(RowOp(rowChanges, 1).type == YapDatabaseViewChangeDelete, @"");
-	STAssertTrue(RowOp(rowChanges, 1).originalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 1).originalIndex == 18, @"");
-	
-	STAssertTrue(RowOp(rowChanges, 2).type == YapDatabaseViewChangeInsert, @"");
-	STAssertTrue(RowOp(rowChanges, 2).finalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 2).finalIndex == 19, @"");
-	
-	STAssertTrue(RowOp(rowChanges, 3).type == YapDatabaseViewChangeInsert, @"");
-	STAssertTrue(RowOp(rowChanges, 3).finalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 3).finalIndex == 18, @"");
-}
-
-- (void)test_fixedRange_beginning_4D
-{
-	YapDatabaseViewRangeOptions *rangeOpts =
-	    [YapDatabaseViewRangeOptions fixedRangeWithLength:20 offset:0 from:YapDatabaseViewBeginning];
-	
-	YapDatabaseViewMappings *mappings = [[YapDatabaseViewMappings alloc] initWithGroups:@[@""] view:@"view"];
-	
-	[mappings setRangeOptions:rangeOpts forGroup:@""];
-	[mappings updateWithCounts:@{ @"":@(40) }];
-	
-	YapDatabaseViewMappings *originalMappings = [mappings copy];
-	
-	STAssertTrue([mappings numberOfItemsInGroup:@""] == 20, @"");
-	
-	// Delete multiple items at the end of the range, and some outside the range
-	
-	[changes addObject:[YapDatabaseViewRowChange deleteKey:@"key1" inGroup:@"" atIndex:18]];
-	[changes addObject:[YapDatabaseViewRowChange deleteKey:@"key2" inGroup:@"" atIndex:18]];
-	[changes addObject:[YapDatabaseViewRowChange deleteKey:@"key3" inGroup:@"" atIndex:18]];
-	[changes addObject:[YapDatabaseViewRowChange deleteKey:@"key4" inGroup:@"" atIndex:18]];
-	
-	[mappings updateWithCounts:@{ @"":@(36) }];
-	
-	// Fetch changeset
-	
-	NSArray *rowChanges = nil;
-	
-	[YapDatabaseViewChange getSectionChanges:NULL
-	                              rowChanges:&rowChanges
-	                    withOriginalMappings:originalMappings
-	                           finalMappings:mappings
-	                             fromChanges:changes];
-	
-	// Verify
-	
-	STAssertTrue([mappings numberOfItemsInGroup:@""] == 20, @"");
-	
-	STAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeDelete, @"");
-	STAssertTrue(RowOp(rowChanges, 0).originalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 0).originalIndex == 18, @"");
-	
-	STAssertTrue(RowOp(rowChanges, 1).type == YapDatabaseViewChangeDelete, @"");
-	STAssertTrue(RowOp(rowChanges, 1).originalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 1).originalIndex == 19, @"");
-	
-	STAssertTrue(RowOp(rowChanges, 2).type == YapDatabaseViewChangeInsert, @"");
-	STAssertTrue(RowOp(rowChanges, 2).finalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 2).finalIndex == 19, @"");
-	
-	STAssertTrue(RowOp(rowChanges, 3).type == YapDatabaseViewChangeInsert, @"");
-	STAssertTrue(RowOp(rowChanges, 3).finalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 3).finalIndex == 18, @"");
-}
 
 - (void)test_fixedRange_end_4A
 {
@@ -1319,7 +1702,7 @@ static YapDatabaseViewRowChange* (^RowOp)(NSArray*, NSUInteger) = ^(NSArray *rCh
 	
 	YapDatabaseViewMappings *originalMappings = [mappings copy];
 	
-	STAssertTrue([mappings numberOfItemsInGroup:@""] == 20, @"");
+	XCTAssertTrue([mappings numberOfItemsInGroup:@""] == 20, @"");
 	
 	// Delete multiple items inside the range
 	
@@ -1340,23 +1723,23 @@ static YapDatabaseViewRowChange* (^RowOp)(NSArray*, NSUInteger) = ^(NSArray *rCh
 	
 	// Verify
 	
-	STAssertTrue([mappings numberOfItemsInGroup:@""] == 20, @"");
+	XCTAssertTrue([mappings numberOfItemsInGroup:@""] == 20, @"");
 	
-	STAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeDelete, @"");
-	STAssertTrue(RowOp(rowChanges, 0).originalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 0).originalIndex == 10, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeDelete, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).originalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).originalIndex == 10, @"");
 	
-	STAssertTrue(RowOp(rowChanges, 1).type == YapDatabaseViewChangeDelete, @"");
-	STAssertTrue(RowOp(rowChanges, 1).originalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 1).originalIndex == 11, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).type == YapDatabaseViewChangeDelete, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).originalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).originalIndex == 11, @"");
 	
-	STAssertTrue(RowOp(rowChanges, 2).type == YapDatabaseViewChangeInsert, @"");
-	STAssertTrue(RowOp(rowChanges, 2).finalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 2).finalIndex == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 2).type == YapDatabaseViewChangeInsert, @"");
+	XCTAssertTrue(RowOp(rowChanges, 2).finalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 2).finalIndex == 0, @"");
 	
-	STAssertTrue(RowOp(rowChanges, 3).type == YapDatabaseViewChangeInsert, @"");
-	STAssertTrue(RowOp(rowChanges, 3).finalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 3).finalIndex == 1, @"");
+	XCTAssertTrue(RowOp(rowChanges, 3).type == YapDatabaseViewChangeInsert, @"");
+	XCTAssertTrue(RowOp(rowChanges, 3).finalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 3).finalIndex == 1, @"");
 }
 
 - (void)test_fixedRange_end_4B
@@ -1371,7 +1754,7 @@ static YapDatabaseViewRowChange* (^RowOp)(NSArray*, NSUInteger) = ^(NSArray *rCh
 	
 	YapDatabaseViewMappings *originalMappings = [mappings copy];
 	
-	STAssertTrue([mappings numberOfItemsInGroup:@""] == 20, @"");
+	XCTAssertTrue([mappings numberOfItemsInGroup:@""] == 20, @"");
 	
 	// Delete multiple items at the beginning of the range
 	
@@ -1392,23 +1775,23 @@ static YapDatabaseViewRowChange* (^RowOp)(NSArray*, NSUInteger) = ^(NSArray *rCh
 	
 	// Verify
 	
-	STAssertTrue([mappings numberOfItemsInGroup:@""] == 20, @"");
+	XCTAssertTrue([mappings numberOfItemsInGroup:@""] == 20, @"");
 	
-	STAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeDelete, @"");
-	STAssertTrue(RowOp(rowChanges, 0).originalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 0).originalIndex == 1, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeDelete, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).originalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).originalIndex == 1, @"");
 	
-	STAssertTrue(RowOp(rowChanges, 1).type == YapDatabaseViewChangeDelete, @"");
-	STAssertTrue(RowOp(rowChanges, 1).originalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 1).originalIndex == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).type == YapDatabaseViewChangeDelete, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).originalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).originalIndex == 0, @"");
 	
-	STAssertTrue(RowOp(rowChanges, 2).type == YapDatabaseViewChangeInsert, @"");
-	STAssertTrue(RowOp(rowChanges, 2).finalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 2).finalIndex == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 2).type == YapDatabaseViewChangeInsert, @"");
+	XCTAssertTrue(RowOp(rowChanges, 2).finalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 2).finalIndex == 0, @"");
 	
-	STAssertTrue(RowOp(rowChanges, 3).type == YapDatabaseViewChangeInsert, @"");
-	STAssertTrue(RowOp(rowChanges, 3).finalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 3).finalIndex == 1, @"");
+	XCTAssertTrue(RowOp(rowChanges, 3).type == YapDatabaseViewChangeInsert, @"");
+	XCTAssertTrue(RowOp(rowChanges, 3).finalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 3).finalIndex == 1, @"");
 }
 
 - (void)test_fixedRange_end_4C
@@ -1423,7 +1806,7 @@ static YapDatabaseViewRowChange* (^RowOp)(NSArray*, NSUInteger) = ^(NSArray *rCh
 	
 	YapDatabaseViewMappings *originalMappings = [mappings copy];
 	
-	STAssertTrue([mappings numberOfItemsInGroup:@""] == 20, @"");
+	XCTAssertTrue([mappings numberOfItemsInGroup:@""] == 20, @"");
 	
 	// Delete multiple items at the end of the range
 	
@@ -1444,23 +1827,23 @@ static YapDatabaseViewRowChange* (^RowOp)(NSArray*, NSUInteger) = ^(NSArray *rCh
 	
 	// Verify
 	
-	STAssertTrue([mappings numberOfItemsInGroup:@""] == 20, @"");
+	XCTAssertTrue([mappings numberOfItemsInGroup:@""] == 20, @"");
 	
-	STAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeDelete, @"");
-	STAssertTrue(RowOp(rowChanges, 0).originalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 0).originalIndex == 19, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeDelete, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).originalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).originalIndex == 19, @"");
 	
-	STAssertTrue(RowOp(rowChanges, 1).type == YapDatabaseViewChangeDelete, @"");
-	STAssertTrue(RowOp(rowChanges, 1).originalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 1).originalIndex == 18, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).type == YapDatabaseViewChangeDelete, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).originalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).originalIndex == 18, @"");
 	
-	STAssertTrue(RowOp(rowChanges, 2).type == YapDatabaseViewChangeInsert, @"");
-	STAssertTrue(RowOp(rowChanges, 2).finalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 2).finalIndex == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 2).type == YapDatabaseViewChangeInsert, @"");
+	XCTAssertTrue(RowOp(rowChanges, 2).finalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 2).finalIndex == 0, @"");
 	
-	STAssertTrue(RowOp(rowChanges, 3).type == YapDatabaseViewChangeInsert, @"");
-	STAssertTrue(RowOp(rowChanges, 3).finalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 3).finalIndex == 1, @"");
+	XCTAssertTrue(RowOp(rowChanges, 3).type == YapDatabaseViewChangeInsert, @"");
+	XCTAssertTrue(RowOp(rowChanges, 3).finalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 3).finalIndex == 1, @"");
 }
 
 - (void)test_fixedRange_end_4D
@@ -1475,7 +1858,7 @@ static YapDatabaseViewRowChange* (^RowOp)(NSArray*, NSUInteger) = ^(NSArray *rCh
 	
 	YapDatabaseViewMappings *originalMappings = [mappings copy];
 	
-	STAssertTrue([mappings numberOfItemsInGroup:@""] == 20, @"");
+	XCTAssertTrue([mappings numberOfItemsInGroup:@""] == 20, @"");
 	
 	// Delete multiple items at the beginning of the range, and some outside the range
 	
@@ -1498,171 +1881,28 @@ static YapDatabaseViewRowChange* (^RowOp)(NSArray*, NSUInteger) = ^(NSArray *rCh
 	
 	// Verify
 	
-	STAssertTrue([mappings numberOfItemsInGroup:@""] == 20, @"");
+	XCTAssertTrue([mappings numberOfItemsInGroup:@""] == 20, @"");
 	
-	STAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeDelete, @"");
-	STAssertTrue(RowOp(rowChanges, 0).originalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 0).originalIndex == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeDelete, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).originalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).originalIndex == 0, @"");
 	
-	STAssertTrue(RowOp(rowChanges, 1).type == YapDatabaseViewChangeDelete, @"");
-	STAssertTrue(RowOp(rowChanges, 1).originalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 1).originalIndex == 1, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).type == YapDatabaseViewChangeDelete, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).originalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).originalIndex == 1, @"");
 	
-	STAssertTrue(RowOp(rowChanges, 2).type == YapDatabaseViewChangeInsert, @"");
-	STAssertTrue(RowOp(rowChanges, 2).finalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 2).finalIndex == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 2).type == YapDatabaseViewChangeInsert, @"");
+	XCTAssertTrue(RowOp(rowChanges, 2).finalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 2).finalIndex == 0, @"");
 	
-	STAssertTrue(RowOp(rowChanges, 3).type == YapDatabaseViewChangeInsert, @"");
-	STAssertTrue(RowOp(rowChanges, 3).finalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 3).finalIndex == 1, @"");
+	XCTAssertTrue(RowOp(rowChanges, 3).type == YapDatabaseViewChangeInsert, @"");
+	XCTAssertTrue(RowOp(rowChanges, 3).finalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 3).finalIndex == 1, @"");
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-#pragma mark Fixed Range: Changing Length
+#pragma mark Fixed Range End: Changing Length
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-- (void)test_fixedRange_beginning_5A
-{
-	YapDatabaseViewRangeOptions *rangeOpts =
-	    [YapDatabaseViewRangeOptions fixedRangeWithLength:20 offset:0 from:YapDatabaseViewBeginning];
-	
-	YapDatabaseViewMappings *mappings = [[YapDatabaseViewMappings alloc] initWithGroups:@[@""] view:@"view"];
-	
-	[mappings setRangeOptions:rangeOpts forGroup:@""];
-	[mappings updateWithCounts:@{ @"":@(0) }];
-	
-	YapDatabaseViewMappings *originalMappings = [mappings copy];
-	
-	STAssertTrue([mappings numberOfItemsInGroup:@""] == 0, @"");
-	
-	// Insert multiple items into an empty view
-	
-	[changes addObject:[YapDatabaseViewRowChange insertKey:@"key1" inGroup:@"" atIndex:0]];
-	[changes addObject:[YapDatabaseViewRowChange insertKey:@"key2" inGroup:@"" atIndex:1]];
-	
-	[mappings updateWithCounts:@{ @"":@(2) }];
-	
-	// Fetch changeset
-	
-	NSArray *rowChanges = nil;
-	
-	[YapDatabaseViewChange getSectionChanges:NULL
-	                              rowChanges:&rowChanges
-	                    withOriginalMappings:originalMappings
-	                           finalMappings:mappings
-	                             fromChanges:changes];
-	
-	// Verify
-	
-	STAssertTrue([mappings numberOfItemsInGroup:@""] == 2, @"");
-	
-	STAssertTrue([rowChanges count] == 2, @"");
-	
-	STAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeInsert, @"");
-	STAssertTrue(RowOp(rowChanges, 0).finalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 0).finalIndex == 0, @"");
-	
-	STAssertTrue(RowOp(rowChanges, 1).type == YapDatabaseViewChangeInsert, @"");
-	STAssertTrue(RowOp(rowChanges, 1).finalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 1).finalIndex == 1, @"");
-}
-
-- (void)test_fixedRange_beginning_5B
-{
-	YapDatabaseViewRangeOptions *rangeOpts =
-	    [YapDatabaseViewRangeOptions fixedRangeWithLength:20 offset:0 from:YapDatabaseViewBeginning];
-	
-	YapDatabaseViewMappings *mappings = [[YapDatabaseViewMappings alloc] initWithGroups:@[@""] view:@"view"];
-	
-	[mappings setRangeOptions:rangeOpts forGroup:@""];
-	[mappings updateWithCounts:@{ @"":@(10) }];
-	
-	YapDatabaseViewMappings *originalMappings = [mappings copy];
-	
-	STAssertTrue([mappings numberOfItemsInGroup:@""] == 10, @"");
-	
-	// Delete multiple items inside the range
-	
-	[changes addObject:[YapDatabaseViewRowChange insertKey:@"key1" inGroup:@"" atIndex:0]];
-	[changes addObject:[YapDatabaseViewRowChange insertKey:@"key2" inGroup:@"" atIndex:1]];
-	
-	[mappings updateWithCounts:@{ @"":@(12) }];
-	
-	// Fetch changeset
-	
-	NSArray *rowChanges = nil;
-	
-	[YapDatabaseViewChange getSectionChanges:NULL
-	                              rowChanges:&rowChanges
-	                    withOriginalMappings:originalMappings
-	                           finalMappings:mappings
-	                             fromChanges:changes];
-	
-	// Verify
-	
-	STAssertTrue([mappings numberOfItemsInGroup:@""] == 12, @"");
-	
-	STAssertTrue([rowChanges count] == 2, @"");
-	
-	STAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeInsert, @"");
-	STAssertTrue(RowOp(rowChanges, 0).finalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 0).finalIndex == 0, @"");
-	
-	STAssertTrue(RowOp(rowChanges, 1).type == YapDatabaseViewChangeInsert, @"");
-	STAssertTrue(RowOp(rowChanges, 1).finalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 1).finalIndex == 1, @"");
-}
-
-- (void)test_fixedRange_beginning_5C
-{
-	YapDatabaseViewRangeOptions *rangeOpts =
-	    [YapDatabaseViewRangeOptions fixedRangeWithLength:20 offset:0 from:YapDatabaseViewBeginning];
-	
-	YapDatabaseViewMappings *mappings = [[YapDatabaseViewMappings alloc] initWithGroups:@[@""] view:@"view"];
-	
-	[mappings setRangeOptions:rangeOpts forGroup:@""];
-	[mappings updateWithCounts:@{ @"":@(19) }];
-	
-	YapDatabaseViewMappings *originalMappings = [mappings copy];
-	
-	STAssertTrue([mappings numberOfItemsInGroup:@""] == 19, @"");
-	
-	// Delete multiple items inside the range
-	
-	[changes addObject:[YapDatabaseViewRowChange insertKey:@"key1" inGroup:@"" atIndex:0]];
-	[changes addObject:[YapDatabaseViewRowChange insertKey:@"key2" inGroup:@"" atIndex:1]];
-	
-	[mappings updateWithCounts:@{ @"":@(21) }];
-	
-	// Fetch changeset
-	
-	NSArray *rowChanges = nil;
-	
-	[YapDatabaseViewChange getSectionChanges:NULL
-	                              rowChanges:&rowChanges
-	                    withOriginalMappings:originalMappings
-	                           finalMappings:mappings
-	                             fromChanges:changes];
-	
-	// Verify
-	
-	STAssertTrue([mappings numberOfItemsInGroup:@""] == 20, @"");
-	
-	STAssertTrue([rowChanges count] == 3, @"");
-	
-	STAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeInsert, @"");
-	STAssertTrue(RowOp(rowChanges, 0).finalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 0).finalIndex == 0, @"");
-	
-	STAssertTrue(RowOp(rowChanges, 1).type == YapDatabaseViewChangeInsert, @"");
-	STAssertTrue(RowOp(rowChanges, 1).finalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 1).finalIndex == 1, @"");
-	
-	STAssertTrue(RowOp(rowChanges, 2).type == YapDatabaseViewChangeDelete, @"");
-	STAssertTrue(RowOp(rowChanges, 2).originalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 2).originalIndex == 18, @"");
-}
-
 - (void)test_fixedRange_end_5A
 {
 	YapDatabaseViewRangeOptions *rangeOpts =
@@ -1675,7 +1915,7 @@ static YapDatabaseViewRowChange* (^RowOp)(NSArray*, NSUInteger) = ^(NSArray *rCh
 	
 	YapDatabaseViewMappings *originalMappings = [mappings copy];
 	
-	STAssertTrue([mappings numberOfItemsInGroup:@""] == 0, @"");
+	XCTAssertTrue([mappings numberOfItemsInGroup:@""] == 0, @"");
 	
 	// Delete multiple items inside the range
 	
@@ -1696,17 +1936,17 @@ static YapDatabaseViewRowChange* (^RowOp)(NSArray*, NSUInteger) = ^(NSArray *rCh
 	
 	// Verify
 	
-	STAssertTrue([mappings numberOfItemsInGroup:@""] == 2, @"");
+	XCTAssertTrue([mappings numberOfItemsInGroup:@""] == 2, @"");
 	
-	STAssertTrue([rowChanges count] == 2, @"");
+	XCTAssertTrue([rowChanges count] == 2, @"");
 	
-	STAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeInsert, @"");
-	STAssertTrue(RowOp(rowChanges, 0).finalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 0).finalIndex == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeInsert, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).finalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).finalIndex == 0, @"");
 	
-	STAssertTrue(RowOp(rowChanges, 1).type == YapDatabaseViewChangeInsert, @"");
-	STAssertTrue(RowOp(rowChanges, 1).finalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 1).finalIndex == 1, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).type == YapDatabaseViewChangeInsert, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).finalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).finalIndex == 1, @"");
 }
 
 - (void)test_fixedRange_end_5B
@@ -1721,7 +1961,7 @@ static YapDatabaseViewRowChange* (^RowOp)(NSArray*, NSUInteger) = ^(NSArray *rCh
 	
 	YapDatabaseViewMappings *originalMappings = [mappings copy];
 	
-	STAssertTrue([mappings numberOfItemsInGroup:@""] == 10, @"");
+	XCTAssertTrue([mappings numberOfItemsInGroup:@""] == 10, @"");
 	
 	// Delete multiple items inside the range
 	
@@ -1742,17 +1982,17 @@ static YapDatabaseViewRowChange* (^RowOp)(NSArray*, NSUInteger) = ^(NSArray *rCh
 	
 	// Verify
 	
-	STAssertTrue([mappings numberOfItemsInGroup:@""] == 12, @"");
+	XCTAssertTrue([mappings numberOfItemsInGroup:@""] == 12, @"");
 	
-	STAssertTrue([rowChanges count] == 2, @"");
+	XCTAssertTrue([rowChanges count] == 2, @"");
 	
-	STAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeInsert, @"");
-	STAssertTrue(RowOp(rowChanges, 0).finalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 0).finalIndex == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeInsert, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).finalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).finalIndex == 0, @"");
 	
-	STAssertTrue(RowOp(rowChanges, 1).type == YapDatabaseViewChangeInsert, @"");
-	STAssertTrue(RowOp(rowChanges, 1).finalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 1).finalIndex == 1, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).type == YapDatabaseViewChangeInsert, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).finalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).finalIndex == 1, @"");
 }
 
 - (void)test_fixedRange_end_5C
@@ -1767,7 +2007,7 @@ static YapDatabaseViewRowChange* (^RowOp)(NSArray*, NSUInteger) = ^(NSArray *rCh
 	
 	YapDatabaseViewMappings *originalMappings = [mappings copy];
 	
-	STAssertTrue([mappings numberOfItemsInGroup:@""] == 19, @"");
+	XCTAssertTrue([mappings numberOfItemsInGroup:@""] == 19, @"");
 	
 	// Delete multiple items inside the range
 	
@@ -1788,216 +2028,18 @@ static YapDatabaseViewRowChange* (^RowOp)(NSArray*, NSUInteger) = ^(NSArray *rCh
 	
 	// Verify
 	
-	STAssertTrue([mappings numberOfItemsInGroup:@""] == 20, @"");
+	XCTAssertTrue([mappings numberOfItemsInGroup:@""] == 20, @"");
 	
-	STAssertTrue([rowChanges count] == 1, @"");
+	XCTAssertTrue([rowChanges count] == 1, @"");
 	
-	STAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeInsert, @"");
-	STAssertTrue(RowOp(rowChanges, 0).finalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 0).finalIndex == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeInsert, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).finalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).finalIndex == 0, @"");
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-#pragma mark Fixed Range: Reset
+#pragma mark Fixed Range End: Reset
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-- (void)test_fixedRange_beginning_6A
-{
-	YapDatabaseViewRangeOptions *rangeOpts =
-	    [YapDatabaseViewRangeOptions fixedRangeWithLength:20 offset:0 from:YapDatabaseViewBeginning];
-	
-	YapDatabaseViewMappings *mappings = [[YapDatabaseViewMappings alloc] initWithGroups:@[@""] view:@"view"];
-	
-	[mappings setRangeOptions:rangeOpts forGroup:@""];
-	[mappings updateWithCounts:@{ @"":@(2) }];
-	
-	YapDatabaseViewMappings *originalMappings = [mappings copy];
-	
-	STAssertTrue([mappings numberOfItemsInGroup:@""] == 2, @"");
-	
-	// Delete all items via removeAllObjectsInAllCollections
-	
-	[changes addObject:[YapDatabaseViewSectionChange resetGroup:@""]];
-	
-	[mappings updateWithCounts:@{ @"":@(0) }];
-	
-	// Fetch changeset
-	
-	NSArray *rowChanges = nil;
-	
-	[YapDatabaseViewChange getSectionChanges:NULL
-	                              rowChanges:&rowChanges
-	                    withOriginalMappings:originalMappings
-	                           finalMappings:mappings
-	                             fromChanges:changes];
-	
-	// Verify
-	
-	STAssertTrue([mappings numberOfItemsInGroup:@""] == 0, @"");
-	
-	STAssertTrue([rowChanges count] == 2, @"");
-	
-	STAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeDelete, @"");
-	STAssertTrue(RowOp(rowChanges, 0).originalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 0).originalIndex == 1, @"");
-	
-	STAssertTrue(RowOp(rowChanges, 1).type == YapDatabaseViewChangeDelete, @"");
-	STAssertTrue(RowOp(rowChanges, 1).originalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 1).originalIndex == 0, @"");
-}
-
-- (void)test_fixedRange_beginning_6B
-{
-	YapDatabaseViewRangeOptions *rangeOpts =
-	  [YapDatabaseViewRangeOptions fixedRangeWithLength:2 offset:0 from:YapDatabaseViewBeginning];
-	
-	YapDatabaseViewMappings *mappings = [[YapDatabaseViewMappings alloc] initWithGroups:@[@""] view:@"view"];
-	[mappings setIsDynamicSectionForAllGroups:YES];
-	
-	[mappings setRangeOptions:rangeOpts forGroup:@""];
-	[mappings updateWithCounts:@{ @"":@(4) }];
-	
-	YapDatabaseViewMappings *originalMappings = [mappings copy];
-	
-	STAssertTrue([mappings numberOfItemsInGroup:@""] == 2, @"");
-	
-	// Delete all items via removeAllObjectsInAllCollections
-	
-	[changes addObject:[YapDatabaseViewSectionChange resetGroup:@""]];
-	
-	[mappings updateWithCounts:@{ @"":@(0) }];
-	
-	// Fetch changeset
-	
-	NSArray *sectionChanges = nil;
-	NSArray *rowChanges = nil;
-	
-	[YapDatabaseViewChange getSectionChanges:&sectionChanges
-	                              rowChanges:&rowChanges
-	                    withOriginalMappings:originalMappings
-	                           finalMappings:mappings
-	                             fromChanges:changes];
-	
-	// Verify
-	
-	STAssertTrue([mappings numberOfItemsInGroup:@""] == 0, @"");
-	
-	STAssertTrue([sectionChanges count] == 1, @"");
-	
-	STAssertTrue(SectionOp(sectionChanges, 0).type == YapDatabaseViewChangeDelete, @"");
-	STAssertTrue(SectionOp(sectionChanges, 0).index == 0, @"");
-	
-	STAssertTrue([rowChanges count] == 2, @"");
-	
-	STAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeDelete, @"");
-	STAssertTrue(RowOp(rowChanges, 0).originalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 0).originalIndex == 1, @"");
-	
-	STAssertTrue(RowOp(rowChanges, 1).type == YapDatabaseViewChangeDelete, @"");
-	STAssertTrue(RowOp(rowChanges, 1).originalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 1).originalIndex == 0, @"");
-}
-
-- (void)test_fixedRange_beginning_6C
-{
-	YapDatabaseViewRangeOptions *rangeOpts =
-	    [YapDatabaseViewRangeOptions fixedRangeWithLength:20 offset:0 from:YapDatabaseViewBeginning];
-	
-	YapDatabaseViewMappings *mappings = [[YapDatabaseViewMappings alloc] initWithGroups:@[@""] view:@"view"];
-	
-	[mappings setRangeOptions:rangeOpts forGroup:@""];
-	[mappings updateWithCounts:@{ @"":@(2) }];
-	
-	YapDatabaseViewMappings *originalMappings = [mappings copy];
-	
-	STAssertTrue([mappings numberOfItemsInGroup:@""] == 2, @"");
-	
-	// Delete multiple items inside the range
-	
-	[changes addObject:[YapDatabaseViewSectionChange resetGroup:@""]];
-	[changes addObject:[YapDatabaseViewRowChange insertKey:@"key" inGroup:@"" atIndex:0]];
-	
-	[mappings updateWithCounts:@{ @"":@(1) }];
-	
-	// Fetch changeset
-	
-	NSArray *rowChanges = nil;
-	
-	[YapDatabaseViewChange getSectionChanges:NULL
-	                              rowChanges:&rowChanges
-	                    withOriginalMappings:originalMappings
-	                           finalMappings:mappings
-	                             fromChanges:changes];
-	
-	// Verify
-	
-	STAssertTrue([mappings numberOfItemsInGroup:@""] == 1, @"");
-	
-	STAssertTrue([rowChanges count] == 3, @"");
-	
-	STAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeDelete, @"");
-	STAssertTrue(RowOp(rowChanges, 0).originalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 0).originalIndex == 1, @"");
-	
-	STAssertTrue(RowOp(rowChanges, 1).type == YapDatabaseViewChangeDelete, @"");
-	STAssertTrue(RowOp(rowChanges, 1).originalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 1).originalIndex == 0, @"");
-	
-	STAssertTrue(RowOp(rowChanges, 2).type == YapDatabaseViewChangeInsert, @"");
-	STAssertTrue(RowOp(rowChanges, 2).finalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 2).finalIndex == 0, @"");
-}
-
-- (void)test_fixedRange_beginning_6D
-{
-	YapDatabaseViewRangeOptions *rangeOpts =
-	    [YapDatabaseViewRangeOptions fixedRangeWithLength:20 offset:0 from:YapDatabaseViewBeginning];
-	
-	YapDatabaseViewMappings *mappings = [[YapDatabaseViewMappings alloc] initWithGroups:@[@""] view:@"view"];
-	
-	[mappings setRangeOptions:rangeOpts forGroup:@""];
-	[mappings updateWithCounts:@{ @"":@(2) }];
-	
-	YapDatabaseViewMappings *originalMappings = [mappings copy];
-	
-	STAssertTrue([mappings numberOfItemsInGroup:@""] == 2, @"");
-	
-	// Test multiple changes, forcing some change-consolidation processing
-	
-	[changes addObject:[YapDatabaseViewRowChange insertKey:@"key" inGroup:@"" atIndex:0]];
-	[changes addObject:[YapDatabaseViewSectionChange resetGroup:@""]];
-	[changes addObject:[YapDatabaseViewRowChange insertKey:@"key" inGroup:@"" atIndex:0]];
-	
-	[mappings updateWithCounts:@{ @"":@(1) }];
-	
-	// Fetch changeset
-	
-	NSArray *rowChanges = nil;
-	
-	[YapDatabaseViewChange getSectionChanges:NULL
-	                              rowChanges:&rowChanges
-	                    withOriginalMappings:originalMappings
-	                           finalMappings:mappings
-	                             fromChanges:changes];
-	
-	// Verify
-	
-	STAssertTrue([mappings numberOfItemsInGroup:@""] == 1, @"");
-	
-	STAssertTrue([rowChanges count] == 3, @"");
-	
-	STAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeDelete, @"");
-	STAssertTrue(RowOp(rowChanges, 0).originalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 0).originalIndex == 1, @"");
-	
-	STAssertTrue(RowOp(rowChanges, 1).type == YapDatabaseViewChangeDelete, @"");
-	STAssertTrue(RowOp(rowChanges, 1).originalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 1).originalIndex == 0, @"");
-	
-	STAssertTrue(RowOp(rowChanges, 2).type == YapDatabaseViewChangeInsert, @"");
-	STAssertTrue(RowOp(rowChanges, 2).finalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 2).finalIndex == 0, @"");
-}
 
 - (void)test_fixedRange_end_6A
 {
@@ -2011,7 +2053,7 @@ static YapDatabaseViewRowChange* (^RowOp)(NSArray*, NSUInteger) = ^(NSArray *rCh
 	
 	YapDatabaseViewMappings *originalMappings = [mappings copy];
 	
-	STAssertTrue([mappings numberOfItemsInGroup:@""] == 2, @"");
+	XCTAssertTrue([mappings numberOfItemsInGroup:@""] == 2, @"");
 	
 	// Delete all items via removeAllObjectsInAllCollections
 	
@@ -2031,17 +2073,17 @@ static YapDatabaseViewRowChange* (^RowOp)(NSArray*, NSUInteger) = ^(NSArray *rCh
 	
 	// Verify
 	
-	STAssertTrue([mappings numberOfItemsInGroup:@""] == 0, @"");
+	XCTAssertTrue([mappings numberOfItemsInGroup:@""] == 0, @"");
 	
-	STAssertTrue([rowChanges count] == 2, @"");
+	XCTAssertTrue([rowChanges count] == 2, @"");
 	
-	STAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeDelete, @"");
-	STAssertTrue(RowOp(rowChanges, 0).originalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 0).originalIndex == 1, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeDelete, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).originalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).originalIndex == 1, @"");
 	
-	STAssertTrue(RowOp(rowChanges, 1).type == YapDatabaseViewChangeDelete, @"");
-	STAssertTrue(RowOp(rowChanges, 1).originalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 1).originalIndex == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).type == YapDatabaseViewChangeDelete, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).originalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).originalIndex == 0, @"");
 }
 
 - (void)test_fixedRange_end_6B
@@ -2057,7 +2099,7 @@ static YapDatabaseViewRowChange* (^RowOp)(NSArray*, NSUInteger) = ^(NSArray *rCh
 	
 	YapDatabaseViewMappings *originalMappings = [mappings copy];
 	
-	STAssertTrue([mappings numberOfItemsInGroup:@""] == 2, @"");
+	XCTAssertTrue([mappings numberOfItemsInGroup:@""] == 2, @"");
 	
 	// Delete all items via removeAllObjectsInAllCollections
 	
@@ -2078,22 +2120,22 @@ static YapDatabaseViewRowChange* (^RowOp)(NSArray*, NSUInteger) = ^(NSArray *rCh
 	
 	// Verify
 	
-	STAssertTrue([mappings numberOfItemsInGroup:@""] == 0, @"");
+	XCTAssertTrue([mappings numberOfItemsInGroup:@""] == 0, @"");
 	
-	STAssertTrue([sectionChanges count] == 1, @"");
+	XCTAssertTrue([sectionChanges count] == 1, @"");
 	
-	STAssertTrue(SectionOp(sectionChanges, 0).type == YapDatabaseViewChangeDelete, @"");
-	STAssertTrue(SectionOp(sectionChanges, 0).index == 0, @"");
+	XCTAssertTrue(SectionOp(sectionChanges, 0).type == YapDatabaseViewChangeDelete, @"");
+	XCTAssertTrue(SectionOp(sectionChanges, 0).index == 0, @"");
 	
-	STAssertTrue([rowChanges count] == 2, @"");
+	XCTAssertTrue([rowChanges count] == 2, @"");
 	
-	STAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeDelete, @"");
-	STAssertTrue(RowOp(rowChanges, 0).originalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 0).originalIndex == 1, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeDelete, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).originalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).originalIndex == 1, @"");
 	
-	STAssertTrue(RowOp(rowChanges, 1).type == YapDatabaseViewChangeDelete, @"");
-	STAssertTrue(RowOp(rowChanges, 1).originalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 1).originalIndex == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).type == YapDatabaseViewChangeDelete, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).originalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).originalIndex == 0, @"");
 }
 
 - (void)test_fixedRange_end_6C
@@ -2108,7 +2150,7 @@ static YapDatabaseViewRowChange* (^RowOp)(NSArray*, NSUInteger) = ^(NSArray *rCh
 	
 	YapDatabaseViewMappings *originalMappings = [mappings copy];
 	
-	STAssertTrue([mappings numberOfItemsInGroup:@""] == 2, @"");
+	XCTAssertTrue([mappings numberOfItemsInGroup:@""] == 2, @"");
 	
 	// Delete multiple items inside the range
 	
@@ -2129,21 +2171,21 @@ static YapDatabaseViewRowChange* (^RowOp)(NSArray*, NSUInteger) = ^(NSArray *rCh
 	
 	// Verify
 	
-	STAssertTrue([mappings numberOfItemsInGroup:@""] == 1, @"");
+	XCTAssertTrue([mappings numberOfItemsInGroup:@""] == 1, @"");
 	
-	STAssertTrue([rowChanges count] == 3, @"");
+	XCTAssertTrue([rowChanges count] == 3, @"");
 	
-	STAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeDelete, @"");
-	STAssertTrue(RowOp(rowChanges, 0).originalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 0).originalIndex == 1, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeDelete, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).originalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).originalIndex == 1, @"");
 	
-	STAssertTrue(RowOp(rowChanges, 1).type == YapDatabaseViewChangeDelete, @"");
-	STAssertTrue(RowOp(rowChanges, 1).originalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 1).originalIndex == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).type == YapDatabaseViewChangeDelete, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).originalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).originalIndex == 0, @"");
 	
-	STAssertTrue(RowOp(rowChanges, 2).type == YapDatabaseViewChangeInsert, @"");
-	STAssertTrue(RowOp(rowChanges, 2).finalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 2).finalIndex == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 2).type == YapDatabaseViewChangeInsert, @"");
+	XCTAssertTrue(RowOp(rowChanges, 2).finalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 2).finalIndex == 0, @"");
 }
 
 - (void)test_fixedRange_end_6D
@@ -2158,7 +2200,7 @@ static YapDatabaseViewRowChange* (^RowOp)(NSArray*, NSUInteger) = ^(NSArray *rCh
 	
 	YapDatabaseViewMappings *originalMappings = [mappings copy];
 	
-	STAssertTrue([mappings numberOfItemsInGroup:@""] == 2, @"");
+	XCTAssertTrue([mappings numberOfItemsInGroup:@""] == 2, @"");
 	
 	// Delete multiple items inside the range
 	
@@ -2180,25 +2222,35 @@ static YapDatabaseViewRowChange* (^RowOp)(NSArray*, NSUInteger) = ^(NSArray *rCh
 	
 	// Verify
 	
-	STAssertTrue([mappings numberOfItemsInGroup:@""] == 1, @"");
+	XCTAssertTrue([mappings numberOfItemsInGroup:@""] == 1, @"");
 	
-	STAssertTrue([rowChanges count] == 3, @"");
+	XCTAssertTrue([rowChanges count] == 3, @"");
 	
-	STAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeDelete, @"");
-	STAssertTrue(RowOp(rowChanges, 0).originalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 0).originalIndex == 1, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeDelete, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).originalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).originalIndex == 1, @"");
 	
-	STAssertTrue(RowOp(rowChanges, 1).type == YapDatabaseViewChangeDelete, @"");
-	STAssertTrue(RowOp(rowChanges, 1).originalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 1).originalIndex == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).type == YapDatabaseViewChangeDelete, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).originalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).originalIndex == 0, @"");
 	
-	STAssertTrue(RowOp(rowChanges, 2).type == YapDatabaseViewChangeInsert, @"");
-	STAssertTrue(RowOp(rowChanges, 2).finalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 2).finalIndex == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 2).type == YapDatabaseViewChangeInsert, @"");
+	XCTAssertTrue(RowOp(rowChanges, 2).finalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 2).finalIndex == 0, @"");
 }
+
+@end
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 #pragma mark -
+#pragma mark Flexible Range
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+@interface TestViewMappingsFlexibleRange : TestViewMappingsBase
+@end
+
+@implementation TestViewMappingsFlexibleRange
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 #pragma mark Flexible Range: Insert
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -2214,7 +2266,7 @@ static YapDatabaseViewRowChange* (^RowOp)(NSArray*, NSUInteger) = ^(NSArray *rCh
 	
 	YapDatabaseViewMappings *originalMappings = [mappings copy];
 	
-	STAssertTrue([mappings numberOfItemsInGroup:@""] == 20, @"");
+	XCTAssertTrue([mappings numberOfItemsInGroup:@""] == 20, @"");
 	
 	// Insert item in the middle of the range
 	
@@ -2234,13 +2286,13 @@ static YapDatabaseViewRowChange* (^RowOp)(NSArray*, NSUInteger) = ^(NSArray *rCh
 	
 	// Verify
 	
-	STAssertTrue([mappings numberOfItemsInGroup:@""] == 21, @"");
+	XCTAssertTrue([mappings numberOfItemsInGroup:@""] == 21, @"");
 	
-	STAssertTrue([rowChanges count] == 1, @"");
+	XCTAssertTrue([rowChanges count] == 1, @"");
 	
-	STAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeInsert, @"");
-	STAssertTrue(RowOp(rowChanges, 0).finalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 0).finalIndex == 2, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeInsert, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).finalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).finalIndex == 2, @"");
 }
 
 - (void)test_flexibleRange_beginning_1B
@@ -2255,7 +2307,7 @@ static YapDatabaseViewRowChange* (^RowOp)(NSArray*, NSUInteger) = ^(NSArray *rCh
 	
 	YapDatabaseViewMappings *originalMappings = [mappings copy];
 	
-	STAssertTrue([mappings numberOfItemsInGroup:@""] == 20, @"");
+	XCTAssertTrue([mappings numberOfItemsInGroup:@""] == 20, @"");
 	
 	// Insert item at the beginning of the range
 	
@@ -2275,13 +2327,13 @@ static YapDatabaseViewRowChange* (^RowOp)(NSArray*, NSUInteger) = ^(NSArray *rCh
 	
 	// Verify
 	
-	STAssertTrue([mappings numberOfItemsInGroup:@""] == 21, @"");
+	XCTAssertTrue([mappings numberOfItemsInGroup:@""] == 21, @"");
 	
-	STAssertTrue([rowChanges count] == 1, @"");
+	XCTAssertTrue([rowChanges count] == 1, @"");
 	
-	STAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeInsert, @"");
-	STAssertTrue(RowOp(rowChanges, 0).finalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 0).finalIndex == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeInsert, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).finalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).finalIndex == 0, @"");
 }
 
 - (void)test_flexibleRange_beginning_1C
@@ -2296,7 +2348,7 @@ static YapDatabaseViewRowChange* (^RowOp)(NSArray*, NSUInteger) = ^(NSArray *rCh
 	
 	YapDatabaseViewMappings *originalMappings = [mappings copy];
 	
-	STAssertTrue([mappings numberOfItemsInGroup:@""] == 20, @"");
+	XCTAssertTrue([mappings numberOfItemsInGroup:@""] == 20, @"");
 	
 	// Insert item at the end of the range (still inside)
 	
@@ -2316,13 +2368,13 @@ static YapDatabaseViewRowChange* (^RowOp)(NSArray*, NSUInteger) = ^(NSArray *rCh
 	
 	// Verify
 	
-	STAssertTrue([mappings numberOfItemsInGroup:@""] == 21, @"");
+	XCTAssertTrue([mappings numberOfItemsInGroup:@""] == 21, @"");
 	
-	STAssertTrue([rowChanges count] == 1, @"");
+	XCTAssertTrue([rowChanges count] == 1, @"");
 	
-	STAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeInsert, @"");
-	STAssertTrue(RowOp(rowChanges, 0).finalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 0).finalIndex == 19, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeInsert, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).finalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).finalIndex == 19, @"");
 }
 
 - (void)test_flexibleRange_beginning_1D
@@ -2337,7 +2389,7 @@ static YapDatabaseViewRowChange* (^RowOp)(NSArray*, NSUInteger) = ^(NSArray *rCh
 	
 	YapDatabaseViewMappings *originalMappings = [mappings copy];
 	
-	STAssertTrue([mappings numberOfItemsInGroup:@""] == 20, @"");
+	XCTAssertTrue([mappings numberOfItemsInGroup:@""] == 20, @"");
 	
 	// Insert item at the end of the range (just outside)
 	
@@ -2357,9 +2409,9 @@ static YapDatabaseViewRowChange* (^RowOp)(NSArray*, NSUInteger) = ^(NSArray *rCh
 	
 	// Verify
 	
-	STAssertTrue([mappings numberOfItemsInGroup:@""] == 20, @"");
+	XCTAssertTrue([mappings numberOfItemsInGroup:@""] == 20, @"");
 	
-	STAssertTrue([rowChanges count] == 0, @"");
+	XCTAssertTrue([rowChanges count] == 0, @"");
 }
 
 - (void)test_flexibleRange_end_1A
@@ -2374,7 +2426,7 @@ static YapDatabaseViewRowChange* (^RowOp)(NSArray*, NSUInteger) = ^(NSArray *rCh
 	
 	YapDatabaseViewMappings *originalMappings = [mappings copy];
 	
-	STAssertTrue([mappings numberOfItemsInGroup:@""] == 20, @"");
+	XCTAssertTrue([mappings numberOfItemsInGroup:@""] == 20, @"");
 	
 	// Insert item in the middle of the range
 	
@@ -2394,13 +2446,13 @@ static YapDatabaseViewRowChange* (^RowOp)(NSArray*, NSUInteger) = ^(NSArray *rCh
 	
 	// Verify
 	
-	STAssertTrue([mappings numberOfItemsInGroup:@""] == 21, @"");
+	XCTAssertTrue([mappings numberOfItemsInGroup:@""] == 21, @"");
 	
-	STAssertTrue([rowChanges count] == 1, @"");
+	XCTAssertTrue([rowChanges count] == 1, @"");
 	
-	STAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeInsert, @"");
-	STAssertTrue(RowOp(rowChanges, 0).finalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 0).finalIndex == 10, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeInsert, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).finalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).finalIndex == 10, @"");
 }
 
 - (void)test_flexibleRange_end_1B
@@ -2415,7 +2467,7 @@ static YapDatabaseViewRowChange* (^RowOp)(NSArray*, NSUInteger) = ^(NSArray *rCh
 	
 	YapDatabaseViewMappings *originalMappings = [mappings copy];
 	
-	STAssertTrue([mappings numberOfItemsInGroup:@""] == 20, @"");
+	XCTAssertTrue([mappings numberOfItemsInGroup:@""] == 20, @"");
 	
 	// Insert item at the beginning of the range
 	
@@ -2435,13 +2487,13 @@ static YapDatabaseViewRowChange* (^RowOp)(NSArray*, NSUInteger) = ^(NSArray *rCh
 	
 	// Verify
 	
-	STAssertTrue([mappings numberOfItemsInGroup:@""] == 21, @"");
+	XCTAssertTrue([mappings numberOfItemsInGroup:@""] == 21, @"");
 	
-	STAssertTrue([rowChanges count] == 1, @"");
+	XCTAssertTrue([rowChanges count] == 1, @"");
 	
-	STAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeInsert, @"");
-	STAssertTrue(RowOp(rowChanges, 0).finalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 0).finalIndex == 20, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeInsert, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).finalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).finalIndex == 20, @"");
 }
 
 - (void)test_flexibleRange_end_1C
@@ -2456,7 +2508,7 @@ static YapDatabaseViewRowChange* (^RowOp)(NSArray*, NSUInteger) = ^(NSArray *rCh
 	
 	YapDatabaseViewMappings *originalMappings = [mappings copy];
 	
-	STAssertTrue([mappings numberOfItemsInGroup:@""] == 20, @"");
+	XCTAssertTrue([mappings numberOfItemsInGroup:@""] == 20, @"");
 	
 	// Insert item at the end of the range (just inside)
 	
@@ -2476,13 +2528,13 @@ static YapDatabaseViewRowChange* (^RowOp)(NSArray*, NSUInteger) = ^(NSArray *rCh
 	
 	// Verify
 	
-	STAssertTrue([mappings numberOfItemsInGroup:@""] == 21, @"");
+	XCTAssertTrue([mappings numberOfItemsInGroup:@""] == 21, @"");
 	
-	STAssertTrue([rowChanges count] == 1, @"");
+	XCTAssertTrue([rowChanges count] == 1, @"");
 	
-	STAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeInsert, @"");
-	STAssertTrue(RowOp(rowChanges, 0).finalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 0).finalIndex == 1, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeInsert, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).finalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).finalIndex == 1, @"");
 }
 
 - (void)test_flexibleRange_end_1D
@@ -2497,7 +2549,7 @@ static YapDatabaseViewRowChange* (^RowOp)(NSArray*, NSUInteger) = ^(NSArray *rCh
 	
 	YapDatabaseViewMappings *originalMappings = [mappings copy];
 	
-	STAssertTrue([mappings numberOfItemsInGroup:@""] == 20, @"");
+	XCTAssertTrue([mappings numberOfItemsInGroup:@""] == 20, @"");
 	
 	// Insert item at the end of the range (just outside)
 	
@@ -2517,9 +2569,9 @@ static YapDatabaseViewRowChange* (^RowOp)(NSArray*, NSUInteger) = ^(NSArray *rCh
 	
 	// Verify
 	
-	STAssertTrue([mappings numberOfItemsInGroup:@""] == 20, @"");
+	XCTAssertTrue([mappings numberOfItemsInGroup:@""] == 20, @"");
 	
-	STAssertTrue([rowChanges count] == 0, @"");
+	XCTAssertTrue([rowChanges count] == 0, @"");
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -2538,7 +2590,7 @@ static YapDatabaseViewRowChange* (^RowOp)(NSArray*, NSUInteger) = ^(NSArray *rCh
 	
 	YapDatabaseViewMappings *originalMappings = [mappings copy];
 	
-	STAssertTrue([mappings numberOfItemsInGroup:@""] == 20, @"");
+	XCTAssertTrue([mappings numberOfItemsInGroup:@""] == 20, @"");
 	
 	// Delete item in the middle of the range
 	
@@ -2558,13 +2610,13 @@ static YapDatabaseViewRowChange* (^RowOp)(NSArray*, NSUInteger) = ^(NSArray *rCh
 	
 	// Verify
 	
-	STAssertTrue([mappings numberOfItemsInGroup:@""] == 19, @"");
+	XCTAssertTrue([mappings numberOfItemsInGroup:@""] == 19, @"");
 	
-	STAssertTrue([rowChanges count] == 1, @"");
+	XCTAssertTrue([rowChanges count] == 1, @"");
 	
-	STAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeDelete, @"");
-	STAssertTrue(RowOp(rowChanges, 0).originalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 0).originalIndex == 2, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeDelete, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).originalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).originalIndex == 2, @"");
 }
 
 - (void)test_flexibleRange_beginning_2B
@@ -2579,7 +2631,7 @@ static YapDatabaseViewRowChange* (^RowOp)(NSArray*, NSUInteger) = ^(NSArray *rCh
 	
 	YapDatabaseViewMappings *originalMappings = [mappings copy];
 	
-	STAssertTrue([mappings numberOfItemsInGroup:@""] == 20, @"");
+	XCTAssertTrue([mappings numberOfItemsInGroup:@""] == 20, @"");
 	
 	// Delete item in the beginning of the range
 	
@@ -2599,13 +2651,13 @@ static YapDatabaseViewRowChange* (^RowOp)(NSArray*, NSUInteger) = ^(NSArray *rCh
 	
 	// Verify
 	
-	STAssertTrue([mappings numberOfItemsInGroup:@""] == 19, @"");
+	XCTAssertTrue([mappings numberOfItemsInGroup:@""] == 19, @"");
 	
-	STAssertTrue([rowChanges count] == 1, @"");
+	XCTAssertTrue([rowChanges count] == 1, @"");
 	
-	STAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeDelete, @"");
-	STAssertTrue(RowOp(rowChanges, 0).originalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 0).originalIndex == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeDelete, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).originalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).originalIndex == 0, @"");
 }
 
 - (void)test_flexibleRange_beginning_2C
@@ -2620,7 +2672,7 @@ static YapDatabaseViewRowChange* (^RowOp)(NSArray*, NSUInteger) = ^(NSArray *rCh
 	
 	YapDatabaseViewMappings *originalMappings = [mappings copy];
 	
-	STAssertTrue([mappings numberOfItemsInGroup:@""] == 20, @"");
+	XCTAssertTrue([mappings numberOfItemsInGroup:@""] == 20, @"");
 	
 	// Delete item at the end of the range
 	
@@ -2640,13 +2692,13 @@ static YapDatabaseViewRowChange* (^RowOp)(NSArray*, NSUInteger) = ^(NSArray *rCh
 	
 	// Verify
 	
-	STAssertTrue([mappings numberOfItemsInGroup:@""] == 19, @"");
+	XCTAssertTrue([mappings numberOfItemsInGroup:@""] == 19, @"");
 	
-	STAssertTrue([rowChanges count] == 1, @"");
+	XCTAssertTrue([rowChanges count] == 1, @"");
 	
-	STAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeDelete, @"");
-	STAssertTrue(RowOp(rowChanges, 0).originalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 0).originalIndex == 19, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeDelete, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).originalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).originalIndex == 19, @"");
 }
 
 - (void)test_flexibleRange_beginning_2D
@@ -2661,7 +2713,7 @@ static YapDatabaseViewRowChange* (^RowOp)(NSArray*, NSUInteger) = ^(NSArray *rCh
 	
 	YapDatabaseViewMappings *originalMappings = [mappings copy];
 	
-	STAssertTrue([mappings numberOfItemsInGroup:@""] == 20, @"");
+	XCTAssertTrue([mappings numberOfItemsInGroup:@""] == 20, @"");
 	
 	// Delete item outside the range
 	
@@ -2681,9 +2733,9 @@ static YapDatabaseViewRowChange* (^RowOp)(NSArray*, NSUInteger) = ^(NSArray *rCh
 	
 	// Verify
 	
-	STAssertTrue([mappings numberOfItemsInGroup:@""] == 20, @"");
+	XCTAssertTrue([mappings numberOfItemsInGroup:@""] == 20, @"");
 	
-	STAssertTrue([rowChanges count] == 0, @"");
+	XCTAssertTrue([rowChanges count] == 0, @"");
 }
 
 - (void)test_flexibleRange_end_2A
@@ -2698,7 +2750,7 @@ static YapDatabaseViewRowChange* (^RowOp)(NSArray*, NSUInteger) = ^(NSArray *rCh
 	
 	YapDatabaseViewMappings *originalMappings = [mappings copy];
 	
-	STAssertTrue([mappings numberOfItemsInGroup:@""] == 20, @"");
+	XCTAssertTrue([mappings numberOfItemsInGroup:@""] == 20, @"");
 	
 	// Delete item in the middle of the range
 	
@@ -2718,13 +2770,13 @@ static YapDatabaseViewRowChange* (^RowOp)(NSArray*, NSUInteger) = ^(NSArray *rCh
 	
 	// Verify
 	
-	STAssertTrue([mappings numberOfItemsInGroup:@""] == 19, @"");
+	XCTAssertTrue([mappings numberOfItemsInGroup:@""] == 19, @"");
 	
-	STAssertTrue([rowChanges count] == 1, @"");
+	XCTAssertTrue([rowChanges count] == 1, @"");
 	
-	STAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeDelete, @"");
-	STAssertTrue(RowOp(rowChanges, 0).originalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 0).originalIndex == 2, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeDelete, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).originalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).originalIndex == 2, @"");
 }
 
 - (void)test_flexibleRange_end_2B
@@ -2739,7 +2791,7 @@ static YapDatabaseViewRowChange* (^RowOp)(NSArray*, NSUInteger) = ^(NSArray *rCh
 	
 	YapDatabaseViewMappings *originalMappings = [mappings copy];
 	
-	STAssertTrue([mappings numberOfItemsInGroup:@""] == 20, @"");
+	XCTAssertTrue([mappings numberOfItemsInGroup:@""] == 20, @"");
 	
 	// Delete item in the beginning of the range
 	
@@ -2759,13 +2811,13 @@ static YapDatabaseViewRowChange* (^RowOp)(NSArray*, NSUInteger) = ^(NSArray *rCh
 	
 	// Verify
 	
-	STAssertTrue([mappings numberOfItemsInGroup:@""] == 19, @"");
+	XCTAssertTrue([mappings numberOfItemsInGroup:@""] == 19, @"");
 	
-	STAssertTrue([rowChanges count] == 1, @"");
+	XCTAssertTrue([rowChanges count] == 1, @"");
 	
-	STAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeDelete, @"");
-	STAssertTrue(RowOp(rowChanges, 0).originalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 0).originalIndex == 19, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeDelete, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).originalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).originalIndex == 19, @"");
 }
 
 - (void)test_flexibleRange_end_2C
@@ -2780,7 +2832,7 @@ static YapDatabaseViewRowChange* (^RowOp)(NSArray*, NSUInteger) = ^(NSArray *rCh
 	
 	YapDatabaseViewMappings *originalMappings = [mappings copy];
 	
-	STAssertTrue([mappings numberOfItemsInGroup:@""] == 20, @"");
+	XCTAssertTrue([mappings numberOfItemsInGroup:@""] == 20, @"");
 	
 	// Delete item at the end of the range
 	
@@ -2800,13 +2852,13 @@ static YapDatabaseViewRowChange* (^RowOp)(NSArray*, NSUInteger) = ^(NSArray *rCh
 	
 	// Verify
 	
-	STAssertTrue([mappings numberOfItemsInGroup:@""] == 19, @"");
+	XCTAssertTrue([mappings numberOfItemsInGroup:@""] == 19, @"");
 	
-	STAssertTrue([rowChanges count] == 1, @"");
+	XCTAssertTrue([rowChanges count] == 1, @"");
 	
-	STAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeDelete, @"");
-	STAssertTrue(RowOp(rowChanges, 0).originalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 0).originalIndex == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeDelete, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).originalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).originalIndex == 0, @"");
 }
 
 - (void)test_flexibleRange_end_2D
@@ -2821,7 +2873,7 @@ static YapDatabaseViewRowChange* (^RowOp)(NSArray*, NSUInteger) = ^(NSArray *rCh
 	
 	YapDatabaseViewMappings *originalMappings = [mappings copy];
 	
-	STAssertTrue([mappings numberOfItemsInGroup:@""] == 20, @"");
+	XCTAssertTrue([mappings numberOfItemsInGroup:@""] == 20, @"");
 	
 	// Delete item outside the range
 	
@@ -2841,9 +2893,9 @@ static YapDatabaseViewRowChange* (^RowOp)(NSArray*, NSUInteger) = ^(NSArray *rCh
 	
 	// Verify
 	
-	STAssertTrue([mappings numberOfItemsInGroup:@""] == 20, @"");
+	XCTAssertTrue([mappings numberOfItemsInGroup:@""] == 20, @"");
 	
-	STAssertTrue([rowChanges count] == 0, @"");
+	XCTAssertTrue([rowChanges count] == 0, @"");
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -2862,7 +2914,7 @@ static YapDatabaseViewRowChange* (^RowOp)(NSArray*, NSUInteger) = ^(NSArray *rCh
 	
 	YapDatabaseViewMappings *originalMappings = [mappings copy];
 	
-	STAssertTrue([mappings numberOfItemsInGroup:@""] == 20, @"");
+	XCTAssertTrue([mappings numberOfItemsInGroup:@""] == 20, @"");
 	
 	// Insert multiple items inside the range
 	
@@ -2883,17 +2935,17 @@ static YapDatabaseViewRowChange* (^RowOp)(NSArray*, NSUInteger) = ^(NSArray *rCh
 	
 	// Verify
 	
-	STAssertTrue([mappings numberOfItemsInGroup:@""] == 22, @"");
+	XCTAssertTrue([mappings numberOfItemsInGroup:@""] == 22, @"");
 	
-	STAssertTrue([rowChanges count] == 2, @"");
+	XCTAssertTrue([rowChanges count] == 2, @"");
 	
-	STAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeInsert, @"");
-	STAssertTrue(RowOp(rowChanges, 0).finalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 0).finalIndex == 11, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeInsert, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).finalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).finalIndex == 11, @"");
 	
-	STAssertTrue(RowOp(rowChanges, 1).type == YapDatabaseViewChangeInsert, @"");
-	STAssertTrue(RowOp(rowChanges, 1).finalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 1).finalIndex == 10, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).type == YapDatabaseViewChangeInsert, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).finalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).finalIndex == 10, @"");
 }
 
 - (void)test_flexibleRange_beginning_3B
@@ -2908,7 +2960,7 @@ static YapDatabaseViewRowChange* (^RowOp)(NSArray*, NSUInteger) = ^(NSArray *rCh
 	
 	YapDatabaseViewMappings *originalMappings = [mappings copy];
 	
-	STAssertTrue([mappings numberOfItemsInGroup:@""] == 20, @"");
+	XCTAssertTrue([mappings numberOfItemsInGroup:@""] == 20, @"");
 	
 	// Insert multiple items at the beginning of the range
 	
@@ -2929,17 +2981,17 @@ static YapDatabaseViewRowChange* (^RowOp)(NSArray*, NSUInteger) = ^(NSArray *rCh
 	
 	// Verify
 	
-	STAssertTrue([mappings numberOfItemsInGroup:@""] == 22, @"");
+	XCTAssertTrue([mappings numberOfItemsInGroup:@""] == 22, @"");
 	
-	STAssertTrue([rowChanges count] == 2, @"");
+	XCTAssertTrue([rowChanges count] == 2, @"");
 	
-	STAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeInsert, @"");
-	STAssertTrue(RowOp(rowChanges, 0).finalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 0).finalIndex == 1, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeInsert, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).finalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).finalIndex == 1, @"");
 	
-	STAssertTrue(RowOp(rowChanges, 1).type == YapDatabaseViewChangeInsert, @"");
-	STAssertTrue(RowOp(rowChanges, 1).finalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 1).finalIndex == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).type == YapDatabaseViewChangeInsert, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).finalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).finalIndex == 0, @"");
 }
 
 - (void)test_flexibleRange_beginning_3C
@@ -2954,7 +3006,7 @@ static YapDatabaseViewRowChange* (^RowOp)(NSArray*, NSUInteger) = ^(NSArray *rCh
 	
 	YapDatabaseViewMappings *originalMappings = [mappings copy];
 	
-	STAssertTrue([mappings numberOfItemsInGroup:@""] == 20, @"");
+	XCTAssertTrue([mappings numberOfItemsInGroup:@""] == 20, @"");
 	
 	// Insert multiple items at the end of the range
 	
@@ -2975,17 +3027,17 @@ static YapDatabaseViewRowChange* (^RowOp)(NSArray*, NSUInteger) = ^(NSArray *rCh
 	
 	// Verify
 	
-	STAssertTrue([mappings numberOfItemsInGroup:@""] == 22, @"");
+	XCTAssertTrue([mappings numberOfItemsInGroup:@""] == 22, @"");
 	
-	STAssertTrue([rowChanges count] == 2, @"");
+	XCTAssertTrue([rowChanges count] == 2, @"");
 	
-	STAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeInsert, @"");
-	STAssertTrue(RowOp(rowChanges, 0).finalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 0).finalIndex == 19, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeInsert, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).finalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).finalIndex == 19, @"");
 	
-	STAssertTrue(RowOp(rowChanges, 1).type == YapDatabaseViewChangeInsert, @"");
-	STAssertTrue(RowOp(rowChanges, 1).finalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 1).finalIndex == 18, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).type == YapDatabaseViewChangeInsert, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).finalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).finalIndex == 18, @"");
 }
 
 - (void)test_flexibleRange_beginning_3D
@@ -3000,7 +3052,7 @@ static YapDatabaseViewRowChange* (^RowOp)(NSArray*, NSUInteger) = ^(NSArray *rCh
 	
 	YapDatabaseViewMappings *originalMappings = [mappings copy];
 	
-	STAssertTrue([mappings numberOfItemsInGroup:@""] == 20, @"");
+	XCTAssertTrue([mappings numberOfItemsInGroup:@""] == 20, @"");
 	
 	// Insert multiple items at the end of the range, some of them end out outside the range
 	
@@ -3023,17 +3075,17 @@ static YapDatabaseViewRowChange* (^RowOp)(NSArray*, NSUInteger) = ^(NSArray *rCh
 	
 	// Verify
 	
-	STAssertTrue([mappings numberOfItemsInGroup:@""] == 22, @"");
+	XCTAssertTrue([mappings numberOfItemsInGroup:@""] == 22, @"");
 	
-	STAssertTrue([rowChanges count] == 2, @"");
+	XCTAssertTrue([rowChanges count] == 2, @"");
 	
-	STAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeInsert, @"");
-	STAssertTrue(RowOp(rowChanges, 0).finalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 0).finalIndex == 20, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeInsert, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).finalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).finalIndex == 20, @"");
 	
-	STAssertTrue(RowOp(rowChanges, 1).type == YapDatabaseViewChangeInsert, @"");
-	STAssertTrue(RowOp(rowChanges, 1).finalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 1).finalIndex == 19, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).type == YapDatabaseViewChangeInsert, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).finalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).finalIndex == 19, @"");
 }
 
 - (void)test_flexibleRange_end_3A
@@ -3048,7 +3100,7 @@ static YapDatabaseViewRowChange* (^RowOp)(NSArray*, NSUInteger) = ^(NSArray *rCh
 	
 	YapDatabaseViewMappings *originalMappings = [mappings copy];
 	
-	STAssertTrue([mappings numberOfItemsInGroup:@""] == 20, @"");
+	XCTAssertTrue([mappings numberOfItemsInGroup:@""] == 20, @"");
 	
 	// Insert multiple items inside the range
 	
@@ -3069,17 +3121,17 @@ static YapDatabaseViewRowChange* (^RowOp)(NSArray*, NSUInteger) = ^(NSArray *rCh
 	
 	// Verify
 	
-	STAssertTrue([mappings numberOfItemsInGroup:@""] == 22, @"");
+	XCTAssertTrue([mappings numberOfItemsInGroup:@""] == 22, @"");
 	
-	STAssertTrue([rowChanges count] == 2, @"");
+	XCTAssertTrue([rowChanges count] == 2, @"");
 	
-	STAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeInsert, @"");
-	STAssertTrue(RowOp(rowChanges, 0).finalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 0).finalIndex == 10, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeInsert, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).finalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).finalIndex == 10, @"");
 	
-	STAssertTrue(RowOp(rowChanges, 1).type == YapDatabaseViewChangeInsert, @"");
-	STAssertTrue(RowOp(rowChanges, 1).finalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 1).finalIndex == 11, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).type == YapDatabaseViewChangeInsert, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).finalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).finalIndex == 11, @"");
 }
 
 - (void)test_flexibleRange_end_3B
@@ -3113,17 +3165,17 @@ static YapDatabaseViewRowChange* (^RowOp)(NSArray*, NSUInteger) = ^(NSArray *rCh
 	
 	// Verify
 	
-	STAssertTrue([mappings numberOfItemsInGroup:@""] == 22, @"");
+	XCTAssertTrue([mappings numberOfItemsInGroup:@""] == 22, @"");
 	
-	STAssertTrue([rowChanges count] == 2, @"");
+	XCTAssertTrue([rowChanges count] == 2, @"");
 	
-	STAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeInsert, @"");
-	STAssertTrue(RowOp(rowChanges, 0).finalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 0).finalIndex == 20, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeInsert, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).finalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).finalIndex == 20, @"");
 	
-	STAssertTrue(RowOp(rowChanges, 1).type == YapDatabaseViewChangeInsert, @"");
-	STAssertTrue(RowOp(rowChanges, 1).finalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 1).finalIndex == 21, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).type == YapDatabaseViewChangeInsert, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).finalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).finalIndex == 21, @"");
 }
 
 - (void)test_flexibleRange_end_3C
@@ -3157,17 +3209,17 @@ static YapDatabaseViewRowChange* (^RowOp)(NSArray*, NSUInteger) = ^(NSArray *rCh
 	
 	// Verify
 	
-	STAssertTrue([mappings numberOfItemsInGroup:@""] == 22, @"");
+	XCTAssertTrue([mappings numberOfItemsInGroup:@""] == 22, @"");
 	
-	STAssertTrue([rowChanges count] == 2, @"");
+	XCTAssertTrue([rowChanges count] == 2, @"");
 	
-	STAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeInsert, @"");
-	STAssertTrue(RowOp(rowChanges, 0).finalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 0).finalIndex == 2, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeInsert, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).finalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).finalIndex == 2, @"");
 	
-	STAssertTrue(RowOp(rowChanges, 1).type == YapDatabaseViewChangeInsert, @"");
-	STAssertTrue(RowOp(rowChanges, 1).finalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 1).finalIndex == 1, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).type == YapDatabaseViewChangeInsert, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).finalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).finalIndex == 1, @"");
 }
 
 - (void)test_flexibleRange_end_3D
@@ -3203,17 +3255,17 @@ static YapDatabaseViewRowChange* (^RowOp)(NSArray*, NSUInteger) = ^(NSArray *rCh
 	
 	// Verify
 	
-	STAssertTrue([mappings numberOfItemsInGroup:@""] == 22, @"");
+	XCTAssertTrue([mappings numberOfItemsInGroup:@""] == 22, @"");
 	
-	STAssertTrue([rowChanges count] == 2, @"");
+	XCTAssertTrue([rowChanges count] == 2, @"");
 	
-	STAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeInsert, @"");
-	STAssertTrue(RowOp(rowChanges, 0).finalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 0).finalIndex == 2, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeInsert, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).finalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).finalIndex == 2, @"");
 	
-	STAssertTrue(RowOp(rowChanges, 1).type == YapDatabaseViewChangeInsert, @"");
-	STAssertTrue(RowOp(rowChanges, 1).finalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 1).finalIndex == 1, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).type == YapDatabaseViewChangeInsert, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).finalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).finalIndex == 1, @"");
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -3232,7 +3284,7 @@ static YapDatabaseViewRowChange* (^RowOp)(NSArray*, NSUInteger) = ^(NSArray *rCh
 	
 	YapDatabaseViewMappings *originalMappings = [mappings copy];
 	
-	STAssertTrue([mappings numberOfItemsInGroup:@""] == 20, @"");
+	XCTAssertTrue([mappings numberOfItemsInGroup:@""] == 20, @"");
 	
 	// Delete multiple items inside the range
 	
@@ -3253,17 +3305,17 @@ static YapDatabaseViewRowChange* (^RowOp)(NSArray*, NSUInteger) = ^(NSArray *rCh
 	
 	// Verify
 	
-	STAssertTrue([mappings numberOfItemsInGroup:@""] == 18, @"");
+	XCTAssertTrue([mappings numberOfItemsInGroup:@""] == 18, @"");
 	
-	STAssertTrue([rowChanges count] == 2, @"");
+	XCTAssertTrue([rowChanges count] == 2, @"");
 	
-	STAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeDelete, @"");
-	STAssertTrue(RowOp(rowChanges, 0).originalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 0).originalIndex == 10, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeDelete, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).originalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).originalIndex == 10, @"");
 	
-	STAssertTrue(RowOp(rowChanges, 1).type == YapDatabaseViewChangeDelete, @"");
-	STAssertTrue(RowOp(rowChanges, 1).originalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 1).originalIndex == 11, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).type == YapDatabaseViewChangeDelete, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).originalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).originalIndex == 11, @"");
 }
 
 - (void)test_flexibleRange_beginning_4B
@@ -3278,7 +3330,7 @@ static YapDatabaseViewRowChange* (^RowOp)(NSArray*, NSUInteger) = ^(NSArray *rCh
 	
 	YapDatabaseViewMappings *originalMappings = [mappings copy];
 	
-	STAssertTrue([mappings numberOfItemsInGroup:@""] == 20, @"");
+	XCTAssertTrue([mappings numberOfItemsInGroup:@""] == 20, @"");
 	
 	// Delete multiple items at the beginning of the range
 	
@@ -3299,17 +3351,17 @@ static YapDatabaseViewRowChange* (^RowOp)(NSArray*, NSUInteger) = ^(NSArray *rCh
 	
 	// Verify
 	
-	STAssertTrue([mappings numberOfItemsInGroup:@""] == 18, @"");
+	XCTAssertTrue([mappings numberOfItemsInGroup:@""] == 18, @"");
 	
-	STAssertTrue([rowChanges count] == 2, @"");
+	XCTAssertTrue([rowChanges count] == 2, @"");
 	
-	STAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeDelete, @"");
-	STAssertTrue(RowOp(rowChanges, 0).originalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 0).originalIndex == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeDelete, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).originalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).originalIndex == 0, @"");
 	
-	STAssertTrue(RowOp(rowChanges, 1).type == YapDatabaseViewChangeDelete, @"");
-	STAssertTrue(RowOp(rowChanges, 1).originalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 1).originalIndex == 1, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).type == YapDatabaseViewChangeDelete, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).originalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).originalIndex == 1, @"");
 }
 
 - (void)test_flexibleRange_beginning_4C
@@ -3324,7 +3376,7 @@ static YapDatabaseViewRowChange* (^RowOp)(NSArray*, NSUInteger) = ^(NSArray *rCh
 	
 	YapDatabaseViewMappings *originalMappings = [mappings copy];
 	
-	STAssertTrue([mappings numberOfItemsInGroup:@""] == 20, @"");
+	XCTAssertTrue([mappings numberOfItemsInGroup:@""] == 20, @"");
 	
 	// Delete multiple items at the end of the range
 	
@@ -3345,17 +3397,17 @@ static YapDatabaseViewRowChange* (^RowOp)(NSArray*, NSUInteger) = ^(NSArray *rCh
 	
 	// Verify
 	
-	STAssertTrue([mappings numberOfItemsInGroup:@""] == 18, @"");
+	XCTAssertTrue([mappings numberOfItemsInGroup:@""] == 18, @"");
 	
-	STAssertTrue([rowChanges count] == 2, @"");
+	XCTAssertTrue([rowChanges count] == 2, @"");
 	
-	STAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeDelete, @"");
-	STAssertTrue(RowOp(rowChanges, 0).originalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 0).originalIndex == 19, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeDelete, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).originalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).originalIndex == 19, @"");
 	
-	STAssertTrue(RowOp(rowChanges, 1).type == YapDatabaseViewChangeDelete, @"");
-	STAssertTrue(RowOp(rowChanges, 1).originalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 1).originalIndex == 18, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).type == YapDatabaseViewChangeDelete, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).originalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).originalIndex == 18, @"");
 }
 
 - (void)test_flexibleRange_beginning_4D
@@ -3391,17 +3443,17 @@ static YapDatabaseViewRowChange* (^RowOp)(NSArray*, NSUInteger) = ^(NSArray *rCh
 	
 	// Verify
 	
-	STAssertTrue([mappings numberOfItemsInGroup:@""] == 18, @"");
+	XCTAssertTrue([mappings numberOfItemsInGroup:@""] == 18, @"");
 	
-	STAssertTrue([rowChanges count] == 2, @"");
+	XCTAssertTrue([rowChanges count] == 2, @"");
 	
-	STAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeDelete, @"");
-	STAssertTrue(RowOp(rowChanges, 0).originalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 0).originalIndex == 18, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeDelete, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).originalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).originalIndex == 18, @"");
 	
-	STAssertTrue(RowOp(rowChanges, 1).type == YapDatabaseViewChangeDelete, @"");
-	STAssertTrue(RowOp(rowChanges, 1).originalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 1).originalIndex == 19, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).type == YapDatabaseViewChangeDelete, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).originalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).originalIndex == 19, @"");
 }
 
 - (void)test_flexibleRange_end_4A
@@ -3416,7 +3468,7 @@ static YapDatabaseViewRowChange* (^RowOp)(NSArray*, NSUInteger) = ^(NSArray *rCh
 	
 	YapDatabaseViewMappings *originalMappings = [mappings copy];
 	
-	STAssertTrue([mappings numberOfItemsInGroup:@""] == 20, @"");
+	XCTAssertTrue([mappings numberOfItemsInGroup:@""] == 20, @"");
 	
 	// Delete multiple items inside the range
 	
@@ -3437,17 +3489,17 @@ static YapDatabaseViewRowChange* (^RowOp)(NSArray*, NSUInteger) = ^(NSArray *rCh
 	
 	// Verify
 	
-	STAssertTrue([mappings numberOfItemsInGroup:@""] == 18, @"");
+	XCTAssertTrue([mappings numberOfItemsInGroup:@""] == 18, @"");
 	
-	STAssertTrue([rowChanges count] == 2, @"");
+	XCTAssertTrue([rowChanges count] == 2, @"");
 	
-	STAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeDelete, @"");
-	STAssertTrue(RowOp(rowChanges, 0).originalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 0).originalIndex == 10, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeDelete, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).originalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).originalIndex == 10, @"");
 	
-	STAssertTrue(RowOp(rowChanges, 1).type == YapDatabaseViewChangeDelete, @"");
-	STAssertTrue(RowOp(rowChanges, 1).originalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 1).originalIndex == 11, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).type == YapDatabaseViewChangeDelete, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).originalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).originalIndex == 11, @"");
 }
 
 - (void)test_flexibleRange_end_4B
@@ -3462,7 +3514,7 @@ static YapDatabaseViewRowChange* (^RowOp)(NSArray*, NSUInteger) = ^(NSArray *rCh
 	
 	YapDatabaseViewMappings *originalMappings = [mappings copy];
 	
-	STAssertTrue([mappings numberOfItemsInGroup:@""] == 20, @"");
+	XCTAssertTrue([mappings numberOfItemsInGroup:@""] == 20, @"");
 	
 	// Delete multiple items at the beginning of the range
 	
@@ -3483,17 +3535,17 @@ static YapDatabaseViewRowChange* (^RowOp)(NSArray*, NSUInteger) = ^(NSArray *rCh
 	
 	// Verify
 	
-	STAssertTrue([mappings numberOfItemsInGroup:@""] == 18, @"");
+	XCTAssertTrue([mappings numberOfItemsInGroup:@""] == 18, @"");
 	
-	STAssertTrue([rowChanges count] == 2, @"");
+	XCTAssertTrue([rowChanges count] == 2, @"");
 	
-	STAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeDelete, @"");
-	STAssertTrue(RowOp(rowChanges, 0).originalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 0).originalIndex == 19, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeDelete, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).originalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).originalIndex == 19, @"");
 	
-	STAssertTrue(RowOp(rowChanges, 1).type == YapDatabaseViewChangeDelete, @"");
-	STAssertTrue(RowOp(rowChanges, 1).originalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 1).originalIndex == 18, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).type == YapDatabaseViewChangeDelete, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).originalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).originalIndex == 18, @"");
 }
 
 - (void)test_flexibleRange_end_4C
@@ -3508,7 +3560,7 @@ static YapDatabaseViewRowChange* (^RowOp)(NSArray*, NSUInteger) = ^(NSArray *rCh
 	
 	YapDatabaseViewMappings *originalMappings = [mappings copy];
 	
-	STAssertTrue([mappings numberOfItemsInGroup:@""] == 20, @"");
+	XCTAssertTrue([mappings numberOfItemsInGroup:@""] == 20, @"");
 	
 	// Delete multiple items at the end of the range
 	
@@ -3529,17 +3581,17 @@ static YapDatabaseViewRowChange* (^RowOp)(NSArray*, NSUInteger) = ^(NSArray *rCh
 	
 	// Verify
 	
-	STAssertTrue([mappings numberOfItemsInGroup:@""] == 18, @"");
+	XCTAssertTrue([mappings numberOfItemsInGroup:@""] == 18, @"");
 	
-	STAssertTrue([rowChanges count] == 2, @"");
+	XCTAssertTrue([rowChanges count] == 2, @"");
 	
-	STAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeDelete, @"");
-	STAssertTrue(RowOp(rowChanges, 0).originalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 0).originalIndex == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeDelete, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).originalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).originalIndex == 0, @"");
 	
-	STAssertTrue(RowOp(rowChanges, 1).type == YapDatabaseViewChangeDelete, @"");
-	STAssertTrue(RowOp(rowChanges, 1).originalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 1).originalIndex == 1, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).type == YapDatabaseViewChangeDelete, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).originalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).originalIndex == 1, @"");
 }
 
 - (void)test_flexibleRange_end_4D
@@ -3554,7 +3606,7 @@ static YapDatabaseViewRowChange* (^RowOp)(NSArray*, NSUInteger) = ^(NSArray *rCh
 	
 	YapDatabaseViewMappings *originalMappings = [mappings copy];
 	
-	STAssertTrue([mappings numberOfItemsInGroup:@""] == 20, @"");
+	XCTAssertTrue([mappings numberOfItemsInGroup:@""] == 20, @"");
 	
 	// Delete multiple items at the beginning of the range, and some outside the range
 	
@@ -3577,24 +3629,360 @@ static YapDatabaseViewRowChange* (^RowOp)(NSArray*, NSUInteger) = ^(NSArray *rCh
 	
 	// Verify
 	
-	STAssertTrue([mappings numberOfItemsInGroup:@""] == 18, @"");
+	XCTAssertTrue([mappings numberOfItemsInGroup:@""] == 18, @"");
 	
-	STAssertTrue([rowChanges count] == 2, @"");
+	XCTAssertTrue([rowChanges count] == 2, @"");
 	
-	STAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeDelete, @"");
-	STAssertTrue(RowOp(rowChanges, 0).originalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 0).originalIndex == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeDelete, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).originalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).originalIndex == 0, @"");
 	
-	STAssertTrue(RowOp(rowChanges, 1).type == YapDatabaseViewChangeDelete, @"");
-	STAssertTrue(RowOp(rowChanges, 1).originalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 1).originalIndex == 1, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).type == YapDatabaseViewChangeDelete, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).originalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).originalIndex == 1, @"");
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+#pragma mark Flexible Range: Move
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+- (void)test_flexibleRange_beginning_5A
+{
+	YapDatabaseViewRangeOptions *rangeOpts =
+	    [YapDatabaseViewRangeOptions flexibleRangeWithLength:20 offset:0 from:YapDatabaseViewBeginning];
+	
+	YapDatabaseViewMappings *mappings = [[YapDatabaseViewMappings alloc] initWithGroups:@[@""] view:@"view"];
+	
+	[mappings setRangeOptions:rangeOpts forGroup:@""];
+	[mappings updateWithCounts:@{ @"":@(20) }];
+	
+	YapDatabaseViewMappings *originalMappings = [mappings copy];
+	
+	// Move item within range (19 -> 0)
+	
+	[changes addObject:[YapDatabaseViewRowChange deleteKey:@"key" inGroup:@"" atIndex:19]];
+	[changes addObject:[YapDatabaseViewRowChange insertKey:@"key" inGroup:@"" atIndex:0]];
+	
+	[mappings updateWithCounts:@{ @"":@(20) }];
+	
+	// Fetch changeset
+	
+	NSArray *rowChanges = nil;
+	
+	[YapDatabaseViewChange getSectionChanges:NULL
+	                              rowChanges:&rowChanges
+	                    withOriginalMappings:originalMappings
+	                           finalMappings:mappings
+	                             fromChanges:changes];
+	
+	// Verify
+	
+	XCTAssertTrue([mappings numberOfItemsInGroup:@""] == 20, @"");
+	
+	XCTAssertTrue([rowChanges count] == 1, @"");
+	
+	XCTAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeMove, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).originalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).originalIndex == 19, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).finalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).finalIndex == 0, @"");
+}
+
+- (void)test_flexibleRange_beginning_5B
+{
+	YapDatabaseViewRangeOptions *rangeOpts =
+	    [YapDatabaseViewRangeOptions flexibleRangeWithLength:20 offset:0 from:YapDatabaseViewBeginning];
+	
+	YapDatabaseViewMappings *mappings = [[YapDatabaseViewMappings alloc] initWithGroups:@[@""] view:@"view"];
+	
+	[mappings setRangeOptions:rangeOpts forGroup:@""];
+	[mappings updateWithCounts:@{ @"":@(20) }];
+	
+	YapDatabaseViewMappings *originalMappings = [mappings copy];
+	
+	// Move item within range (18 -> 1)
+	
+	[changes addObject:[YapDatabaseViewRowChange deleteKey:@"key" inGroup:@"" atIndex:18]];
+	[changes addObject:[YapDatabaseViewRowChange insertKey:@"key" inGroup:@"" atIndex:1]];
+	
+	[mappings updateWithCounts:@{ @"":@(20) }];
+	
+	// Fetch changeset
+	
+	NSArray *rowChanges = nil;
+	
+	[YapDatabaseViewChange getSectionChanges:NULL
+	                              rowChanges:&rowChanges
+	                    withOriginalMappings:originalMappings
+	                           finalMappings:mappings
+	                             fromChanges:changes];
+	
+	// Verify
+	
+	XCTAssertTrue([mappings numberOfItemsInGroup:@""] == 20, @"");
+	
+	XCTAssertTrue([rowChanges count] == 1, @"");
+	
+	XCTAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeMove, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).originalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).originalIndex == 18, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).finalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).finalIndex == 1, @"");
+}
+
+- (void)test_flexibleRange_beginning_5C
+{
+	YapDatabaseViewRangeOptions *rangeOpts =
+	    [YapDatabaseViewRangeOptions flexibleRangeWithLength:20 offset:0 from:YapDatabaseViewBeginning];
+	
+	YapDatabaseViewMappings *mappings = [[YapDatabaseViewMappings alloc] initWithGroups:@[@""] view:@"view"];
+	
+	[mappings setRangeOptions:rangeOpts forGroup:@""];
+	[mappings updateWithCounts:@{ @"":@(25) }];
+	
+	YapDatabaseViewMappings *originalMappings = [mappings copy];
+	
+	// Move item outside range (0 -> 24)
+	
+	[changes addObject:[YapDatabaseViewRowChange deleteKey:@"key" inGroup:@"" atIndex:0]];
+	[changes addObject:[YapDatabaseViewRowChange insertKey:@"key" inGroup:@"" atIndex:24]];
+	
+	[mappings updateWithCounts:@{ @"":@(25) }];
+	
+	// Fetch changeset
+	
+	NSArray *rowChanges = nil;
+	
+	[YapDatabaseViewChange getSectionChanges:NULL
+	                              rowChanges:&rowChanges
+	                    withOriginalMappings:originalMappings
+	                           finalMappings:mappings
+	                             fromChanges:changes];
+	
+	// Verify
+	
+	XCTAssertTrue([mappings numberOfItemsInGroup:@""] == 19, @"");
+	
+	XCTAssertTrue([rowChanges count] == 1, @"");
+	
+	XCTAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeDelete, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).originalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).originalIndex == 0, @"");
+}
+
+- (void)test_flexibleRange_beginning_5D
+{
+	YapDatabaseViewRangeOptions *rangeOpts =
+	    [YapDatabaseViewRangeOptions flexibleRangeWithLength:20 offset:0 from:YapDatabaseViewBeginning];
+	
+	YapDatabaseViewMappings *mappings = [[YapDatabaseViewMappings alloc] initWithGroups:@[@""] view:@"view"];
+	
+	[mappings setRangeOptions:rangeOpts forGroup:@""];
+	[mappings updateWithCounts:@{ @"":@(25) }];
+	
+	YapDatabaseViewMappings *originalMappings = [mappings copy];
+	
+	// Move item into range (24 -> 0)
+	
+	[changes addObject:[YapDatabaseViewRowChange deleteKey:@"key" inGroup:@"" atIndex:24]];
+	[changes addObject:[YapDatabaseViewRowChange insertKey:@"key" inGroup:@"" atIndex:0]];
+	
+	[mappings updateWithCounts:@{ @"":@(25) }];
+	
+	// Fetch changeset
+	
+	NSArray *rowChanges = nil;
+	
+	[YapDatabaseViewChange getSectionChanges:NULL
+	                              rowChanges:&rowChanges
+	                    withOriginalMappings:originalMappings
+	                           finalMappings:mappings
+	                             fromChanges:changes];
+	
+	// Verify
+	
+	XCTAssertTrue([mappings numberOfItemsInGroup:@""] == 21, @"");
+	
+	XCTAssertTrue([rowChanges count] == 1, @"");
+	
+	XCTAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeInsert, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).finalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).finalIndex == 0, @"");
+}
+
+- (void)test_flexibleRange_end_5A
+{
+	YapDatabaseViewRangeOptions *rangeOpts =
+	    [YapDatabaseViewRangeOptions flexibleRangeWithLength:20 offset:0 from:YapDatabaseViewEnd];
+	
+	YapDatabaseViewMappings *mappings = [[YapDatabaseViewMappings alloc] initWithGroups:@[@""] view:@"view"];
+	
+	[mappings setRangeOptions:rangeOpts forGroup:@""];
+	[mappings updateWithCounts:@{ @"":@(20) }];
+	
+	YapDatabaseViewMappings *originalMappings = [mappings copy];
+	
+	XCTAssertTrue([mappings numberOfItemsInGroup:@""] == 20, @"");
+	
+	// Move item within range (0 -> 19)
+	
+	[changes addObject:[YapDatabaseViewRowChange deleteKey:@"key" inGroup:@"" atIndex:0]];
+	[changes addObject:[YapDatabaseViewRowChange insertKey:@"key" inGroup:@"" atIndex:19]];
+
+	[mappings updateWithCounts:@{ @"":@(20) }];
+	
+	// Fetch changeset
+	
+	NSArray *rowChanges = nil;
+	
+	[YapDatabaseViewChange getSectionChanges:NULL
+	                              rowChanges:&rowChanges
+	                    withOriginalMappings:originalMappings
+	                           finalMappings:mappings
+	                             fromChanges:changes];
+	
+	// Verify
+	
+	XCTAssertTrue([mappings numberOfItemsInGroup:@""] == 20, @"");
+	
+	XCTAssertTrue([rowChanges count] == 1, @"");
+	
+	XCTAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeMove, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).originalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).originalIndex == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).finalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).finalIndex == 19, @"");
+}
+
+- (void)test_flexibleRange_end_5B
+{
+	YapDatabaseViewRangeOptions *rangeOpts =
+	    [YapDatabaseViewRangeOptions flexibleRangeWithLength:20 offset:0 from:YapDatabaseViewEnd];
+	
+	YapDatabaseViewMappings *mappings = [[YapDatabaseViewMappings alloc] initWithGroups:@[@""] view:@"view"];
+	
+	[mappings setRangeOptions:rangeOpts forGroup:@""];
+	[mappings updateWithCounts:@{ @"":@(20) }];
+	
+	YapDatabaseViewMappings *originalMappings = [mappings copy];
+	
+	XCTAssertTrue([mappings numberOfItemsInGroup:@""] == 20, @"");
+	
+	// Move item within range (1 -> 18)
+	
+	[changes addObject:[YapDatabaseViewRowChange deleteKey:@"key" inGroup:@"" atIndex:1]];
+	[changes addObject:[YapDatabaseViewRowChange insertKey:@"key" inGroup:@"" atIndex:18]];
+
+	[mappings updateWithCounts:@{ @"":@(20) }];
+	
+	// Fetch changeset
+	
+	NSArray *rowChanges = nil;
+	
+	[YapDatabaseViewChange getSectionChanges:NULL
+	                              rowChanges:&rowChanges
+	                    withOriginalMappings:originalMappings
+	                           finalMappings:mappings
+	                             fromChanges:changes];
+	
+	// Verify
+	
+	XCTAssertTrue([mappings numberOfItemsInGroup:@""] == 20, @"");
+	
+	XCTAssertTrue([rowChanges count] == 1, @"");
+	
+	XCTAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeMove, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).originalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).originalIndex == 1, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).finalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).finalIndex == 18, @"");
+}
+
+- (void)test_flexibleRange_end_5C
+{
+	YapDatabaseViewRangeOptions *rangeOpts =
+	    [YapDatabaseViewRangeOptions flexibleRangeWithLength:20 offset:0 from:YapDatabaseViewEnd];
+	
+	YapDatabaseViewMappings *mappings = [[YapDatabaseViewMappings alloc] initWithGroups:@[@""] view:@"view"];
+	
+	[mappings setRangeOptions:rangeOpts forGroup:@""];
+	[mappings updateWithCounts:@{ @"":@(25) }];
+	
+	YapDatabaseViewMappings *originalMappings = [mappings copy];
+	
+	// Move item outside range (24 -> 0)
+	
+	[changes addObject:[YapDatabaseViewRowChange deleteKey:@"key" inGroup:@"" atIndex:24]];
+	[changes addObject:[YapDatabaseViewRowChange insertKey:@"key" inGroup:@"" atIndex:0]];
+	
+	[mappings updateWithCounts:@{ @"":@(25) }];
+	
+	// Fetch changeset
+	
+	NSArray *rowChanges = nil;
+	
+	[YapDatabaseViewChange getSectionChanges:NULL
+	                              rowChanges:&rowChanges
+	                    withOriginalMappings:originalMappings
+	                           finalMappings:mappings
+	                             fromChanges:changes];
+	
+	// Verify
+	
+	XCTAssertTrue([mappings numberOfItemsInGroup:@""] == 19, @"");
+	
+	XCTAssertTrue([rowChanges count] == 1, @"");
+	
+	XCTAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeDelete, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).originalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).originalIndex == 19, @"");
+}
+
+- (void)test_flexibleRange_end_5D
+{
+	YapDatabaseViewRangeOptions *rangeOpts =
+	    [YapDatabaseViewRangeOptions flexibleRangeWithLength:20 offset:0 from:YapDatabaseViewEnd];
+	
+	YapDatabaseViewMappings *mappings = [[YapDatabaseViewMappings alloc] initWithGroups:@[@""] view:@"view"];
+	
+	[mappings setRangeOptions:rangeOpts forGroup:@""];
+	[mappings updateWithCounts:@{ @"":@(25) }];
+	
+	YapDatabaseViewMappings *originalMappings = [mappings copy];
+	
+	// Move item into range (0 -> 24)
+	
+	[changes addObject:[YapDatabaseViewRowChange deleteKey:@"key" inGroup:@"" atIndex:0]];
+	[changes addObject:[YapDatabaseViewRowChange insertKey:@"key" inGroup:@"" atIndex:24]];
+	
+	[mappings updateWithCounts:@{ @"":@(25) }];
+	
+	// Fetch changeset
+	
+	NSArray *rowChanges = nil;
+	
+	[YapDatabaseViewChange getSectionChanges:NULL
+	                              rowChanges:&rowChanges
+	                    withOriginalMappings:originalMappings
+	                           finalMappings:mappings
+	                             fromChanges:changes];
+	
+	// Verify
+	
+	XCTAssertTrue([mappings numberOfItemsInGroup:@""] == 21, @"");
+	
+	XCTAssertTrue([rowChanges count] == 1, @"");
+	
+	XCTAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeInsert, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).finalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).finalIndex == 20, @"");
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 #pragma mark Flexible Range: Changing Length
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-- (void)test_flexibleRange_beginning_5A
+- (void)test_flexibleRange_beginning_6A
 {
 	YapDatabaseViewRangeOptions *rangeOpts =
 	    [YapDatabaseViewRangeOptions flexibleRangeWithLength:20 offset:0 from:YapDatabaseViewBeginning];
@@ -3606,7 +3994,7 @@ static YapDatabaseViewRowChange* (^RowOp)(NSArray*, NSUInteger) = ^(NSArray *rCh
 	
 	YapDatabaseViewMappings *originalMappings = [mappings copy];
 	
-	STAssertTrue([mappings numberOfItemsInGroup:@""] == 0, @"");
+	XCTAssertTrue([mappings numberOfItemsInGroup:@""] == 0, @"");
 	
 	// Insert multiple items to an empty view
 	
@@ -3627,20 +4015,20 @@ static YapDatabaseViewRowChange* (^RowOp)(NSArray*, NSUInteger) = ^(NSArray *rCh
 	
 	// Verify
 	
-	STAssertTrue([mappings numberOfItemsInGroup:@""] == 2, @"");
+	XCTAssertTrue([mappings numberOfItemsInGroup:@""] == 2, @"");
 	
-	STAssertTrue([rowChanges count] == 2, @"");
+	XCTAssertTrue([rowChanges count] == 2, @"");
 	
-	STAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeInsert, @"");
-	STAssertTrue(RowOp(rowChanges, 0).finalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 0).finalIndex == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeInsert, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).finalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).finalIndex == 0, @"");
 	
-	STAssertTrue(RowOp(rowChanges, 1).type == YapDatabaseViewChangeInsert, @"");
-	STAssertTrue(RowOp(rowChanges, 1).finalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 1).finalIndex == 1, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).type == YapDatabaseViewChangeInsert, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).finalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).finalIndex == 1, @"");
 }
 
-- (void)test_flexibleRange_beginning_5B
+- (void)test_flexibleRange_beginning_6B
 {
 	YapDatabaseViewRangeOptions *rangeOpts =
 	    [YapDatabaseViewRangeOptions flexibleRangeWithLength:20 offset:0 from:YapDatabaseViewBeginning];
@@ -3652,7 +4040,7 @@ static YapDatabaseViewRowChange* (^RowOp)(NSArray*, NSUInteger) = ^(NSArray *rCh
 	
 	YapDatabaseViewMappings *originalMappings = [mappings copy];
 	
-	STAssertTrue([mappings numberOfItemsInGroup:@""] == 10, @"");
+	XCTAssertTrue([mappings numberOfItemsInGroup:@""] == 10, @"");
 	
 	// Insert multiple items into a small view
 	
@@ -3673,16 +4061,16 @@ static YapDatabaseViewRowChange* (^RowOp)(NSArray*, NSUInteger) = ^(NSArray *rCh
 	
 	// Verify
 	
-	STAssertTrue([mappings numberOfItemsInGroup:@""] == 11, @"");
+	XCTAssertTrue([mappings numberOfItemsInGroup:@""] == 11, @"");
 	
-	STAssertTrue([rowChanges count] == 1, @"");
+	XCTAssertTrue([rowChanges count] == 1, @"");
 	
-	STAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeInsert, @"");
-	STAssertTrue(RowOp(rowChanges, 0).finalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 0).finalIndex == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeInsert, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).finalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).finalIndex == 0, @"");
 }
 
-- (void)test_flexibleRange_beginning_5C
+- (void)test_flexibleRange_beginning_6C
 {
 	YapDatabaseViewRangeOptions *rangeOpts =
 	    [YapDatabaseViewRangeOptions flexibleRangeWithLength:20 offset:0 from:YapDatabaseViewBeginning];
@@ -3694,7 +4082,7 @@ static YapDatabaseViewRowChange* (^RowOp)(NSArray*, NSUInteger) = ^(NSArray *rCh
 	
 	YapDatabaseViewMappings *originalMappings = [mappings copy];
 	
-	STAssertTrue([mappings numberOfItemsInGroup:@""] == 19, @"");
+	XCTAssertTrue([mappings numberOfItemsInGroup:@""] == 19, @"");
 	
 	// Insert multiple items into a view to grow the length
 	
@@ -3715,16 +4103,16 @@ static YapDatabaseViewRowChange* (^RowOp)(NSArray*, NSUInteger) = ^(NSArray *rCh
 	
 	// Verify
 	
-	STAssertTrue([mappings numberOfItemsInGroup:@""] == 20, @"");
+	XCTAssertTrue([mappings numberOfItemsInGroup:@""] == 20, @"");
 	
-	STAssertTrue([rowChanges count] == 1, @"");
+	XCTAssertTrue([rowChanges count] == 1, @"");
 	
-	STAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeInsert, @"");
-	STAssertTrue(RowOp(rowChanges, 0).finalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 0).finalIndex == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeInsert, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).finalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).finalIndex == 0, @"");
 }
 
-- (void)test_flexibleRange_end_5A
+- (void)test_flexibleRange_end_6A
 {
 	YapDatabaseViewRangeOptions *rangeOpts =
 	    [YapDatabaseViewRangeOptions flexibleRangeWithLength:20 offset:0 from:YapDatabaseViewEnd];
@@ -3736,7 +4124,7 @@ static YapDatabaseViewRowChange* (^RowOp)(NSArray*, NSUInteger) = ^(NSArray *rCh
 	
 	YapDatabaseViewMappings *originalMappings = [mappings copy];
 	
-	STAssertTrue([mappings numberOfItemsInGroup:@""] == 0, @"");
+	XCTAssertTrue([mappings numberOfItemsInGroup:@""] == 0, @"");
 	
 	// Delete multiple items inside the range
 	
@@ -3757,20 +4145,20 @@ static YapDatabaseViewRowChange* (^RowOp)(NSArray*, NSUInteger) = ^(NSArray *rCh
 	
 	// Verify
 	
-	STAssertTrue([mappings numberOfItemsInGroup:@""] == 2, @"");
+	XCTAssertTrue([mappings numberOfItemsInGroup:@""] == 2, @"");
 	
-	STAssertTrue([rowChanges count] == 2, @"");
+	XCTAssertTrue([rowChanges count] == 2, @"");
 	
-	STAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeInsert, @"");
-	STAssertTrue(RowOp(rowChanges, 0).finalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 0).finalIndex == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeInsert, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).finalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).finalIndex == 0, @"");
 	
-	STAssertTrue(RowOp(rowChanges, 1).type == YapDatabaseViewChangeInsert, @"");
-	STAssertTrue(RowOp(rowChanges, 1).finalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 1).finalIndex == 1, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).type == YapDatabaseViewChangeInsert, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).finalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).finalIndex == 1, @"");
 }
 
-- (void)test_flexibleRange_end_5B
+- (void)test_flexibleRange_end_6B
 {
 	YapDatabaseViewRangeOptions *rangeOpts =
 	    [YapDatabaseViewRangeOptions flexibleRangeWithLength:20 offset:0 from:YapDatabaseViewEnd];
@@ -3782,7 +4170,7 @@ static YapDatabaseViewRowChange* (^RowOp)(NSArray*, NSUInteger) = ^(NSArray *rCh
 	
 	YapDatabaseViewMappings *originalMappings = [mappings copy];
 	
-	STAssertTrue([mappings numberOfItemsInGroup:@""] == 10, @"");
+	XCTAssertTrue([mappings numberOfItemsInGroup:@""] == 10, @"");
 	
 	// Delete multiple items inside the range
 	
@@ -3803,16 +4191,16 @@ static YapDatabaseViewRowChange* (^RowOp)(NSArray*, NSUInteger) = ^(NSArray *rCh
 	
 	// Verify
 	
-	STAssertTrue([mappings numberOfItemsInGroup:@""] == 11, @"");
+	XCTAssertTrue([mappings numberOfItemsInGroup:@""] == 11, @"");
 	
-	STAssertTrue([rowChanges count] == 1, @"");
+	XCTAssertTrue([rowChanges count] == 1, @"");
 	
-	STAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeInsert, @"");
-	STAssertTrue(RowOp(rowChanges, 0).finalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 0).finalIndex == 10, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeInsert, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).finalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).finalIndex == 10, @"");
 }
 
-- (void)test_flexibleRange_end_5C
+- (void)test_flexibleRange_end_6C
 {
 	YapDatabaseViewRangeOptions *rangeOpts =
 	    [YapDatabaseViewRangeOptions flexibleRangeWithLength:20 offset:0 from:YapDatabaseViewEnd];
@@ -3824,7 +4212,7 @@ static YapDatabaseViewRowChange* (^RowOp)(NSArray*, NSUInteger) = ^(NSArray *rCh
 	
 	YapDatabaseViewMappings *originalMappings = [mappings copy];
 	
-	STAssertTrue([mappings numberOfItemsInGroup:@""] == 19, @"");
+	XCTAssertTrue([mappings numberOfItemsInGroup:@""] == 19, @"");
 	
 	// Delete multiple items inside the range
 	
@@ -3845,20 +4233,20 @@ static YapDatabaseViewRowChange* (^RowOp)(NSArray*, NSUInteger) = ^(NSArray *rCh
 	
 	// Verify
 	
-	STAssertTrue([mappings numberOfItemsInGroup:@""] == 20, @"");
+	XCTAssertTrue([mappings numberOfItemsInGroup:@""] == 20, @"");
 	
-	STAssertTrue([rowChanges count] == 1, @"");
+	XCTAssertTrue([rowChanges count] == 1, @"");
 	
-	STAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeInsert, @"");
-	STAssertTrue(RowOp(rowChanges, 0).finalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 0).finalIndex == 19, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeInsert, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).finalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).finalIndex == 19, @"");
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 #pragma mark Flexible Range: Reset
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-- (void)test_flexibleRange_beginning_6A
+- (void)test_flexibleRange_beginning_7A
 {
 	YapDatabaseViewRangeOptions *rangeOpts =
 	    [YapDatabaseViewRangeOptions flexibleRangeWithLength:20 offset:0 from:YapDatabaseViewBeginning];
@@ -3870,7 +4258,7 @@ static YapDatabaseViewRowChange* (^RowOp)(NSArray*, NSUInteger) = ^(NSArray *rCh
 	
 	YapDatabaseViewMappings *originalMappings = [mappings copy];
 	
-	STAssertTrue([mappings numberOfItemsInGroup:@""] == 2, @"");
+	XCTAssertTrue([mappings numberOfItemsInGroup:@""] == 2, @"");
 	
 	// Delete all from the view
 	
@@ -3890,20 +4278,20 @@ static YapDatabaseViewRowChange* (^RowOp)(NSArray*, NSUInteger) = ^(NSArray *rCh
 	
 	// Verify
 	
-	STAssertTrue([mappings numberOfItemsInGroup:@""] == 0, @"");
+	XCTAssertTrue([mappings numberOfItemsInGroup:@""] == 0, @"");
 	
-	STAssertTrue([rowChanges count] == 2, @"");
+	XCTAssertTrue([rowChanges count] == 2, @"");
 	
-	STAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeDelete, @"");
-	STAssertTrue(RowOp(rowChanges, 0).originalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 0).originalIndex == 1, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeDelete, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).originalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).originalIndex == 1, @"");
 	
-	STAssertTrue(RowOp(rowChanges, 1).type == YapDatabaseViewChangeDelete, @"");
-	STAssertTrue(RowOp(rowChanges, 1).originalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 1).originalIndex == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).type == YapDatabaseViewChangeDelete, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).originalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).originalIndex == 0, @"");
 }
 
-- (void)test_flexibleRange_beginning_6B
+- (void)test_flexibleRange_beginning_7B
 {
 	YapDatabaseViewRangeOptions *rangeOpts =
 	    [YapDatabaseViewRangeOptions flexibleRangeWithLength:20 offset:0 from:YapDatabaseViewBeginning];
@@ -3915,7 +4303,7 @@ static YapDatabaseViewRowChange* (^RowOp)(NSArray*, NSUInteger) = ^(NSArray *rCh
 	
 	YapDatabaseViewMappings *originalMappings = [mappings copy];
 	
-	STAssertTrue([mappings numberOfItemsInGroup:@""] == 2, @"");
+	XCTAssertTrue([mappings numberOfItemsInGroup:@""] == 2, @"");
 	
 	// Delete all from the view, then add one
 	
@@ -3936,24 +4324,24 @@ static YapDatabaseViewRowChange* (^RowOp)(NSArray*, NSUInteger) = ^(NSArray *rCh
 	
 	// Verify
 	
-	STAssertTrue([mappings numberOfItemsInGroup:@""] == 1, @"");
+	XCTAssertTrue([mappings numberOfItemsInGroup:@""] == 1, @"");
 	
-	STAssertTrue([rowChanges count] == 3, @"");
+	XCTAssertTrue([rowChanges count] == 3, @"");
 	
-	STAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeDelete, @"");
-	STAssertTrue(RowOp(rowChanges, 0).originalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 0).originalIndex == 1, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeDelete, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).originalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).originalIndex == 1, @"");
 	
-	STAssertTrue(RowOp(rowChanges, 1).type == YapDatabaseViewChangeDelete, @"");
-	STAssertTrue(RowOp(rowChanges, 1).originalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 1).originalIndex == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).type == YapDatabaseViewChangeDelete, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).originalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).originalIndex == 0, @"");
 	
-	STAssertTrue(RowOp(rowChanges, 2).type == YapDatabaseViewChangeInsert, @"");
-	STAssertTrue(RowOp(rowChanges, 2).finalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 2).finalIndex == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 2).type == YapDatabaseViewChangeInsert, @"");
+	XCTAssertTrue(RowOp(rowChanges, 2).finalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 2).finalIndex == 0, @"");
 }
 
-- (void)test_flexibleRange_beginning_6C
+- (void)test_flexibleRange_beginning_7C
 {
 	YapDatabaseViewRangeOptions *rangeOpts =
 	    [YapDatabaseViewRangeOptions flexibleRangeWithLength:20 offset:0 from:YapDatabaseViewBeginning];
@@ -3965,7 +4353,7 @@ static YapDatabaseViewRowChange* (^RowOp)(NSArray*, NSUInteger) = ^(NSArray *rCh
 	
 	YapDatabaseViewMappings *originalMappings = [mappings copy];
 	
-	STAssertTrue([mappings numberOfItemsInGroup:@""] == 2, @"");
+	XCTAssertTrue([mappings numberOfItemsInGroup:@""] == 2, @"");
 	
 	// Delete all from the view (with other operations beforehand), and then add one
 	
@@ -3987,24 +4375,24 @@ static YapDatabaseViewRowChange* (^RowOp)(NSArray*, NSUInteger) = ^(NSArray *rCh
 	
 	// Verify
 	
-	STAssertTrue([mappings numberOfItemsInGroup:@""] == 1, @"");
+	XCTAssertTrue([mappings numberOfItemsInGroup:@""] == 1, @"");
 	
-	STAssertTrue([rowChanges count] == 3, @"");
+	XCTAssertTrue([rowChanges count] == 3, @"");
 	
-	STAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeDelete, @"");
-	STAssertTrue(RowOp(rowChanges, 0).originalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 0).originalIndex == 1, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeDelete, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).originalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).originalIndex == 1, @"");
 	
-	STAssertTrue(RowOp(rowChanges, 1).type == YapDatabaseViewChangeDelete, @"");
-	STAssertTrue(RowOp(rowChanges, 1).originalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 1).originalIndex == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).type == YapDatabaseViewChangeDelete, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).originalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).originalIndex == 0, @"");
 	
-	STAssertTrue(RowOp(rowChanges, 2).type == YapDatabaseViewChangeInsert, @"");
-	STAssertTrue(RowOp(rowChanges, 2).finalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 2).finalIndex == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 2).type == YapDatabaseViewChangeInsert, @"");
+	XCTAssertTrue(RowOp(rowChanges, 2).finalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 2).finalIndex == 0, @"");
 }
 
-- (void)test_flexibleRange_end_6A
+- (void)test_flexibleRange_end_7A
 {
 	YapDatabaseViewRangeOptions *rangeOpts =
 	    [YapDatabaseViewRangeOptions flexibleRangeWithLength:20 offset:0 from:YapDatabaseViewEnd];
@@ -4016,7 +4404,7 @@ static YapDatabaseViewRowChange* (^RowOp)(NSArray*, NSUInteger) = ^(NSArray *rCh
 	
 	YapDatabaseViewMappings *originalMappings = [mappings copy];
 	
-	STAssertTrue([mappings numberOfItemsInGroup:@""] == 2, @"");
+	XCTAssertTrue([mappings numberOfItemsInGroup:@""] == 2, @"");
 	
 	// Delete all from the view
 	
@@ -4036,20 +4424,20 @@ static YapDatabaseViewRowChange* (^RowOp)(NSArray*, NSUInteger) = ^(NSArray *rCh
 	
 	// Verify
 	
-	STAssertTrue([mappings numberOfItemsInGroup:@""] == 0, @"");
+	XCTAssertTrue([mappings numberOfItemsInGroup:@""] == 0, @"");
 	
-	STAssertTrue([rowChanges count] == 2, @"");
+	XCTAssertTrue([rowChanges count] == 2, @"");
 	
-	STAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeDelete, @"");
-	STAssertTrue(RowOp(rowChanges, 0).originalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 0).originalIndex == 1, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeDelete, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).originalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).originalIndex == 1, @"");
 	
-	STAssertTrue(RowOp(rowChanges, 1).type == YapDatabaseViewChangeDelete, @"");
-	STAssertTrue(RowOp(rowChanges, 1).originalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 1).originalIndex == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).type == YapDatabaseViewChangeDelete, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).originalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).originalIndex == 0, @"");
 }
 
-- (void)test_flexibleRange_end_6B
+- (void)test_flexibleRange_end_7B
 {
 	YapDatabaseViewRangeOptions *rangeOpts =
 	    [YapDatabaseViewRangeOptions flexibleRangeWithLength:20 offset:0 from:YapDatabaseViewEnd];
@@ -4061,7 +4449,7 @@ static YapDatabaseViewRowChange* (^RowOp)(NSArray*, NSUInteger) = ^(NSArray *rCh
 	
 	YapDatabaseViewMappings *originalMappings = [mappings copy];
 	
-	STAssertTrue([mappings numberOfItemsInGroup:@""] == 2, @"");
+	XCTAssertTrue([mappings numberOfItemsInGroup:@""] == 2, @"");
 	
 	// Delete all from the view, then add one
 	
@@ -4082,24 +4470,24 @@ static YapDatabaseViewRowChange* (^RowOp)(NSArray*, NSUInteger) = ^(NSArray *rCh
 	
 	// Verify
 	
-	STAssertTrue([mappings numberOfItemsInGroup:@""] == 1, @"");
+	XCTAssertTrue([mappings numberOfItemsInGroup:@""] == 1, @"");
 	
-	STAssertTrue([rowChanges count] == 3, @"");
+	XCTAssertTrue([rowChanges count] == 3, @"");
 	
-	STAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeDelete, @"");
-	STAssertTrue(RowOp(rowChanges, 0).originalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 0).originalIndex == 1, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeDelete, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).originalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).originalIndex == 1, @"");
 	
-	STAssertTrue(RowOp(rowChanges, 1).type == YapDatabaseViewChangeDelete, @"");
-	STAssertTrue(RowOp(rowChanges, 1).originalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 1).originalIndex == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).type == YapDatabaseViewChangeDelete, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).originalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).originalIndex == 0, @"");
 	
-	STAssertTrue(RowOp(rowChanges, 2).type == YapDatabaseViewChangeInsert, @"");
-	STAssertTrue(RowOp(rowChanges, 2).finalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 2).finalIndex == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 2).type == YapDatabaseViewChangeInsert, @"");
+	XCTAssertTrue(RowOp(rowChanges, 2).finalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 2).finalIndex == 0, @"");
 }
 
-- (void)test_flexibleRange_end_6C
+- (void)test_flexibleRange_end_7C
 {
 	YapDatabaseViewRangeOptions *rangeOpts =
 	    [YapDatabaseViewRangeOptions flexibleRangeWithLength:20 offset:0 from:YapDatabaseViewEnd];
@@ -4111,7 +4499,7 @@ static YapDatabaseViewRowChange* (^RowOp)(NSArray*, NSUInteger) = ^(NSArray *rCh
 	
 	YapDatabaseViewMappings *originalMappings = [mappings copy];
 	
-	STAssertTrue([mappings numberOfItemsInGroup:@""] == 2, @"");
+	XCTAssertTrue([mappings numberOfItemsInGroup:@""] == 2, @"");
 	
 	// Delete all from the view (with other operations beforehand), and then add one
 	
@@ -4133,28 +4521,28 @@ static YapDatabaseViewRowChange* (^RowOp)(NSArray*, NSUInteger) = ^(NSArray *rCh
 	
 	// Verify
 	
-	STAssertTrue([mappings numberOfItemsInGroup:@""] == 1, @"");
+	XCTAssertTrue([mappings numberOfItemsInGroup:@""] == 1, @"");
 	
-	STAssertTrue([rowChanges count] == 3, @"");
+	XCTAssertTrue([rowChanges count] == 3, @"");
 	
-	STAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeDelete, @"");
-	STAssertTrue(RowOp(rowChanges, 0).originalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 0).originalIndex == 1, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeDelete, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).originalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).originalIndex == 1, @"");
 	
-	STAssertTrue(RowOp(rowChanges, 1).type == YapDatabaseViewChangeDelete, @"");
-	STAssertTrue(RowOp(rowChanges, 1).originalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 1).originalIndex == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).type == YapDatabaseViewChangeDelete, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).originalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).originalIndex == 0, @"");
 	
-	STAssertTrue(RowOp(rowChanges, 2).type == YapDatabaseViewChangeInsert, @"");
-	STAssertTrue(RowOp(rowChanges, 2).finalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 2).finalIndex == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 2).type == YapDatabaseViewChangeInsert, @"");
+	XCTAssertTrue(RowOp(rowChanges, 2).finalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 2).finalIndex == 0, @"");
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 #pragma mark Flexible Range: Max & Min Length
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-- (void)test_flexibleRange_beginning_7A
+- (void)test_flexibleRange_beginning_8A
 {
 	YapDatabaseViewRangeOptions *rangeOpts =
 	    [YapDatabaseViewRangeOptions flexibleRangeWithLength:8 offset:0 from:YapDatabaseViewBeginning];
@@ -4167,7 +4555,7 @@ static YapDatabaseViewRowChange* (^RowOp)(NSArray*, NSUInteger) = ^(NSArray *rCh
 	
 	YapDatabaseViewMappings *originalMappings = [mappings copy];
 	
-	STAssertTrue([mappings numberOfItemsInGroup:@""] == 8, @"");
+	XCTAssertTrue([mappings numberOfItemsInGroup:@""] == 8, @"");
 	
 	// Inset enough items to exceed max length
 	
@@ -4189,28 +4577,28 @@ static YapDatabaseViewRowChange* (^RowOp)(NSArray*, NSUInteger) = ^(NSArray *rCh
 	
 	// Verify
 	
-	STAssertTrue([mappings numberOfItemsInGroup:@""] == 10, @"");
+	XCTAssertTrue([mappings numberOfItemsInGroup:@""] == 10, @"");
 	
-	STAssertTrue([rowChanges count] == 4, @"");
+	XCTAssertTrue([rowChanges count] == 4, @"");
 	
-	STAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeInsert, @"");
-	STAssertTrue(RowOp(rowChanges, 0).finalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 0).finalIndex == 2, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeInsert, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).finalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).finalIndex == 2, @"");
 	
-	STAssertTrue(RowOp(rowChanges, 1).type == YapDatabaseViewChangeInsert, @"");
-	STAssertTrue(RowOp(rowChanges, 1).finalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 1).finalIndex == 1, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).type == YapDatabaseViewChangeInsert, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).finalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).finalIndex == 1, @"");
 	
-	STAssertTrue(RowOp(rowChanges, 2).type == YapDatabaseViewChangeInsert, @"");
-	STAssertTrue(RowOp(rowChanges, 2).finalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 2).finalIndex == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 2).type == YapDatabaseViewChangeInsert, @"");
+	XCTAssertTrue(RowOp(rowChanges, 2).finalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 2).finalIndex == 0, @"");
 	
-	STAssertTrue(RowOp(rowChanges, 3).type == YapDatabaseViewChangeDelete, @"");
-	STAssertTrue(RowOp(rowChanges, 3).originalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 3).originalIndex == 7, @"");
+	XCTAssertTrue(RowOp(rowChanges, 3).type == YapDatabaseViewChangeDelete, @"");
+	XCTAssertTrue(RowOp(rowChanges, 3).originalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 3).originalIndex == 7, @"");
 }
 
-- (void)test_flexibleRange_beginning_7B
+- (void)test_flexibleRange_beginning_8B
 {
 	YapDatabaseViewRangeOptions *rangeOpts =
 	    [YapDatabaseViewRangeOptions flexibleRangeWithLength:6 offset:0 from:YapDatabaseViewBeginning];
@@ -4223,7 +4611,7 @@ static YapDatabaseViewRowChange* (^RowOp)(NSArray*, NSUInteger) = ^(NSArray *rCh
 	
 	YapDatabaseViewMappings *originalMappings = [mappings copy];
 	
-	STAssertTrue([mappings numberOfItemsInGroup:@""] == 6, @"");
+	XCTAssertTrue([mappings numberOfItemsInGroup:@""] == 6, @"");
 	
 	// Delete enough items to drop below min length
 	
@@ -4244,24 +4632,24 @@ static YapDatabaseViewRowChange* (^RowOp)(NSArray*, NSUInteger) = ^(NSArray *rCh
 	
 	// Verify
 	
-	STAssertTrue([mappings numberOfItemsInGroup:@""] == 5, @"");
+	XCTAssertTrue([mappings numberOfItemsInGroup:@""] == 5, @"");
 	
-	STAssertTrue([rowChanges count] == 3, @"");
+	XCTAssertTrue([rowChanges count] == 3, @"");
 	
-	STAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeDelete, @"");
-	STAssertTrue(RowOp(rowChanges, 0).originalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 0).originalIndex == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeDelete, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).originalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).originalIndex == 0, @"");
 	
-	STAssertTrue(RowOp(rowChanges, 1).type == YapDatabaseViewChangeDelete, @"");
-	STAssertTrue(RowOp(rowChanges, 1).originalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 1).originalIndex == 1, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).type == YapDatabaseViewChangeDelete, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).originalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).originalIndex == 1, @"");
 	
-	STAssertTrue(RowOp(rowChanges, 2).type == YapDatabaseViewChangeInsert, @"");
-	STAssertTrue(RowOp(rowChanges, 2).finalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 2).finalIndex == 4, @"");
+	XCTAssertTrue(RowOp(rowChanges, 2).type == YapDatabaseViewChangeInsert, @"");
+	XCTAssertTrue(RowOp(rowChanges, 2).finalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 2).finalIndex == 4, @"");
 }
 
-- (void)test_flexibleRange_beginning_7C
+- (void)test_flexibleRange_beginning_8C
 {
 	YapDatabaseViewRangeOptions *rangeOpts =
 	    [YapDatabaseViewRangeOptions flexibleRangeWithLength:6 offset:1 from:YapDatabaseViewBeginning];
@@ -4274,9 +4662,9 @@ static YapDatabaseViewRowChange* (^RowOp)(NSArray*, NSUInteger) = ^(NSArray *rCh
 	
 	YapDatabaseViewMappings *originalMappings = [mappings copy];
 	
-	STAssertTrue([mappings numberOfItemsInGroup:@""] == 6, @"");
+	XCTAssertTrue([mappings numberOfItemsInGroup:@""] == 6, @"");
 	
-	STAssertTrue([mappings indexForRow:0 inGroup:@""] == 1, @"");
+	XCTAssertTrue([mappings indexForRow:0 inGroup:@""] == 1, @"");
 	
 	// Delete enough items to drop below min length
 	
@@ -4298,35 +4686,35 @@ static YapDatabaseViewRowChange* (^RowOp)(NSArray*, NSUInteger) = ^(NSArray *rCh
 	
 	// Verify
 	
-	STAssertTrue([mappings numberOfItemsInGroup:@""] == 5, @"");
+	XCTAssertTrue([mappings numberOfItemsInGroup:@""] == 5, @"");
 	
-	STAssertTrue([[mappings rangeOptionsForGroup:@""] length] == 5, @"");
-	STAssertTrue([[mappings rangeOptionsForGroup:@""] offset] == 0, @"");
+	XCTAssertTrue([[mappings rangeOptionsForGroup:@""] length] == 5, @"");
+	XCTAssertTrue([[mappings rangeOptionsForGroup:@""] offset] == 0, @"");
 	
-	STAssertTrue([rowChanges count] == 5, @"");
+	XCTAssertTrue([rowChanges count] == 5, @"");
 	
-	STAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeDelete, @"");
-	STAssertTrue(RowOp(rowChanges, 0).originalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 0).originalIndex == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeDelete, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).originalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).originalIndex == 0, @"");
 	
-	STAssertTrue(RowOp(rowChanges, 1).type == YapDatabaseViewChangeDelete, @"");
-	STAssertTrue(RowOp(rowChanges, 1).originalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 1).originalIndex == 1, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).type == YapDatabaseViewChangeDelete, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).originalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).originalIndex == 1, @"");
 	
-	STAssertTrue(RowOp(rowChanges, 2).type == YapDatabaseViewChangeDelete, @"");
-	STAssertTrue(RowOp(rowChanges, 2).originalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 2).originalIndex == 2, @"");
+	XCTAssertTrue(RowOp(rowChanges, 2).type == YapDatabaseViewChangeDelete, @"");
+	XCTAssertTrue(RowOp(rowChanges, 2).originalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 2).originalIndex == 2, @"");
 	
-	STAssertTrue(RowOp(rowChanges, 3).type == YapDatabaseViewChangeInsert, @"");
-	STAssertTrue(RowOp(rowChanges, 3).finalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 3).finalIndex == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 3).type == YapDatabaseViewChangeInsert, @"");
+	XCTAssertTrue(RowOp(rowChanges, 3).finalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 3).finalIndex == 0, @"");
 	
-	STAssertTrue(RowOp(rowChanges, 4).type == YapDatabaseViewChangeInsert, @"");
-	STAssertTrue(RowOp(rowChanges, 4).finalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 4).finalIndex == 4, @"");
+	XCTAssertTrue(RowOp(rowChanges, 4).type == YapDatabaseViewChangeInsert, @"");
+	XCTAssertTrue(RowOp(rowChanges, 4).finalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 4).finalIndex == 4, @"");
 }
 
-- (void)test_flexibleRange_end_7A
+- (void)test_flexibleRange_end_8A
 {
 	YapDatabaseViewRangeOptions *rangeOpts =
 	    [YapDatabaseViewRangeOptions flexibleRangeWithLength:8 offset:0 from:YapDatabaseViewEnd];
@@ -4339,7 +4727,7 @@ static YapDatabaseViewRowChange* (^RowOp)(NSArray*, NSUInteger) = ^(NSArray *rCh
 	
 	YapDatabaseViewMappings *originalMappings = [mappings copy];
 	
-	STAssertTrue([mappings numberOfItemsInGroup:@""] == 8, @"");
+	XCTAssertTrue([mappings numberOfItemsInGroup:@""] == 8, @"");
 	
 	// Delete all from the view (with other operations beforehand), and then add one
 	
@@ -4361,28 +4749,28 @@ static YapDatabaseViewRowChange* (^RowOp)(NSArray*, NSUInteger) = ^(NSArray *rCh
 	
 	// Verify
 	
-	STAssertTrue([mappings numberOfItemsInGroup:@""] == 10, @"");
+	XCTAssertTrue([mappings numberOfItemsInGroup:@""] == 10, @"");
 	
-	STAssertTrue([rowChanges count] == 4, @"");
+	XCTAssertTrue([rowChanges count] == 4, @"");
 	
-	STAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeInsert, @"");
-	STAssertTrue(RowOp(rowChanges, 0).finalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 0).finalIndex == 7, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeInsert, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).finalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).finalIndex == 7, @"");
 	
-	STAssertTrue(RowOp(rowChanges, 1).type == YapDatabaseViewChangeInsert, @"");
-	STAssertTrue(RowOp(rowChanges, 1).finalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 1).finalIndex == 8, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).type == YapDatabaseViewChangeInsert, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).finalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).finalIndex == 8, @"");
 	
-	STAssertTrue(RowOp(rowChanges, 2).type == YapDatabaseViewChangeInsert, @"");
-	STAssertTrue(RowOp(rowChanges, 2).finalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 2).finalIndex == 9, @"");
+	XCTAssertTrue(RowOp(rowChanges, 2).type == YapDatabaseViewChangeInsert, @"");
+	XCTAssertTrue(RowOp(rowChanges, 2).finalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 2).finalIndex == 9, @"");
 	
-	STAssertTrue(RowOp(rowChanges, 3).type == YapDatabaseViewChangeDelete, @"");
-	STAssertTrue(RowOp(rowChanges, 3).originalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 3).originalIndex == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 3).type == YapDatabaseViewChangeDelete, @"");
+	XCTAssertTrue(RowOp(rowChanges, 3).originalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 3).originalIndex == 0, @"");
 }
 
-- (void)test_flexibleRange_end_7B
+- (void)test_flexibleRange_end_8B
 {
 	YapDatabaseViewRangeOptions *rangeOpts =
 	    [YapDatabaseViewRangeOptions flexibleRangeWithLength:6 offset:0 from:YapDatabaseViewEnd];
@@ -4395,7 +4783,7 @@ static YapDatabaseViewRowChange* (^RowOp)(NSArray*, NSUInteger) = ^(NSArray *rCh
 	
 	YapDatabaseViewMappings *originalMappings = [mappings copy];
 	
-	STAssertTrue([mappings numberOfItemsInGroup:@""] == 6, @"");
+	XCTAssertTrue([mappings numberOfItemsInGroup:@""] == 6, @"");
 	
 	// Delete enough items to drop below min length
 	
@@ -4416,24 +4804,24 @@ static YapDatabaseViewRowChange* (^RowOp)(NSArray*, NSUInteger) = ^(NSArray *rCh
 	
 	// Verify
 	
-	STAssertTrue([mappings numberOfItemsInGroup:@""] == 5, @"");
+	XCTAssertTrue([mappings numberOfItemsInGroup:@""] == 5, @"");
 	
-	STAssertTrue([rowChanges count] == 3, @"");
+	XCTAssertTrue([rowChanges count] == 3, @"");
 	
-	STAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeDelete, @"");
-	STAssertTrue(RowOp(rowChanges, 0).originalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 0).originalIndex == 5, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeDelete, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).originalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).originalIndex == 5, @"");
 	
-	STAssertTrue(RowOp(rowChanges, 1).type == YapDatabaseViewChangeDelete, @"");
-	STAssertTrue(RowOp(rowChanges, 1).originalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 1).originalIndex == 4, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).type == YapDatabaseViewChangeDelete, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).originalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).originalIndex == 4, @"");
 	
-	STAssertTrue(RowOp(rowChanges, 2).type == YapDatabaseViewChangeInsert, @"");
-	STAssertTrue(RowOp(rowChanges, 2).finalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 2).finalIndex == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 2).type == YapDatabaseViewChangeInsert, @"");
+	XCTAssertTrue(RowOp(rowChanges, 2).finalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 2).finalIndex == 0, @"");
 }
 
-- (void)test_flexibleRange_end_7C
+- (void)test_flexibleRange_end_8C
 {
 	YapDatabaseViewRangeOptions *rangeOpts =
 	    [YapDatabaseViewRangeOptions flexibleRangeWithLength:6 offset:1 from:YapDatabaseViewEnd];
@@ -4446,9 +4834,9 @@ static YapDatabaseViewRowChange* (^RowOp)(NSArray*, NSUInteger) = ^(NSArray *rCh
 	
 	YapDatabaseViewMappings *originalMappings = [mappings copy];
 	
-	STAssertTrue([mappings numberOfItemsInGroup:@""] == 6, @"");
+	XCTAssertTrue([mappings numberOfItemsInGroup:@""] == 6, @"");
 	
-	STAssertTrue([mappings indexForRow:0 inGroup:@""] == 13, @"");
+	XCTAssertTrue([mappings indexForRow:0 inGroup:@""] == 13, @"");
 	
 	// Delete enough items to drop below min length
 	
@@ -4470,38 +4858,45 @@ static YapDatabaseViewRowChange* (^RowOp)(NSArray*, NSUInteger) = ^(NSArray *rCh
 	
 	// Verify
 	
-	STAssertTrue([mappings numberOfItemsInGroup:@""] == 5, @"");
+	XCTAssertTrue([mappings numberOfItemsInGroup:@""] == 5, @"");
 	
-	STAssertTrue([[mappings rangeOptionsForGroup:@""] length] == 5, @"");
-	STAssertTrue([[mappings rangeOptionsForGroup:@""] offset] == 0, @"");
+	XCTAssertTrue([[mappings rangeOptionsForGroup:@""] length] == 5, @"");
+	XCTAssertTrue([[mappings rangeOptionsForGroup:@""] offset] == 0, @"");
 	
-	STAssertTrue([rowChanges count] == 5, @"");
+	XCTAssertTrue([rowChanges count] == 5, @"");
 	
-	STAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeDelete, @"");
-	STAssertTrue(RowOp(rowChanges, 0).originalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 0).originalIndex == 5, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeDelete, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).originalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).originalIndex == 5, @"");
 	
-	STAssertTrue(RowOp(rowChanges, 1).type == YapDatabaseViewChangeDelete, @"");
-	STAssertTrue(RowOp(rowChanges, 1).originalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 1).originalIndex == 4, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).type == YapDatabaseViewChangeDelete, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).originalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).originalIndex == 4, @"");
 	
-	STAssertTrue(RowOp(rowChanges, 2).type == YapDatabaseViewChangeDelete, @"");
-	STAssertTrue(RowOp(rowChanges, 2).originalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 2).originalIndex == 3, @"");
+	XCTAssertTrue(RowOp(rowChanges, 2).type == YapDatabaseViewChangeDelete, @"");
+	XCTAssertTrue(RowOp(rowChanges, 2).originalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 2).originalIndex == 3, @"");
 	
-	STAssertTrue(RowOp(rowChanges, 3).type == YapDatabaseViewChangeInsert, @"");
-	STAssertTrue(RowOp(rowChanges, 3).finalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 3).finalIndex == 4, @"");
+	XCTAssertTrue(RowOp(rowChanges, 3).type == YapDatabaseViewChangeInsert, @"");
+	XCTAssertTrue(RowOp(rowChanges, 3).finalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 3).finalIndex == 4, @"");
 	
-	STAssertTrue(RowOp(rowChanges, 4).type == YapDatabaseViewChangeInsert, @"");
-	STAssertTrue(RowOp(rowChanges, 4).finalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 4).finalIndex == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 4).type == YapDatabaseViewChangeInsert, @"");
+	XCTAssertTrue(RowOp(rowChanges, 4).finalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 4).finalIndex == 0, @"");
 }
+
+@end
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 #pragma mark -
 #pragma mark Dependencies
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+@interface TestViewMappingsDependencies : TestViewMappingsBase
+@end
+
+@implementation TestViewMappingsDependencies
 
 - (void)test_dependencies_1
 {
@@ -4532,17 +4927,17 @@ static YapDatabaseViewRowChange* (^RowOp)(NSArray*, NSUInteger) = ^(NSArray *rCh
 	
 	// Verify
 	
-	STAssertTrue([rowChanges count] == 2, @"");
+	XCTAssertTrue([rowChanges count] == 2, @"");
 	
-	STAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeDelete, @"");
-	STAssertTrue(RowOp(rowChanges, 0).originalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 0).originalIndex == 17, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeDelete, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).originalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).originalIndex == 17, @"");
 	
-	STAssertTrue(RowOp(rowChanges, 1).type == YapDatabaseViewChangeUpdate, @"");
-	STAssertTrue(RowOp(rowChanges, 1).originalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 1).originalIndex == 18, @"");
-	STAssertTrue(RowOp(rowChanges, 1).finalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 1).finalIndex == 17, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).type == YapDatabaseViewChangeUpdate, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).originalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).originalIndex == 18, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).finalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).finalIndex == 17, @"");
 }
 
 - (void)test_dependencies_2
@@ -4575,15 +4970,15 @@ static YapDatabaseViewRowChange* (^RowOp)(NSArray*, NSUInteger) = ^(NSArray *rCh
 	
 	// Verify
 	
-	STAssertTrue([rowChanges count] == 2, @"");
+	XCTAssertTrue([rowChanges count] == 2, @"");
 	
-	STAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeDelete, @"");
-	STAssertTrue(RowOp(rowChanges, 0).originalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 0).originalIndex == 18, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeDelete, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).originalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).originalIndex == 18, @"");
 	
-	STAssertTrue(RowOp(rowChanges, 1).type == YapDatabaseViewChangeDelete, @"");
-	STAssertTrue(RowOp(rowChanges, 1).originalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 1).originalIndex == 19, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).type == YapDatabaseViewChangeDelete, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).originalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).originalIndex == 19, @"");
 }
 
 - (void)test_dependencies_3
@@ -4618,25 +5013,25 @@ static YapDatabaseViewRowChange* (^RowOp)(NSArray*, NSUInteger) = ^(NSArray *rCh
 	
 	// Verify
 	
-	STAssertTrue([rowChanges count] == 3, @"");
+	XCTAssertTrue([rowChanges count] == 3, @"");
 	
-	STAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeDelete, @"");
-	STAssertTrue(RowOp(rowChanges, 0).originalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 0).originalIndex == 10, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeDelete, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).originalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).originalIndex == 10, @"");
 	
 	flags = YapDatabaseViewChangedObject | YapDatabaseViewChangedDependency;
 	
-	STAssertTrue(RowOp(rowChanges, 1).type == YapDatabaseViewChangeUpdate, @"");
-	STAssertTrue(RowOp(rowChanges, 1).originalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 1).originalIndex == 11, @"");
-	STAssertTrue(RowOp(rowChanges, 1).changes == flags, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).type == YapDatabaseViewChangeUpdate, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).originalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).originalIndex == 11, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).changes == flags, @"");
 	
 	flags = YapDatabaseViewChangedDependency;
 	
-	STAssertTrue(RowOp(rowChanges, 2).type == YapDatabaseViewChangeUpdate, @"");
-	STAssertTrue(RowOp(rowChanges, 2).originalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 2).originalIndex == 12, @"");
-	STAssertTrue(RowOp(rowChanges, 2).changes == flags, @"");
+	XCTAssertTrue(RowOp(rowChanges, 2).type == YapDatabaseViewChangeUpdate, @"");
+	XCTAssertTrue(RowOp(rowChanges, 2).originalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 2).originalIndex == 12, @"");
+	XCTAssertTrue(RowOp(rowChanges, 2).changes == flags, @"");
 }
 
 - (void)test_dependencies_4
@@ -4668,20 +5063,20 @@ static YapDatabaseViewRowChange* (^RowOp)(NSArray*, NSUInteger) = ^(NSArray *rCh
 	
 	// Verify
 	
-	STAssertTrue([rowChanges count] == 2, @"");
+	XCTAssertTrue([rowChanges count] == 2, @"");
 	
-	STAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeInsert, @"");
-	STAssertTrue(RowOp(rowChanges, 0).finalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 0).finalIndex == 10, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeInsert, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).finalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).finalIndex == 10, @"");
 	
 	int flags = YapDatabaseViewChangedDependency;
 	
-	STAssertTrue(RowOp(rowChanges, 1).type == YapDatabaseViewChangeUpdate, @"");
-	STAssertTrue(RowOp(rowChanges, 1).originalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 1).originalIndex == 10, @"");
-	STAssertTrue(RowOp(rowChanges, 1).finalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 1).finalIndex == 11, @"");
-	STAssertTrue(RowOp(rowChanges, 1).changes == flags, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).type == YapDatabaseViewChangeUpdate, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).originalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).originalIndex == 10, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).finalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).finalIndex == 11, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).changes == flags, @"");
 }
 
 - (void)test_dependencies_5
@@ -4713,11 +5108,11 @@ static YapDatabaseViewRowChange* (^RowOp)(NSArray*, NSUInteger) = ^(NSArray *rCh
 	
 	// Verify
 	
-	STAssertTrue([rowChanges count] == 1, @"");
+	XCTAssertTrue([rowChanges count] == 1, @"");
 	
-	STAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeInsert, @"");
-	STAssertTrue(RowOp(rowChanges, 0).finalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 0).finalIndex == 20, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeInsert, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).finalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).finalIndex == 20, @"");
 }
 
 - (void)test_dependencies_6
@@ -4749,20 +5144,20 @@ static YapDatabaseViewRowChange* (^RowOp)(NSArray*, NSUInteger) = ^(NSArray *rCh
 	
 	// Verify
 	
-	STAssertTrue([rowChanges count] == 2, @"");
+	XCTAssertTrue([rowChanges count] == 2, @"");
 	
-	STAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeInsert, @"");
-	STAssertTrue(RowOp(rowChanges, 0).finalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 0).finalIndex == 20, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeInsert, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).finalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).finalIndex == 20, @"");
 	
 	int flags = YapDatabaseViewChangedDependency;
 	
-	STAssertTrue(RowOp(rowChanges, 1).type == YapDatabaseViewChangeUpdate, @"");
-	STAssertTrue(RowOp(rowChanges, 1).originalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 1).originalIndex == 19, @"");
-	STAssertTrue(RowOp(rowChanges, 1).finalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 1).finalIndex == 19, @"");
-	STAssertTrue(RowOp(rowChanges, 1).changes == flags, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).type == YapDatabaseViewChangeUpdate, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).originalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).originalIndex == 19, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).finalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).finalIndex == 19, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).changes == flags, @"");
 }
 
 - (void)test_dependencies_7
@@ -4794,11 +5189,11 @@ static YapDatabaseViewRowChange* (^RowOp)(NSArray*, NSUInteger) = ^(NSArray *rCh
 	
 	// Verify
 	
-	STAssertTrue([rowChanges count] == 1, @"");
+	XCTAssertTrue([rowChanges count] == 1, @"");
 	
-	STAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeInsert, @"");
-	STAssertTrue(RowOp(rowChanges, 0).finalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 0).finalIndex == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeInsert, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).finalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).finalIndex == 0, @"");
 }
 
 - (void)test_dependencies_8
@@ -4831,39 +5226,47 @@ static YapDatabaseViewRowChange* (^RowOp)(NSArray*, NSUInteger) = ^(NSArray *rCh
 	
 	// Verify
 	
-	STAssertTrue([rowChanges count] == 4, @"");
+	XCTAssertTrue([rowChanges count] == 4, @"");
 	
-	STAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeDelete, @"");
-	STAssertTrue(RowOp(rowChanges, 0).originalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 0).originalIndex == 10, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeDelete, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).originalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).originalIndex == 10, @"");
 	
-	STAssertTrue(RowOp(rowChanges, 1).type == YapDatabaseViewChangeMove, @"");
-	STAssertTrue(RowOp(rowChanges, 1).originalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 1).originalIndex == 11, @"");
-	STAssertTrue(RowOp(rowChanges, 1).finalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 1).finalIndex == 14, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).type == YapDatabaseViewChangeMove, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).originalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).originalIndex == 11, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).finalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).finalIndex == 14, @"");
 	
 	int flags = YapDatabaseViewChangedDependency;
 	
-	STAssertTrue(RowOp(rowChanges, 2).type == YapDatabaseViewChangeUpdate, @"");
-	STAssertTrue(RowOp(rowChanges, 2).originalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 2).originalIndex == 12, @"");
-	STAssertTrue(RowOp(rowChanges, 2).finalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 2).finalIndex == 10, @"");
-	STAssertTrue(RowOp(rowChanges, 2).changes == flags, @"");
+	XCTAssertTrue(RowOp(rowChanges, 2).type == YapDatabaseViewChangeUpdate, @"");
+	XCTAssertTrue(RowOp(rowChanges, 2).originalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 2).originalIndex == 12, @"");
+	XCTAssertTrue(RowOp(rowChanges, 2).finalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 2).finalIndex == 10, @"");
+	XCTAssertTrue(RowOp(rowChanges, 2).changes == flags, @"");
 	
-	STAssertTrue(RowOp(rowChanges, 3).type == YapDatabaseViewChangeUpdate, @"");
-	STAssertTrue(RowOp(rowChanges, 3).originalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 3).originalIndex == 16, @"");
-	STAssertTrue(RowOp(rowChanges, 3).finalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 3).finalIndex == 15, @"");
-	STAssertTrue(RowOp(rowChanges, 3).changes == flags, @"");
+	XCTAssertTrue(RowOp(rowChanges, 3).type == YapDatabaseViewChangeUpdate, @"");
+	XCTAssertTrue(RowOp(rowChanges, 3).originalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 3).originalIndex == 16, @"");
+	XCTAssertTrue(RowOp(rowChanges, 3).finalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 3).finalIndex == 15, @"");
+	XCTAssertTrue(RowOp(rowChanges, 3).changes == flags, @"");
 }
+
+@end
+
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 #pragma mark -
 #pragma mark Reverse
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+@interface TestViewMappingsReverse : TestViewMappingsBase
+@end
+
+@implementation TestViewMappingsReverse
 
 - (void)test_reverse_1
 {
@@ -4893,11 +5296,11 @@ static YapDatabaseViewRowChange* (^RowOp)(NSArray*, NSUInteger) = ^(NSArray *rCh
 	
 	// Verify
 	
-	STAssertTrue([rowChanges count] == 1, @"");
+	XCTAssertTrue([rowChanges count] == 1, @"");
 	
-	STAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeDelete, @"");
-	STAssertTrue(RowOp(rowChanges, 0).originalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 0).originalIndex == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeDelete, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).originalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).originalIndex == 0, @"");
 }
 
 - (void)test_reverse_2
@@ -4928,17 +5331,24 @@ static YapDatabaseViewRowChange* (^RowOp)(NSArray*, NSUInteger) = ^(NSArray *rCh
 	
 	// Verify
 	
-	STAssertTrue([rowChanges count] == 1, @"");
+	XCTAssertTrue([rowChanges count] == 1, @"");
 	
-	STAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeDelete, @"");
-	STAssertTrue(RowOp(rowChanges, 0).originalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 0).originalIndex == 4, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeDelete, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).originalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).originalIndex == 4, @"");
 }
+@end
+
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 #pragma mark -
 #pragma mark Getters
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+@interface TestViewMappingsGetters : TestViewMappingsBase
+@end
+
+@implementation TestViewMappingsGetters
 
 - (void)test_getter_1
 {
@@ -4953,32 +5363,32 @@ static YapDatabaseViewRowChange* (^RowOp)(NSArray*, NSUInteger) = ^(NSArray *rCh
 	NSUInteger index;
 	
 	index = [mappings indexForRow:0 inSection:0];
-	STAssertTrue(index == 0, @"Expected 0, got %lu", (unsigned long)index);
+	XCTAssertTrue(index == 0, @"Expected 0, got %lu", (unsigned long)index);
 	
 	index = [mappings indexForRow:1 inSection:0];
-	STAssertTrue(index == 1, @"Expected 1, got %lu", (unsigned long)index);
+	XCTAssertTrue(index == 1, @"Expected 1, got %lu", (unsigned long)index);
 	
 	index = [mappings indexForRow:2 inSection:0];
-	STAssertTrue(index == 2, @"Expected 2, got %lu", (unsigned long)index);
+	XCTAssertTrue(index == 2, @"Expected 2, got %lu", (unsigned long)index);
 	
 	index = [mappings indexForRow:3 inSection:0];
-	STAssertTrue(index == NSNotFound, @"Expected NSNotFound, got %lu", (unsigned long)index);
+	XCTAssertTrue(index == NSNotFound, @"Expected NSNotFound, got %lu", (unsigned long)index);
 	
 	// Verify: View -> UI
 	
 	NSUInteger row;
 	
 	row = [mappings rowForIndex:0 inGroup:@""];
-	STAssertTrue(row == 0, @"Expected 0, got %lu", (unsigned long)row);
+	XCTAssertTrue(row == 0, @"Expected 0, got %lu", (unsigned long)row);
 	
 	row = [mappings rowForIndex:1 inGroup:@""];
-	STAssertTrue(row == 1, @"Expected 1, got %lu", (unsigned long)row);
+	XCTAssertTrue(row == 1, @"Expected 1, got %lu", (unsigned long)row);
 	
 	row = [mappings rowForIndex:2 inGroup:@""];
-	STAssertTrue(row == 2, @"Expected 2, got %lu", (unsigned long)row);
+	XCTAssertTrue(row == 2, @"Expected 2, got %lu", (unsigned long)row);
 	
 	row = [mappings rowForIndex:3 inGroup:@""];
-	STAssertTrue(row == NSNotFound, @"Expected NSNotFound, got %lu", (unsigned long)row);
+	XCTAssertTrue(row == NSNotFound, @"Expected NSNotFound, got %lu", (unsigned long)row);
 }
 
 - (void)test_getter_2
@@ -4995,38 +5405,38 @@ static YapDatabaseViewRowChange* (^RowOp)(NSArray*, NSUInteger) = ^(NSArray *rCh
 	NSUInteger index;
 	
 	index = [mappings indexForRow:0 inSection:0];
-	STAssertTrue(index == 3, @"Expected 3, got %lu", (unsigned long)index);
+	XCTAssertTrue(index == 3, @"Expected 3, got %lu", (unsigned long)index);
 	
 	index = [mappings indexForRow:1 inSection:0];
-	STAssertTrue(index == 2, @"Expected 2, got %lu", (unsigned long)index);
+	XCTAssertTrue(index == 2, @"Expected 2, got %lu", (unsigned long)index);
 	
 	index = [mappings indexForRow:2 inSection:0];
-	STAssertTrue(index == 1, @"Expected 1, got %lu", (unsigned long)index);
+	XCTAssertTrue(index == 1, @"Expected 1, got %lu", (unsigned long)index);
 	
 	index = [mappings indexForRow:3 inSection:0];
-	STAssertTrue(index == 0, @"Expected 0, got %lu", (unsigned long)index);
+	XCTAssertTrue(index == 0, @"Expected 0, got %lu", (unsigned long)index);
 	
 	index = [mappings indexForRow:4 inSection:0];
-	STAssertTrue(index == NSNotFound, @"Expected NSNotFound, got %lu", (unsigned long)index);
+	XCTAssertTrue(index == NSNotFound, @"Expected NSNotFound, got %lu", (unsigned long)index);
 	
 	// Verify: View -> UI
 	
 	NSUInteger row;
 	
 	row = [mappings rowForIndex:0 inGroup:@""];
-	STAssertTrue(row == 3, @"Expected 3, got %lu", (unsigned long)row);
+	XCTAssertTrue(row == 3, @"Expected 3, got %lu", (unsigned long)row);
 	
 	row = [mappings rowForIndex:1 inGroup:@""];
-	STAssertTrue(row == 2, @"Expected 2, got %lu", (unsigned long)row);
+	XCTAssertTrue(row == 2, @"Expected 2, got %lu", (unsigned long)row);
 	
 	row = [mappings rowForIndex:2 inGroup:@""];
-	STAssertTrue(row == 1, @"Expected 1, got %lu", (unsigned long)row);
+	XCTAssertTrue(row == 1, @"Expected 1, got %lu", (unsigned long)row);
 	
 	row = [mappings rowForIndex:3 inGroup:@""];
-	STAssertTrue(row == 0, @"Expected 0, got %lu", (unsigned long)row);
+	XCTAssertTrue(row == 0, @"Expected 0, got %lu", (unsigned long)row);
 	
 	row = [mappings rowForIndex:4 inGroup:@""];
-	STAssertTrue(row == NSNotFound, @"Expected NSNotFound, got %lu", (unsigned long)row);
+	XCTAssertTrue(row == NSNotFound, @"Expected NSNotFound, got %lu", (unsigned long)row);
 }
 
 - (void)test_getter_3
@@ -5044,41 +5454,41 @@ static YapDatabaseViewRowChange* (^RowOp)(NSArray*, NSUInteger) = ^(NSArray *rCh
 	NSUInteger index;
 	
 	index = [mappings indexForRow:0 inSection:0];
-	STAssertTrue(index == 0, @"Expected 0, got %lu", (unsigned long)index);
+	XCTAssertTrue(index == 0, @"Expected 0, got %lu", (unsigned long)index);
 	
 	index = [mappings indexForRow:1 inSection:0];
-	STAssertTrue(index == 1, @"Expected 1, got %lu", (unsigned long)index);
+	XCTAssertTrue(index == 1, @"Expected 1, got %lu", (unsigned long)index);
 	
 	index = [mappings indexForRow:2 inSection:0];
-	STAssertTrue(index == 2, @"Expected 2, got %lu", (unsigned long)index);
+	XCTAssertTrue(index == 2, @"Expected 2, got %lu", (unsigned long)index);
 	
 	index = [mappings indexForRow:3 inSection:0];
-	STAssertTrue(index == 3, @"Expected 3, got %lu", (unsigned long)index);
+	XCTAssertTrue(index == 3, @"Expected 3, got %lu", (unsigned long)index);
 	
 	index = [mappings indexForRow:4 inSection:0];
-	STAssertTrue(index == NSNotFound, @"Expected NSNotFound, got %lu", (unsigned long)index);
+	XCTAssertTrue(index == NSNotFound, @"Expected NSNotFound, got %lu", (unsigned long)index);
 	
 	// Verify: View -> UI
 	
 	NSUInteger row;
 	
 	row = [mappings rowForIndex:0 inGroup:@""];
-	STAssertTrue(row == 0, @"Expected 0, got %lu", (unsigned long)row);
+	XCTAssertTrue(row == 0, @"Expected 0, got %lu", (unsigned long)row);
 	
 	row = [mappings rowForIndex:1 inGroup:@""];
-	STAssertTrue(row == 1, @"Expected 1, got %lu", (unsigned long)row);
+	XCTAssertTrue(row == 1, @"Expected 1, got %lu", (unsigned long)row);
 	
 	row = [mappings rowForIndex:2 inGroup:@""];
-	STAssertTrue(row == 2, @"Expected 2, got %lu", (unsigned long)row);
+	XCTAssertTrue(row == 2, @"Expected 2, got %lu", (unsigned long)row);
 	
 	row = [mappings rowForIndex:3 inGroup:@""];
-	STAssertTrue(row == 3, @"Expected 3, got %lu", (unsigned long)row);
+	XCTAssertTrue(row == 3, @"Expected 3, got %lu", (unsigned long)row);
 	
 	row = [mappings rowForIndex:4 inGroup:@""];
-	STAssertTrue(row == NSNotFound, @"Expected NSNotFound, got %lu", (unsigned long)row);
+	XCTAssertTrue(row == NSNotFound, @"Expected NSNotFound, got %lu", (unsigned long)row);
 	
 	row = [mappings rowForIndex:5 inGroup:@""];
-	STAssertTrue(row == NSNotFound, @"Expected NSNotFound, got %lu", (unsigned long)row);
+	XCTAssertTrue(row == NSNotFound, @"Expected NSNotFound, got %lu", (unsigned long)row);
 }
 
 - (void)test_getter_4
@@ -5096,44 +5506,44 @@ static YapDatabaseViewRowChange* (^RowOp)(NSArray*, NSUInteger) = ^(NSArray *rCh
 	NSUInteger index;
 	
 	index = [mappings indexForRow:0 inSection:0];
-	STAssertTrue(index == 1, @"Expected 1, got %lu", (unsigned long)index);
+	XCTAssertTrue(index == 1, @"Expected 1, got %lu", (unsigned long)index);
 	
 	index = [mappings indexForRow:1 inSection:0];
-	STAssertTrue(index == 2, @"Expected 2, got %lu", (unsigned long)index);
+	XCTAssertTrue(index == 2, @"Expected 2, got %lu", (unsigned long)index);
 	
 	index = [mappings indexForRow:2 inSection:0];
-	STAssertTrue(index == 3, @"Expected 3, got %lu", (unsigned long)index);
+	XCTAssertTrue(index == 3, @"Expected 3, got %lu", (unsigned long)index);
 	
 	index = [mappings indexForRow:3 inSection:0];
-	STAssertTrue(index == 4, @"Expected 4, got %lu", (unsigned long)index);
+	XCTAssertTrue(index == 4, @"Expected 4, got %lu", (unsigned long)index);
 	
 	index = [mappings indexForRow:4 inSection:0];
-	STAssertTrue(index == NSNotFound, @"Expected NSNotFound, got %lu", (unsigned long)index);
+	XCTAssertTrue(index == NSNotFound, @"Expected NSNotFound, got %lu", (unsigned long)index);
 	
 	// Verify: View -> UI
 	
 	NSUInteger row;
 	
 	row = [mappings rowForIndex:0 inGroup:@""];
-	STAssertTrue(row == NSNotFound, @"Expected NSNotFound, got %lu", (unsigned long)row);
+	XCTAssertTrue(row == NSNotFound, @"Expected NSNotFound, got %lu", (unsigned long)row);
 	
 	row = [mappings rowForIndex:1 inGroup:@""];
-	STAssertTrue(row == 0, @"Expected 0, got %lu", (unsigned long)row);
+	XCTAssertTrue(row == 0, @"Expected 0, got %lu", (unsigned long)row);
 	
 	row = [mappings rowForIndex:2 inGroup:@""];
-	STAssertTrue(row == 1, @"Expected 1, got %lu", (unsigned long)row);
+	XCTAssertTrue(row == 1, @"Expected 1, got %lu", (unsigned long)row);
 	
 	row = [mappings rowForIndex:3 inGroup:@""];
-	STAssertTrue(row == 2, @"Expected 2, got %lu", (unsigned long)row);
+	XCTAssertTrue(row == 2, @"Expected 2, got %lu", (unsigned long)row);
 	
 	row = [mappings rowForIndex:4 inGroup:@""];
-	STAssertTrue(row == 3, @"Expected 3, got %lu", (unsigned long)row);
+	XCTAssertTrue(row == 3, @"Expected 3, got %lu", (unsigned long)row);
 	
 	row = [mappings rowForIndex:5 inGroup:@""];
-	STAssertTrue(row == NSNotFound, @"Expected NSNotFound, got %lu", (unsigned long)row);
+	XCTAssertTrue(row == NSNotFound, @"Expected NSNotFound, got %lu", (unsigned long)row);
 	
 	row = [mappings rowForIndex:6 inGroup:@""];
-	STAssertTrue(row == NSNotFound, @"Expected NSNotFound, got %lu", (unsigned long)row);
+	XCTAssertTrue(row == NSNotFound, @"Expected NSNotFound, got %lu", (unsigned long)row);
 }
 
 - (void)test_getter_5
@@ -5151,41 +5561,41 @@ static YapDatabaseViewRowChange* (^RowOp)(NSArray*, NSUInteger) = ^(NSArray *rCh
 	NSUInteger index;
 	
 	index = [mappings indexForRow:0 inSection:0];
-	STAssertTrue(index == 1, @"Expected 1, got %lu", (unsigned long)index);
+	XCTAssertTrue(index == 1, @"Expected 1, got %lu", (unsigned long)index);
 	
 	index = [mappings indexForRow:1 inSection:0];
-	STAssertTrue(index == 2, @"Expected 2, got %lu", (unsigned long)index);
+	XCTAssertTrue(index == 2, @"Expected 2, got %lu", (unsigned long)index);
 	
 	index = [mappings indexForRow:2 inSection:0];
-	STAssertTrue(index == 3, @"Expected 3, got %lu", (unsigned long)index);
+	XCTAssertTrue(index == 3, @"Expected 3, got %lu", (unsigned long)index);
 	
 	index = [mappings indexForRow:3 inSection:0];
-	STAssertTrue(index == 4, @"Expected 4, got %lu", (unsigned long)index);
+	XCTAssertTrue(index == 4, @"Expected 4, got %lu", (unsigned long)index);
 	
 	index = [mappings indexForRow:4 inSection:0];
-	STAssertTrue(index == NSNotFound, @"Expected NSNotFound, got %lu", (unsigned long)index);
+	XCTAssertTrue(index == NSNotFound, @"Expected NSNotFound, got %lu", (unsigned long)index);
 	
 	// Verify: View -> UI
 	
 	NSUInteger row;
 	
 	row = [mappings rowForIndex:0 inGroup:@""];
-	STAssertTrue(row == NSNotFound, @"Expected NSNotFound, got %lu", (unsigned long)row);
+	XCTAssertTrue(row == NSNotFound, @"Expected NSNotFound, got %lu", (unsigned long)row);
 	
 	row = [mappings rowForIndex:1 inGroup:@""];
-	STAssertTrue(row == 0, @"Expected 0, got %lu", (unsigned long)row);
+	XCTAssertTrue(row == 0, @"Expected 0, got %lu", (unsigned long)row);
 	
 	row = [mappings rowForIndex:2 inGroup:@""];
-	STAssertTrue(row == 1, @"Expected 1, got %lu", (unsigned long)row);
+	XCTAssertTrue(row == 1, @"Expected 1, got %lu", (unsigned long)row);
 	
 	row = [mappings rowForIndex:3 inGroup:@""];
-	STAssertTrue(row == 2, @"Expected 2, got %lu", (unsigned long)row);
+	XCTAssertTrue(row == 2, @"Expected 2, got %lu", (unsigned long)row);
 	
 	row = [mappings rowForIndex:4 inGroup:@""];
-	STAssertTrue(row == 3, @"Expected 3, got %lu", (unsigned long)row);
+	XCTAssertTrue(row == 3, @"Expected 3, got %lu", (unsigned long)row);
 	
 	row = [mappings rowForIndex:5 inGroup:@""];
-	STAssertTrue(row == NSNotFound, @"Expected NSNotFound, got %lu", (unsigned long)row);
+	XCTAssertTrue(row == NSNotFound, @"Expected NSNotFound, got %lu", (unsigned long)row);
 }
 
 - (void)test_getter_6
@@ -5203,44 +5613,44 @@ static YapDatabaseViewRowChange* (^RowOp)(NSArray*, NSUInteger) = ^(NSArray *rCh
 	NSUInteger index;
 	
 	index = [mappings indexForRow:0 inSection:0];
-	STAssertTrue(index == 1, @"Expected 1, got %lu", (unsigned long)index);
+	XCTAssertTrue(index == 1, @"Expected 1, got %lu", (unsigned long)index);
 	
 	index = [mappings indexForRow:1 inSection:0];
-	STAssertTrue(index == 2, @"Expected 2, got %lu", (unsigned long)index);
+	XCTAssertTrue(index == 2, @"Expected 2, got %lu", (unsigned long)index);
 	
 	index = [mappings indexForRow:2 inSection:0];
-	STAssertTrue(index == 3, @"Expected 3, got %lu", (unsigned long)index);
+	XCTAssertTrue(index == 3, @"Expected 3, got %lu", (unsigned long)index);
 	
 	index = [mappings indexForRow:3 inSection:0];
-	STAssertTrue(index == 4, @"Expected 4, got %lu", (unsigned long)index);
+	XCTAssertTrue(index == 4, @"Expected 4, got %lu", (unsigned long)index);
 	
 	index = [mappings indexForRow:4 inSection:0];
-	STAssertTrue(index == NSNotFound, @"Expected NSNotFound, got %lu", (unsigned long)index);
+	XCTAssertTrue(index == NSNotFound, @"Expected NSNotFound, got %lu", (unsigned long)index);
 	
 	// Verify: View -> UI
 	
 	NSUInteger row;
 	
 	row = [mappings rowForIndex:0 inGroup:@""];
-	STAssertTrue(row == NSNotFound, @"Expected NSNotFound, got %lu", (unsigned long)row);
+	XCTAssertTrue(row == NSNotFound, @"Expected NSNotFound, got %lu", (unsigned long)row);
 	
 	row = [mappings rowForIndex:1 inGroup:@""];
-	STAssertTrue(row == 0, @"Expected 0, got %lu", (unsigned long)row);
+	XCTAssertTrue(row == 0, @"Expected 0, got %lu", (unsigned long)row);
 	
 	row = [mappings rowForIndex:2 inGroup:@""];
-	STAssertTrue(row == 1, @"Expected 1, got %lu", (unsigned long)row);
+	XCTAssertTrue(row == 1, @"Expected 1, got %lu", (unsigned long)row);
 	
 	row = [mappings rowForIndex:3 inGroup:@""];
-	STAssertTrue(row == 2, @"Expected 2, got %lu", (unsigned long)row);
+	XCTAssertTrue(row == 2, @"Expected 2, got %lu", (unsigned long)row);
 	
 	row = [mappings rowForIndex:4 inGroup:@""];
-	STAssertTrue(row == 3, @"Expected 3, got %lu", (unsigned long)row);
+	XCTAssertTrue(row == 3, @"Expected 3, got %lu", (unsigned long)row);
 	
 	row = [mappings rowForIndex:5 inGroup:@""];
-	STAssertTrue(row == NSNotFound, @"Expected NSNotFound, got %lu", (unsigned long)row);
+	XCTAssertTrue(row == NSNotFound, @"Expected NSNotFound, got %lu", (unsigned long)row);
 	
 	row = [mappings rowForIndex:6 inGroup:@""];
-	STAssertTrue(row == NSNotFound, @"Expected NSNotFound, got %lu", (unsigned long)row);
+	XCTAssertTrue(row == NSNotFound, @"Expected NSNotFound, got %lu", (unsigned long)row);
 }
 
 - (void)test_getter_7
@@ -5259,41 +5669,41 @@ static YapDatabaseViewRowChange* (^RowOp)(NSArray*, NSUInteger) = ^(NSArray *rCh
 	NSUInteger index;
 	
 	index = [mappings indexForRow:0 inSection:0];
-	STAssertTrue(index == 3, @"Expected 3, got %lu", (unsigned long)index);
+	XCTAssertTrue(index == 3, @"Expected 3, got %lu", (unsigned long)index);
 	
 	index = [mappings indexForRow:1 inSection:0];
-	STAssertTrue(index == 2, @"Expected 2, got %lu", (unsigned long)index);
+	XCTAssertTrue(index == 2, @"Expected 2, got %lu", (unsigned long)index);
 	
 	index = [mappings indexForRow:2 inSection:0];
-	STAssertTrue(index == 1, @"Expected 1, got %lu", (unsigned long)index);
+	XCTAssertTrue(index == 1, @"Expected 1, got %lu", (unsigned long)index);
 	
 	index = [mappings indexForRow:3 inSection:0];
-	STAssertTrue(index == 0, @"Expected 0, got %lu", (unsigned long)index);
+	XCTAssertTrue(index == 0, @"Expected 0, got %lu", (unsigned long)index);
 	
 	index = [mappings indexForRow:4 inSection:0];
-	STAssertTrue(index == NSNotFound, @"Expected NSNotFound, got %lu", (unsigned long)index);
+	XCTAssertTrue(index == NSNotFound, @"Expected NSNotFound, got %lu", (unsigned long)index);
 	
 	// Verify: View -> UI
 	
 	NSUInteger row;
 	
 	row = [mappings rowForIndex:0 inGroup:@""];
-	STAssertTrue(row == 3, @"Expected 3, got %lu", (unsigned long)row);
+	XCTAssertTrue(row == 3, @"Expected 3, got %lu", (unsigned long)row);
 	
 	row = [mappings rowForIndex:1 inGroup:@""];
-	STAssertTrue(row == 2, @"Expected 2, got %lu", (unsigned long)row);
+	XCTAssertTrue(row == 2, @"Expected 2, got %lu", (unsigned long)row);
 	
 	row = [mappings rowForIndex:2 inGroup:@""];
-	STAssertTrue(row == 1, @"Expected 1, got %lu", (unsigned long)row);
+	XCTAssertTrue(row == 1, @"Expected 1, got %lu", (unsigned long)row);
 	
 	row = [mappings rowForIndex:3 inGroup:@""];
-	STAssertTrue(row == 0, @"Expected 0, got %lu", (unsigned long)row);
+	XCTAssertTrue(row == 0, @"Expected 0, got %lu", (unsigned long)row);
 	
 	row = [mappings rowForIndex:4 inGroup:@""];
-	STAssertTrue(row == NSNotFound, @"Expected NSNotFound, got %lu", (unsigned long)row);
+	XCTAssertTrue(row == NSNotFound, @"Expected NSNotFound, got %lu", (unsigned long)row);
 	
 	row = [mappings rowForIndex:5 inGroup:@""];
-	STAssertTrue(row == NSNotFound, @"Expected NSNotFound, got %lu", (unsigned long)row);
+	XCTAssertTrue(row == NSNotFound, @"Expected NSNotFound, got %lu", (unsigned long)row);
 }
 
 - (void)test_getter_8
@@ -5312,44 +5722,44 @@ static YapDatabaseViewRowChange* (^RowOp)(NSArray*, NSUInteger) = ^(NSArray *rCh
 	NSUInteger index;
 	
 	index = [mappings indexForRow:0 inSection:0];
-	STAssertTrue(index == 4, @"Expected 4, got %lu", (unsigned long)index);
+	XCTAssertTrue(index == 4, @"Expected 4, got %lu", (unsigned long)index);
 	
 	index = [mappings indexForRow:1 inSection:0];
-	STAssertTrue(index == 3, @"Expected 3, got %lu", (unsigned long)index);
+	XCTAssertTrue(index == 3, @"Expected 3, got %lu", (unsigned long)index);
 	
 	index = [mappings indexForRow:2 inSection:0];
-	STAssertTrue(index == 2, @"Expected 2, got %lu", (unsigned long)index);
+	XCTAssertTrue(index == 2, @"Expected 2, got %lu", (unsigned long)index);
 	
 	index = [mappings indexForRow:3 inSection:0];
-	STAssertTrue(index == 1, @"Expected 1, got %lu", (unsigned long)index);
+	XCTAssertTrue(index == 1, @"Expected 1, got %lu", (unsigned long)index);
 	
 	index = [mappings indexForRow:4 inSection:0];
-	STAssertTrue(index == NSNotFound, @"Expected NSNotFound, got %lu", (unsigned long)index);
+	XCTAssertTrue(index == NSNotFound, @"Expected NSNotFound, got %lu", (unsigned long)index);
 	
 	// Verify: View -> UI
 	
 	NSUInteger row;
 	
 	row = [mappings rowForIndex:0 inGroup:@""];
-	STAssertTrue(row == NSNotFound, @"Expected NSNotFound, got %lu", (unsigned long)row);
+	XCTAssertTrue(row == NSNotFound, @"Expected NSNotFound, got %lu", (unsigned long)row);
 	
 	row = [mappings rowForIndex:1 inGroup:@""];
-	STAssertTrue(row == 3, @"Expected 3, got %lu", (unsigned long)row);
+	XCTAssertTrue(row == 3, @"Expected 3, got %lu", (unsigned long)row);
 	
 	row = [mappings rowForIndex:2 inGroup:@""];
-	STAssertTrue(row == 2, @"Expected 2, got %lu", (unsigned long)row);
+	XCTAssertTrue(row == 2, @"Expected 2, got %lu", (unsigned long)row);
 	
 	row = [mappings rowForIndex:3 inGroup:@""];
-	STAssertTrue(row == 1, @"Expected 1, got %lu", (unsigned long)row);
+	XCTAssertTrue(row == 1, @"Expected 1, got %lu", (unsigned long)row);
 	
 	row = [mappings rowForIndex:4 inGroup:@""];
-	STAssertTrue(row == 0, @"Expected 0, got %lu", (unsigned long)row);
+	XCTAssertTrue(row == 0, @"Expected 0, got %lu", (unsigned long)row);
 	
 	row = [mappings rowForIndex:5 inGroup:@""];
-	STAssertTrue(row == NSNotFound, @"Expected NSNotFound, got %lu", (unsigned long)row);
+	XCTAssertTrue(row == NSNotFound, @"Expected NSNotFound, got %lu", (unsigned long)row);
 	
 	row = [mappings rowForIndex:6 inGroup:@""];
-	STAssertTrue(row == NSNotFound, @"Expected NSNotFound, got %lu", (unsigned long)row);
+	XCTAssertTrue(row == NSNotFound, @"Expected NSNotFound, got %lu", (unsigned long)row);
 }
 
 - (void)test_getter_9
@@ -5368,41 +5778,41 @@ static YapDatabaseViewRowChange* (^RowOp)(NSArray*, NSUInteger) = ^(NSArray *rCh
 	NSUInteger index;
 	
 	index = [mappings indexForRow:0 inSection:0];
-	STAssertTrue(index == 4, @"Expected 4, got %lu", (unsigned long)index);
+	XCTAssertTrue(index == 4, @"Expected 4, got %lu", (unsigned long)index);
 	
 	index = [mappings indexForRow:1 inSection:0];
-	STAssertTrue(index == 3, @"Expected 3, got %lu", (unsigned long)index);
+	XCTAssertTrue(index == 3, @"Expected 3, got %lu", (unsigned long)index);
 	
 	index = [mappings indexForRow:2 inSection:0];
-	STAssertTrue(index == 2, @"Expected 2, got %lu", (unsigned long)index);
+	XCTAssertTrue(index == 2, @"Expected 2, got %lu", (unsigned long)index);
 	
 	index = [mappings indexForRow:3 inSection:0];
-	STAssertTrue(index == 1, @"Expected 1, got %lu", (unsigned long)index);
+	XCTAssertTrue(index == 1, @"Expected 1, got %lu", (unsigned long)index);
 	
 	index = [mappings indexForRow:4 inSection:0];
-	STAssertTrue(index == NSNotFound, @"Expected NSNotFound, got %lu", (unsigned long)index);
+	XCTAssertTrue(index == NSNotFound, @"Expected NSNotFound, got %lu", (unsigned long)index);
 	
 	// Verify: View -> UI
 	
 	NSUInteger row;
 	
 	row = [mappings rowForIndex:0 inGroup:@""];
-	STAssertTrue(row == NSNotFound, @"Expected NSNotFound, got %lu", (unsigned long)row);
+	XCTAssertTrue(row == NSNotFound, @"Expected NSNotFound, got %lu", (unsigned long)row);
 	
 	row = [mappings rowForIndex:1 inGroup:@""];
-	STAssertTrue(row == 3, @"Expected 3, got %lu", (unsigned long)row);
+	XCTAssertTrue(row == 3, @"Expected 3, got %lu", (unsigned long)row);
 	
 	row = [mappings rowForIndex:2 inGroup:@""];
-	STAssertTrue(row == 2, @"Expected 2, got %lu", (unsigned long)row);
+	XCTAssertTrue(row == 2, @"Expected 2, got %lu", (unsigned long)row);
 	
 	row = [mappings rowForIndex:3 inGroup:@""];
-	STAssertTrue(row == 1, @"Expected 1, got %lu", (unsigned long)row);
+	XCTAssertTrue(row == 1, @"Expected 1, got %lu", (unsigned long)row);
 	
 	row = [mappings rowForIndex:4 inGroup:@""];
-	STAssertTrue(row == 0, @"Expected 0, got %lu", (unsigned long)row);
+	XCTAssertTrue(row == 0, @"Expected 0, got %lu", (unsigned long)row);
 	
 	row = [mappings rowForIndex:5 inGroup:@""];
-	STAssertTrue(row == NSNotFound, @"Expected NSNotFound, got %lu", (unsigned long)row);
+	XCTAssertTrue(row == NSNotFound, @"Expected NSNotFound, got %lu", (unsigned long)row);
 }
 
 - (void)test_getter_10
@@ -5421,50 +5831,58 @@ static YapDatabaseViewRowChange* (^RowOp)(NSArray*, NSUInteger) = ^(NSArray *rCh
 	NSUInteger index;
 	
 	index = [mappings indexForRow:0 inSection:0];
-	STAssertTrue(index == 4, @"Expected 4, got %lu", (unsigned long)index);
+	XCTAssertTrue(index == 4, @"Expected 4, got %lu", (unsigned long)index);
 	
 	index = [mappings indexForRow:1 inSection:0];
-	STAssertTrue(index == 3, @"Expected 3, got %lu", (unsigned long)index);
+	XCTAssertTrue(index == 3, @"Expected 3, got %lu", (unsigned long)index);
 	
 	index = [mappings indexForRow:2 inSection:0];
-	STAssertTrue(index == 2, @"Expected 2, got %lu", (unsigned long)index);
+	XCTAssertTrue(index == 2, @"Expected 2, got %lu", (unsigned long)index);
 	
 	index = [mappings indexForRow:3 inSection:0];
-	STAssertTrue(index == 1, @"Expected 1, got %lu", (unsigned long)index);
+	XCTAssertTrue(index == 1, @"Expected 1, got %lu", (unsigned long)index);
 	
 	index = [mappings indexForRow:4 inSection:0];
-	STAssertTrue(index == NSNotFound, @"Expected NSNotFound, got %lu", (unsigned long)index);
+	XCTAssertTrue(index == NSNotFound, @"Expected NSNotFound, got %lu", (unsigned long)index);
 	
 	// Verify: View -> UI
 	
 	NSUInteger row;
 	
 	row = [mappings rowForIndex:0 inGroup:@""];
-	STAssertTrue(row == NSNotFound, @"Expected NSNotFound, got %lu", (unsigned long)row);
+	XCTAssertTrue(row == NSNotFound, @"Expected NSNotFound, got %lu", (unsigned long)row);
 	
 	row = [mappings rowForIndex:1 inGroup:@""];
-	STAssertTrue(row == 3, @"Expected 3, got %lu", (unsigned long)row);
+	XCTAssertTrue(row == 3, @"Expected 3, got %lu", (unsigned long)row);
 	
 	row = [mappings rowForIndex:2 inGroup:@""];
-	STAssertTrue(row == 2, @"Expected 2, got %lu", (unsigned long)row);
+	XCTAssertTrue(row == 2, @"Expected 2, got %lu", (unsigned long)row);
 	
 	row = [mappings rowForIndex:3 inGroup:@""];
-	STAssertTrue(row == 1, @"Expected 1, got %lu", (unsigned long)row);
+	XCTAssertTrue(row == 1, @"Expected 1, got %lu", (unsigned long)row);
 	
 	row = [mappings rowForIndex:4 inGroup:@""];
-	STAssertTrue(row == 0, @"Expected 0, got %lu", (unsigned long)row);
+	XCTAssertTrue(row == 0, @"Expected 0, got %lu", (unsigned long)row);
 	
 	row = [mappings rowForIndex:5 inGroup:@""];
-	STAssertTrue(row == NSNotFound, @"Expected NSNotFound, got %lu", (unsigned long)row);
+	XCTAssertTrue(row == NSNotFound, @"Expected NSNotFound, got %lu", (unsigned long)row);
 	
 	row = [mappings rowForIndex:6 inGroup:@""];
-	STAssertTrue(row == NSNotFound, @"Expected NSNotFound, got %lu", (unsigned long)row);
+	XCTAssertTrue(row == NSNotFound, @"Expected NSNotFound, got %lu", (unsigned long)row);
 }
+
+@end
+
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 #pragma mark -
 #pragma mark Auto Consolidate Groups
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+@interface TestViewMappingsAutoConsolidatingGroups : TestViewMappingsBase
+@end
+
+@implementation TestViewMappingsAutoConsolidatingGroups
 
 - (void)test_autoConsolidateGroups_1A
 {
@@ -5503,58 +5921,58 @@ static YapDatabaseViewRowChange* (^RowOp)(NSArray*, NSUInteger) = ^(NSArray *rCh
 	
 	// Verify
 	
-	STAssertTrue([sectionChanges count] == 3, @"");
+	XCTAssertTrue([sectionChanges count] == 3, @"");
 	
-	STAssertTrue(SectionOp(sectionChanges, 0).type == YapDatabaseViewChangeDelete, @"");
-	STAssertTrue(SectionOp(sectionChanges, 0).index == 0, @"");
-	STAssertTrue([SectionOp(sectionChanges, 0).group isEqualToString:group0], @"");
+	XCTAssertTrue(SectionOp(sectionChanges, 0).type == YapDatabaseViewChangeDelete, @"");
+	XCTAssertTrue(SectionOp(sectionChanges, 0).index == 0, @"");
+	XCTAssertTrue([SectionOp(sectionChanges, 0).group isEqualToString:group0], @"");
 	
-	STAssertTrue(SectionOp(sectionChanges, 1).type == YapDatabaseViewChangeDelete, @"");
-	STAssertTrue(SectionOp(sectionChanges, 1).index == 1, @"");
-	STAssertTrue([SectionOp(sectionChanges, 1).group isEqualToString:group1], @"");
+	XCTAssertTrue(SectionOp(sectionChanges, 1).type == YapDatabaseViewChangeDelete, @"");
+	XCTAssertTrue(SectionOp(sectionChanges, 1).index == 1, @"");
+	XCTAssertTrue([SectionOp(sectionChanges, 1).group isEqualToString:group1], @"");
 	
-	STAssertTrue(SectionOp(sectionChanges, 2).type == YapDatabaseViewChangeInsert, @"");
-	STAssertTrue(SectionOp(sectionChanges, 2).index == 0, @"");
-	STAssertTrue([SectionOp(sectionChanges, 2).group isEqualToString:consolidatedGroupName], @"");
+	XCTAssertTrue(SectionOp(sectionChanges, 2).type == YapDatabaseViewChangeInsert, @"");
+	XCTAssertTrue(SectionOp(sectionChanges, 2).index == 0, @"");
+	XCTAssertTrue([SectionOp(sectionChanges, 2).group isEqualToString:consolidatedGroupName], @"");
 	
-	STAssertTrue([rowChanges count] == 5, @"");
+	XCTAssertTrue([rowChanges count] == 5, @"");
 	
-	STAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeDelete, @"");
-	STAssertTrue(RowOp(rowChanges, 0).originalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 0).originalIndex == 0, @"");
-	STAssertTrue([RowOp(rowChanges, 0).originalGroup isEqualToString:group0], @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeDelete, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).originalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).originalIndex == 0, @"");
+	XCTAssertTrue([RowOp(rowChanges, 0).originalGroup isEqualToString:group0], @"");
 	
-	STAssertTrue(RowOp(rowChanges, 1).type == YapDatabaseViewChangeMove, @"");
-	STAssertTrue(RowOp(rowChanges, 1).originalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 1).originalIndex == 1, @"");
-	STAssertTrue([RowOp(rowChanges, 1).originalGroup isEqualToString:group0], @"");
-	STAssertTrue(RowOp(rowChanges, 1).finalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 1).finalIndex == 0, @"");
-	STAssertTrue([RowOp(rowChanges, 1).finalGroup isEqualToString:consolidatedGroupName], @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).type == YapDatabaseViewChangeMove, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).originalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).originalIndex == 1, @"");
+	XCTAssertTrue([RowOp(rowChanges, 1).originalGroup isEqualToString:group0], @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).finalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).finalIndex == 0, @"");
+	XCTAssertTrue([RowOp(rowChanges, 1).finalGroup isEqualToString:consolidatedGroupName], @"");
 	
-	STAssertTrue(RowOp(rowChanges, 2).type == YapDatabaseViewChangeMove, @"");
-	STAssertTrue(RowOp(rowChanges, 2).originalSection == 1, @"");
-	STAssertTrue(RowOp(rowChanges, 2).originalIndex == 0, @"");
-	STAssertTrue([RowOp(rowChanges, 2).originalGroup isEqualToString:group1], @"");
-	STAssertTrue(RowOp(rowChanges, 2).finalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 2).finalIndex == 1, @"");
-	STAssertTrue([RowOp(rowChanges, 2).finalGroup isEqualToString:consolidatedGroupName], @"");
+	XCTAssertTrue(RowOp(rowChanges, 2).type == YapDatabaseViewChangeMove, @"");
+	XCTAssertTrue(RowOp(rowChanges, 2).originalSection == 1, @"");
+	XCTAssertTrue(RowOp(rowChanges, 2).originalIndex == 0, @"");
+	XCTAssertTrue([RowOp(rowChanges, 2).originalGroup isEqualToString:group1], @"");
+	XCTAssertTrue(RowOp(rowChanges, 2).finalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 2).finalIndex == 1, @"");
+	XCTAssertTrue([RowOp(rowChanges, 2).finalGroup isEqualToString:consolidatedGroupName], @"");
 	
-	STAssertTrue(RowOp(rowChanges, 3).type == YapDatabaseViewChangeMove, @"");
-	STAssertTrue(RowOp(rowChanges, 3).originalSection == 1, @"");
-	STAssertTrue(RowOp(rowChanges, 3).originalIndex == 1, @"");
-	STAssertTrue([RowOp(rowChanges, 3).originalGroup isEqualToString:group1], @"");
-	STAssertTrue(RowOp(rowChanges, 3).finalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 3).finalIndex == 2, @"");
-	STAssertTrue([RowOp(rowChanges, 3).finalGroup isEqualToString:consolidatedGroupName], @"");
+	XCTAssertTrue(RowOp(rowChanges, 3).type == YapDatabaseViewChangeMove, @"");
+	XCTAssertTrue(RowOp(rowChanges, 3).originalSection == 1, @"");
+	XCTAssertTrue(RowOp(rowChanges, 3).originalIndex == 1, @"");
+	XCTAssertTrue([RowOp(rowChanges, 3).originalGroup isEqualToString:group1], @"");
+	XCTAssertTrue(RowOp(rowChanges, 3).finalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 3).finalIndex == 2, @"");
+	XCTAssertTrue([RowOp(rowChanges, 3).finalGroup isEqualToString:consolidatedGroupName], @"");
 	
-	STAssertTrue(RowOp(rowChanges, 4).type == YapDatabaseViewChangeMove, @"");
-	STAssertTrue(RowOp(rowChanges, 4).originalSection == 1, @"");
-	STAssertTrue(RowOp(rowChanges, 4).originalIndex == 2, @"");
-	STAssertTrue([RowOp(rowChanges, 4).originalGroup isEqualToString:group1], @"");
-	STAssertTrue(RowOp(rowChanges, 4).finalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 4).finalIndex == 3, @"");
-	STAssertTrue([RowOp(rowChanges, 4).finalGroup isEqualToString:consolidatedGroupName], @"");
+	XCTAssertTrue(RowOp(rowChanges, 4).type == YapDatabaseViewChangeMove, @"");
+	XCTAssertTrue(RowOp(rowChanges, 4).originalSection == 1, @"");
+	XCTAssertTrue(RowOp(rowChanges, 4).originalIndex == 2, @"");
+	XCTAssertTrue([RowOp(rowChanges, 4).originalGroup isEqualToString:group1], @"");
+	XCTAssertTrue(RowOp(rowChanges, 4).finalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 4).finalIndex == 3, @"");
+	XCTAssertTrue([RowOp(rowChanges, 4).finalGroup isEqualToString:consolidatedGroupName], @"");
 }
 
 - (void)test_autoConsolidateGroups_1B
@@ -5594,58 +6012,58 @@ static YapDatabaseViewRowChange* (^RowOp)(NSArray*, NSUInteger) = ^(NSArray *rCh
 	
 	// Verify
 	
-	STAssertTrue([sectionChanges count] == 3, @"");
+	XCTAssertTrue([sectionChanges count] == 3, @"");
 	
-	STAssertTrue(SectionOp(sectionChanges, 0).type == YapDatabaseViewChangeDelete, @"");
-	STAssertTrue(SectionOp(sectionChanges, 0).index == 0, @"");
-	STAssertTrue([SectionOp(sectionChanges, 0).group isEqualToString:group0], @"");
+	XCTAssertTrue(SectionOp(sectionChanges, 0).type == YapDatabaseViewChangeDelete, @"");
+	XCTAssertTrue(SectionOp(sectionChanges, 0).index == 0, @"");
+	XCTAssertTrue([SectionOp(sectionChanges, 0).group isEqualToString:group0], @"");
 	
-	STAssertTrue(SectionOp(sectionChanges, 1).type == YapDatabaseViewChangeDelete, @"");
-	STAssertTrue(SectionOp(sectionChanges, 1).index == 1, @"");
-	STAssertTrue([SectionOp(sectionChanges, 1).group isEqualToString:group1], @"");
+	XCTAssertTrue(SectionOp(sectionChanges, 1).type == YapDatabaseViewChangeDelete, @"");
+	XCTAssertTrue(SectionOp(sectionChanges, 1).index == 1, @"");
+	XCTAssertTrue([SectionOp(sectionChanges, 1).group isEqualToString:group1], @"");
 	
-	STAssertTrue(SectionOp(sectionChanges, 2).type == YapDatabaseViewChangeInsert, @"");
-	STAssertTrue(SectionOp(sectionChanges, 2).index == 0, @"");
-	STAssertTrue([SectionOp(sectionChanges, 2).group isEqualToString:consolidatedGroupName], @"");
+	XCTAssertTrue(SectionOp(sectionChanges, 2).type == YapDatabaseViewChangeInsert, @"");
+	XCTAssertTrue(SectionOp(sectionChanges, 2).index == 0, @"");
+	XCTAssertTrue([SectionOp(sectionChanges, 2).group isEqualToString:consolidatedGroupName], @"");
 	
-	STAssertTrue([rowChanges count] == 5, @"");
+	XCTAssertTrue([rowChanges count] == 5, @"");
 	
-	STAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeDelete, @"");
-	STAssertTrue(RowOp(rowChanges, 0).originalSection == 1, @"");
-	STAssertTrue(RowOp(rowChanges, 0).originalIndex == 1, @"");
-	STAssertTrue([RowOp(rowChanges, 0).originalGroup isEqualToString:group1], @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeDelete, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).originalSection == 1, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).originalIndex == 1, @"");
+	XCTAssertTrue([RowOp(rowChanges, 0).originalGroup isEqualToString:group1], @"");
 	
-	STAssertTrue(RowOp(rowChanges, 1).type == YapDatabaseViewChangeMove, @"");
-	STAssertTrue(RowOp(rowChanges, 1).originalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 1).originalIndex == 0, @"");
-	STAssertTrue([RowOp(rowChanges, 1).originalGroup isEqualToString:group0], @"");
-	STAssertTrue(RowOp(rowChanges, 1).finalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 1).finalIndex == 0, @"");
-	STAssertTrue([RowOp(rowChanges, 1).finalGroup isEqualToString:consolidatedGroupName], @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).type == YapDatabaseViewChangeMove, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).originalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).originalIndex == 0, @"");
+	XCTAssertTrue([RowOp(rowChanges, 1).originalGroup isEqualToString:group0], @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).finalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).finalIndex == 0, @"");
+	XCTAssertTrue([RowOp(rowChanges, 1).finalGroup isEqualToString:consolidatedGroupName], @"");
 	
-	STAssertTrue(RowOp(rowChanges, 2).type == YapDatabaseViewChangeMove, @"");
-	STAssertTrue(RowOp(rowChanges, 2).originalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 2).originalIndex == 1, @"");
-	STAssertTrue([RowOp(rowChanges, 2).originalGroup isEqualToString:group0], @"");
-	STAssertTrue(RowOp(rowChanges, 2).finalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 2).finalIndex == 1, @"");
-	STAssertTrue([RowOp(rowChanges, 2).finalGroup isEqualToString:consolidatedGroupName], @"");
+	XCTAssertTrue(RowOp(rowChanges, 2).type == YapDatabaseViewChangeMove, @"");
+	XCTAssertTrue(RowOp(rowChanges, 2).originalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 2).originalIndex == 1, @"");
+	XCTAssertTrue([RowOp(rowChanges, 2).originalGroup isEqualToString:group0], @"");
+	XCTAssertTrue(RowOp(rowChanges, 2).finalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 2).finalIndex == 1, @"");
+	XCTAssertTrue([RowOp(rowChanges, 2).finalGroup isEqualToString:consolidatedGroupName], @"");
 	
-	STAssertTrue(RowOp(rowChanges, 3).type == YapDatabaseViewChangeMove, @"");
-	STAssertTrue(RowOp(rowChanges, 3).originalSection == 1, @"");
-	STAssertTrue(RowOp(rowChanges, 3).originalIndex == 0, @"");
-	STAssertTrue([RowOp(rowChanges, 3).originalGroup isEqualToString:group1], @"");
-	STAssertTrue(RowOp(rowChanges, 3).finalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 3).finalIndex == 2, @"");
-	STAssertTrue([RowOp(rowChanges, 3).finalGroup isEqualToString:consolidatedGroupName], @"");
+	XCTAssertTrue(RowOp(rowChanges, 3).type == YapDatabaseViewChangeMove, @"");
+	XCTAssertTrue(RowOp(rowChanges, 3).originalSection == 1, @"");
+	XCTAssertTrue(RowOp(rowChanges, 3).originalIndex == 0, @"");
+	XCTAssertTrue([RowOp(rowChanges, 3).originalGroup isEqualToString:group1], @"");
+	XCTAssertTrue(RowOp(rowChanges, 3).finalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 3).finalIndex == 2, @"");
+	XCTAssertTrue([RowOp(rowChanges, 3).finalGroup isEqualToString:consolidatedGroupName], @"");
 	
-	STAssertTrue(RowOp(rowChanges, 4).type == YapDatabaseViewChangeMove, @"");
-	STAssertTrue(RowOp(rowChanges, 4).originalSection == 1, @"");
-	STAssertTrue(RowOp(rowChanges, 4).originalIndex == 2, @"");
-	STAssertTrue([RowOp(rowChanges, 4).originalGroup isEqualToString:group1], @"");
-	STAssertTrue(RowOp(rowChanges, 4).finalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 4).finalIndex == 3, @"");
-	STAssertTrue([RowOp(rowChanges, 4).finalGroup isEqualToString:consolidatedGroupName], @"");
+	XCTAssertTrue(RowOp(rowChanges, 4).type == YapDatabaseViewChangeMove, @"");
+	XCTAssertTrue(RowOp(rowChanges, 4).originalSection == 1, @"");
+	XCTAssertTrue(RowOp(rowChanges, 4).originalIndex == 2, @"");
+	XCTAssertTrue([RowOp(rowChanges, 4).originalGroup isEqualToString:group1], @"");
+	XCTAssertTrue(RowOp(rowChanges, 4).finalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 4).finalIndex == 3, @"");
+	XCTAssertTrue([RowOp(rowChanges, 4).finalGroup isEqualToString:consolidatedGroupName], @"");
 }
 
 - (void)test_autoConsolidateGroups_1C
@@ -5687,55 +6105,55 @@ static YapDatabaseViewRowChange* (^RowOp)(NSArray*, NSUInteger) = ^(NSArray *rCh
 	
 	// Verify
 	
-	STAssertTrue([sectionChanges count] == 3, @"");
+	XCTAssertTrue([sectionChanges count] == 3, @"");
 	
-	STAssertTrue(SectionOp(sectionChanges, 0).type == YapDatabaseViewChangeDelete, @"");
-	STAssertTrue(SectionOp(sectionChanges, 0).index == 0, @"");
-	STAssertTrue([SectionOp(sectionChanges, 0).group isEqualToString:group0], @"");
+	XCTAssertTrue(SectionOp(sectionChanges, 0).type == YapDatabaseViewChangeDelete, @"");
+	XCTAssertTrue(SectionOp(sectionChanges, 0).index == 0, @"");
+	XCTAssertTrue([SectionOp(sectionChanges, 0).group isEqualToString:group0], @"");
 	
-	STAssertTrue(SectionOp(sectionChanges, 1).type == YapDatabaseViewChangeDelete, @"");
-	STAssertTrue(SectionOp(sectionChanges, 1).index == 1, @"");
-	STAssertTrue([SectionOp(sectionChanges, 1).group isEqualToString:group1], @"");
+	XCTAssertTrue(SectionOp(sectionChanges, 1).type == YapDatabaseViewChangeDelete, @"");
+	XCTAssertTrue(SectionOp(sectionChanges, 1).index == 1, @"");
+	XCTAssertTrue([SectionOp(sectionChanges, 1).group isEqualToString:group1], @"");
 	
-	STAssertTrue(SectionOp(sectionChanges, 2).type == YapDatabaseViewChangeInsert, @"");
-	STAssertTrue(SectionOp(sectionChanges, 2).index == 0, @"");
-	STAssertTrue([SectionOp(sectionChanges, 2).group isEqualToString:consolidatedGroupName], @"");
+	XCTAssertTrue(SectionOp(sectionChanges, 2).type == YapDatabaseViewChangeInsert, @"");
+	XCTAssertTrue(SectionOp(sectionChanges, 2).index == 0, @"");
+	XCTAssertTrue([SectionOp(sectionChanges, 2).group isEqualToString:consolidatedGroupName], @"");
 	
-	STAssertTrue([rowChanges count] == 5, @"");
+	XCTAssertTrue([rowChanges count] == 5, @"");
 	
-	STAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeDelete, @"");
-	STAssertTrue(RowOp(rowChanges, 0).originalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 0).originalIndex == 0, @"");
-	STAssertTrue([RowOp(rowChanges, 0).originalGroup isEqualToString:group0], @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeDelete, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).originalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).originalIndex == 0, @"");
+	XCTAssertTrue([RowOp(rowChanges, 0).originalGroup isEqualToString:group0], @"");
 	
-	STAssertTrue(RowOp(rowChanges, 1).type == YapDatabaseViewChangeDelete, @"");
-	STAssertTrue(RowOp(rowChanges, 1).originalSection == 1, @"");
-	STAssertTrue(RowOp(rowChanges, 1).originalIndex == 1, @"");
-	STAssertTrue([RowOp(rowChanges, 1).originalGroup isEqualToString:group1], @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).type == YapDatabaseViewChangeDelete, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).originalSection == 1, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).originalIndex == 1, @"");
+	XCTAssertTrue([RowOp(rowChanges, 1).originalGroup isEqualToString:group1], @"");
 	
-	STAssertTrue(RowOp(rowChanges, 2).type == YapDatabaseViewChangeMove, @"");
-	STAssertTrue(RowOp(rowChanges, 2).originalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 2).originalIndex == 1, @"");
-	STAssertTrue([RowOp(rowChanges, 2).originalGroup isEqualToString:group0], @"");
-	STAssertTrue(RowOp(rowChanges, 2).finalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 2).finalIndex == 0, @"");
-	STAssertTrue([RowOp(rowChanges, 2).finalGroup isEqualToString:consolidatedGroupName], @"");
+	XCTAssertTrue(RowOp(rowChanges, 2).type == YapDatabaseViewChangeMove, @"");
+	XCTAssertTrue(RowOp(rowChanges, 2).originalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 2).originalIndex == 1, @"");
+	XCTAssertTrue([RowOp(rowChanges, 2).originalGroup isEqualToString:group0], @"");
+	XCTAssertTrue(RowOp(rowChanges, 2).finalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 2).finalIndex == 0, @"");
+	XCTAssertTrue([RowOp(rowChanges, 2).finalGroup isEqualToString:consolidatedGroupName], @"");
 	
-	STAssertTrue(RowOp(rowChanges, 3).type == YapDatabaseViewChangeMove, @"");
-	STAssertTrue(RowOp(rowChanges, 3).originalSection == 1, @"");
-	STAssertTrue(RowOp(rowChanges, 3).originalIndex == 0, @"");
-	STAssertTrue([RowOp(rowChanges, 3).originalGroup isEqualToString:group1], @"");
-	STAssertTrue(RowOp(rowChanges, 3).finalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 3).finalIndex == 1, @"");
-	STAssertTrue([RowOp(rowChanges, 3).finalGroup isEqualToString:consolidatedGroupName], @"");
+	XCTAssertTrue(RowOp(rowChanges, 3).type == YapDatabaseViewChangeMove, @"");
+	XCTAssertTrue(RowOp(rowChanges, 3).originalSection == 1, @"");
+	XCTAssertTrue(RowOp(rowChanges, 3).originalIndex == 0, @"");
+	XCTAssertTrue([RowOp(rowChanges, 3).originalGroup isEqualToString:group1], @"");
+	XCTAssertTrue(RowOp(rowChanges, 3).finalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 3).finalIndex == 1, @"");
+	XCTAssertTrue([RowOp(rowChanges, 3).finalGroup isEqualToString:consolidatedGroupName], @"");
 	
-	STAssertTrue(RowOp(rowChanges, 4).type == YapDatabaseViewChangeMove, @"");
-	STAssertTrue(RowOp(rowChanges, 4).originalSection == 1, @"");
-	STAssertTrue(RowOp(rowChanges, 4).originalIndex == 2, @"");
-	STAssertTrue([RowOp(rowChanges, 4).originalGroup isEqualToString:group1], @"");
-	STAssertTrue(RowOp(rowChanges, 4).finalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 4).finalIndex == 2, @"");
-	STAssertTrue([RowOp(rowChanges, 4).finalGroup isEqualToString:consolidatedGroupName], @"");
+	XCTAssertTrue(RowOp(rowChanges, 4).type == YapDatabaseViewChangeMove, @"");
+	XCTAssertTrue(RowOp(rowChanges, 4).originalSection == 1, @"");
+	XCTAssertTrue(RowOp(rowChanges, 4).originalIndex == 2, @"");
+	XCTAssertTrue([RowOp(rowChanges, 4).originalGroup isEqualToString:group1], @"");
+	XCTAssertTrue(RowOp(rowChanges, 4).finalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 4).finalIndex == 2, @"");
+	XCTAssertTrue([RowOp(rowChanges, 4).finalGroup isEqualToString:consolidatedGroupName], @"");
 }
 
 - (void)test_autoConsolidateGroups_2A
@@ -5775,58 +6193,58 @@ static YapDatabaseViewRowChange* (^RowOp)(NSArray*, NSUInteger) = ^(NSArray *rCh
 	
 	// Verify
 	
-	STAssertTrue([sectionChanges count] == 3, @"");
+	XCTAssertTrue([sectionChanges count] == 3, @"");
 	
-	STAssertTrue(SectionOp(sectionChanges, 0).type == YapDatabaseViewChangeDelete, @"");
-	STAssertTrue(SectionOp(sectionChanges, 0).index == 0, @"");
-	STAssertTrue([SectionOp(sectionChanges, 0).group isEqualToString:consolidatedGroupName], @"");
+	XCTAssertTrue(SectionOp(sectionChanges, 0).type == YapDatabaseViewChangeDelete, @"");
+	XCTAssertTrue(SectionOp(sectionChanges, 0).index == 0, @"");
+	XCTAssertTrue([SectionOp(sectionChanges, 0).group isEqualToString:consolidatedGroupName], @"");
 	
-	STAssertTrue(SectionOp(sectionChanges, 1).type == YapDatabaseViewChangeInsert, @"");
-	STAssertTrue(SectionOp(sectionChanges, 1).index == 0, @"");
-	STAssertTrue([SectionOp(sectionChanges, 1).group isEqualToString:group0], @"");
+	XCTAssertTrue(SectionOp(sectionChanges, 1).type == YapDatabaseViewChangeInsert, @"");
+	XCTAssertTrue(SectionOp(sectionChanges, 1).index == 0, @"");
+	XCTAssertTrue([SectionOp(sectionChanges, 1).group isEqualToString:group0], @"");
 	
-	STAssertTrue(SectionOp(sectionChanges, 2).type == YapDatabaseViewChangeInsert, @"");
-	STAssertTrue(SectionOp(sectionChanges, 2).index == 1, @"");
-	STAssertTrue([SectionOp(sectionChanges, 2).group isEqualToString:group1], @"");
+	XCTAssertTrue(SectionOp(sectionChanges, 2).type == YapDatabaseViewChangeInsert, @"");
+	XCTAssertTrue(SectionOp(sectionChanges, 2).index == 1, @"");
+	XCTAssertTrue([SectionOp(sectionChanges, 2).group isEqualToString:group1], @"");
 	
-	STAssertTrue([rowChanges count] == 5, @"");
+	XCTAssertTrue([rowChanges count] == 5, @"");
 	
-	STAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeInsert, @"");
-	STAssertTrue(RowOp(rowChanges, 0).finalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 0).finalIndex == 0, @"");
-	STAssertTrue([RowOp(rowChanges, 0).finalGroup isEqualToString:group0], @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeInsert, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).finalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).finalIndex == 0, @"");
+	XCTAssertTrue([RowOp(rowChanges, 0).finalGroup isEqualToString:group0], @"");
 	
-	STAssertTrue(RowOp(rowChanges, 1).type == YapDatabaseViewChangeMove, @"");
-	STAssertTrue(RowOp(rowChanges, 1).originalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 1).originalIndex == 0, @"");
-	STAssertTrue([RowOp(rowChanges, 1).originalGroup isEqualToString:consolidatedGroupName], @"");
-	STAssertTrue(RowOp(rowChanges, 1).finalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 1).finalIndex == 1, @"");
-	STAssertTrue([RowOp(rowChanges, 1).finalGroup isEqualToString:group0], @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).type == YapDatabaseViewChangeMove, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).originalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).originalIndex == 0, @"");
+	XCTAssertTrue([RowOp(rowChanges, 1).originalGroup isEqualToString:consolidatedGroupName], @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).finalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).finalIndex == 1, @"");
+	XCTAssertTrue([RowOp(rowChanges, 1).finalGroup isEqualToString:group0], @"");
 	
-	STAssertTrue(RowOp(rowChanges, 2).type == YapDatabaseViewChangeMove, @"");
-	STAssertTrue(RowOp(rowChanges, 2).originalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 2).originalIndex == 1, @"");
-	STAssertTrue([RowOp(rowChanges, 2).originalGroup isEqualToString:consolidatedGroupName], @"");
-	STAssertTrue(RowOp(rowChanges, 2).finalSection == 1, @"");
-	STAssertTrue(RowOp(rowChanges, 2).finalIndex == 0, @"");
-	STAssertTrue([RowOp(rowChanges, 2).finalGroup isEqualToString:group1], @"");
+	XCTAssertTrue(RowOp(rowChanges, 2).type == YapDatabaseViewChangeMove, @"");
+	XCTAssertTrue(RowOp(rowChanges, 2).originalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 2).originalIndex == 1, @"");
+	XCTAssertTrue([RowOp(rowChanges, 2).originalGroup isEqualToString:consolidatedGroupName], @"");
+	XCTAssertTrue(RowOp(rowChanges, 2).finalSection == 1, @"");
+	XCTAssertTrue(RowOp(rowChanges, 2).finalIndex == 0, @"");
+	XCTAssertTrue([RowOp(rowChanges, 2).finalGroup isEqualToString:group1], @"");
 	
-	STAssertTrue(RowOp(rowChanges, 3).type == YapDatabaseViewChangeMove, @"");
-	STAssertTrue(RowOp(rowChanges, 3).originalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 3).originalIndex == 2, @"");
-	STAssertTrue([RowOp(rowChanges, 3).originalGroup isEqualToString:consolidatedGroupName], @"");
-	STAssertTrue(RowOp(rowChanges, 3).finalSection == 1, @"");
-	STAssertTrue(RowOp(rowChanges, 3).finalIndex == 1, @"");
-	STAssertTrue([RowOp(rowChanges, 3).finalGroup isEqualToString:group1], @"");
+	XCTAssertTrue(RowOp(rowChanges, 3).type == YapDatabaseViewChangeMove, @"");
+	XCTAssertTrue(RowOp(rowChanges, 3).originalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 3).originalIndex == 2, @"");
+	XCTAssertTrue([RowOp(rowChanges, 3).originalGroup isEqualToString:consolidatedGroupName], @"");
+	XCTAssertTrue(RowOp(rowChanges, 3).finalSection == 1, @"");
+	XCTAssertTrue(RowOp(rowChanges, 3).finalIndex == 1, @"");
+	XCTAssertTrue([RowOp(rowChanges, 3).finalGroup isEqualToString:group1], @"");
 	
-	STAssertTrue(RowOp(rowChanges, 4).type == YapDatabaseViewChangeMove, @"");
-	STAssertTrue(RowOp(rowChanges, 4).originalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 4).originalIndex == 3, @"");
-	STAssertTrue([RowOp(rowChanges, 4).originalGroup isEqualToString:consolidatedGroupName], @"");
-	STAssertTrue(RowOp(rowChanges, 4).finalSection == 1, @"");
-	STAssertTrue(RowOp(rowChanges, 4).finalIndex == 2, @"");
-	STAssertTrue([RowOp(rowChanges, 4).finalGroup isEqualToString:group1], @"");
+	XCTAssertTrue(RowOp(rowChanges, 4).type == YapDatabaseViewChangeMove, @"");
+	XCTAssertTrue(RowOp(rowChanges, 4).originalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 4).originalIndex == 3, @"");
+	XCTAssertTrue([RowOp(rowChanges, 4).originalGroup isEqualToString:consolidatedGroupName], @"");
+	XCTAssertTrue(RowOp(rowChanges, 4).finalSection == 1, @"");
+	XCTAssertTrue(RowOp(rowChanges, 4).finalIndex == 2, @"");
+	XCTAssertTrue([RowOp(rowChanges, 4).finalGroup isEqualToString:group1], @"");
 }
 
 - (void)test_autoConsolidateGroups_2B
@@ -5866,58 +6284,58 @@ static YapDatabaseViewRowChange* (^RowOp)(NSArray*, NSUInteger) = ^(NSArray *rCh
 	
 	// Verify
 	
-	STAssertTrue([sectionChanges count] == 3, @"");
+	XCTAssertTrue([sectionChanges count] == 3, @"");
 	
-	STAssertTrue(SectionOp(sectionChanges, 0).type == YapDatabaseViewChangeDelete, @"");
-	STAssertTrue(SectionOp(sectionChanges, 0).index == 0, @"");
-	STAssertTrue([SectionOp(sectionChanges, 0).group isEqualToString:consolidatedGroupName], @"");
+	XCTAssertTrue(SectionOp(sectionChanges, 0).type == YapDatabaseViewChangeDelete, @"");
+	XCTAssertTrue(SectionOp(sectionChanges, 0).index == 0, @"");
+	XCTAssertTrue([SectionOp(sectionChanges, 0).group isEqualToString:consolidatedGroupName], @"");
 	
-	STAssertTrue(SectionOp(sectionChanges, 1).type == YapDatabaseViewChangeInsert, @"");
-	STAssertTrue(SectionOp(sectionChanges, 1).index == 0, @"");
-	STAssertTrue([SectionOp(sectionChanges, 1).group isEqualToString:group0], @"");
+	XCTAssertTrue(SectionOp(sectionChanges, 1).type == YapDatabaseViewChangeInsert, @"");
+	XCTAssertTrue(SectionOp(sectionChanges, 1).index == 0, @"");
+	XCTAssertTrue([SectionOp(sectionChanges, 1).group isEqualToString:group0], @"");
 	
-	STAssertTrue(SectionOp(sectionChanges, 2).type == YapDatabaseViewChangeInsert, @"");
-	STAssertTrue(SectionOp(sectionChanges, 2).index == 1, @"");
-	STAssertTrue([SectionOp(sectionChanges, 2).group isEqualToString:group1], @"");
+	XCTAssertTrue(SectionOp(sectionChanges, 2).type == YapDatabaseViewChangeInsert, @"");
+	XCTAssertTrue(SectionOp(sectionChanges, 2).index == 1, @"");
+	XCTAssertTrue([SectionOp(sectionChanges, 2).group isEqualToString:group1], @"");
 	
-	STAssertTrue([rowChanges count] == 5, @"");
+	XCTAssertTrue([rowChanges count] == 5, @"");
 	
-	STAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeInsert, @"");
-	STAssertTrue(RowOp(rowChanges, 0).finalSection == 1, @"");
-	STAssertTrue(RowOp(rowChanges, 0).finalIndex == 1, @"");
-	STAssertTrue([RowOp(rowChanges, 0).finalGroup isEqualToString:group1], @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeInsert, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).finalSection == 1, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).finalIndex == 1, @"");
+	XCTAssertTrue([RowOp(rowChanges, 0).finalGroup isEqualToString:group1], @"");
 	
-	STAssertTrue(RowOp(rowChanges, 1).type == YapDatabaseViewChangeMove, @"");
-	STAssertTrue(RowOp(rowChanges, 1).originalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 1).originalIndex == 0, @"");
-	STAssertTrue([RowOp(rowChanges, 1).originalGroup isEqualToString:consolidatedGroupName], @"");
-	STAssertTrue(RowOp(rowChanges, 1).finalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 1).finalIndex == 0, @"");
-	STAssertTrue([RowOp(rowChanges, 1).finalGroup isEqualToString:group0], @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).type == YapDatabaseViewChangeMove, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).originalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).originalIndex == 0, @"");
+	XCTAssertTrue([RowOp(rowChanges, 1).originalGroup isEqualToString:consolidatedGroupName], @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).finalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).finalIndex == 0, @"");
+	XCTAssertTrue([RowOp(rowChanges, 1).finalGroup isEqualToString:group0], @"");
 	
-	STAssertTrue(RowOp(rowChanges, 2).type == YapDatabaseViewChangeMove, @"");
-	STAssertTrue(RowOp(rowChanges, 2).originalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 2).originalIndex == 1, @"");
-	STAssertTrue([RowOp(rowChanges, 2).originalGroup isEqualToString:consolidatedGroupName], @"");
-	STAssertTrue(RowOp(rowChanges, 2).finalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 2).finalIndex == 1, @"");
-	STAssertTrue([RowOp(rowChanges, 2).finalGroup isEqualToString:group0], @"");
+	XCTAssertTrue(RowOp(rowChanges, 2).type == YapDatabaseViewChangeMove, @"");
+	XCTAssertTrue(RowOp(rowChanges, 2).originalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 2).originalIndex == 1, @"");
+	XCTAssertTrue([RowOp(rowChanges, 2).originalGroup isEqualToString:consolidatedGroupName], @"");
+	XCTAssertTrue(RowOp(rowChanges, 2).finalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 2).finalIndex == 1, @"");
+	XCTAssertTrue([RowOp(rowChanges, 2).finalGroup isEqualToString:group0], @"");
 	
-	STAssertTrue(RowOp(rowChanges, 3).type == YapDatabaseViewChangeMove, @"");
-	STAssertTrue(RowOp(rowChanges, 3).originalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 3).originalIndex == 2, @"");
-	STAssertTrue([RowOp(rowChanges, 3).originalGroup isEqualToString:consolidatedGroupName], @"");
-	STAssertTrue(RowOp(rowChanges, 3).finalSection == 1, @"");
-	STAssertTrue(RowOp(rowChanges, 3).finalIndex == 0, @"");
-	STAssertTrue([RowOp(rowChanges, 3).finalGroup isEqualToString:group1], @"");
+	XCTAssertTrue(RowOp(rowChanges, 3).type == YapDatabaseViewChangeMove, @"");
+	XCTAssertTrue(RowOp(rowChanges, 3).originalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 3).originalIndex == 2, @"");
+	XCTAssertTrue([RowOp(rowChanges, 3).originalGroup isEqualToString:consolidatedGroupName], @"");
+	XCTAssertTrue(RowOp(rowChanges, 3).finalSection == 1, @"");
+	XCTAssertTrue(RowOp(rowChanges, 3).finalIndex == 0, @"");
+	XCTAssertTrue([RowOp(rowChanges, 3).finalGroup isEqualToString:group1], @"");
 	
-	STAssertTrue(RowOp(rowChanges, 4).type == YapDatabaseViewChangeMove, @"");
-	STAssertTrue(RowOp(rowChanges, 4).originalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 4).originalIndex == 3, @"");
-	STAssertTrue([RowOp(rowChanges, 4).originalGroup isEqualToString:consolidatedGroupName], @"");
-	STAssertTrue(RowOp(rowChanges, 4).finalSection == 1, @"");
-	STAssertTrue(RowOp(rowChanges, 4).finalIndex == 2, @"");
-	STAssertTrue([RowOp(rowChanges, 4).finalGroup isEqualToString:group1], @"");
+	XCTAssertTrue(RowOp(rowChanges, 4).type == YapDatabaseViewChangeMove, @"");
+	XCTAssertTrue(RowOp(rowChanges, 4).originalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 4).originalIndex == 3, @"");
+	XCTAssertTrue([RowOp(rowChanges, 4).originalGroup isEqualToString:consolidatedGroupName], @"");
+	XCTAssertTrue(RowOp(rowChanges, 4).finalSection == 1, @"");
+	XCTAssertTrue(RowOp(rowChanges, 4).finalIndex == 2, @"");
+	XCTAssertTrue([RowOp(rowChanges, 4).finalGroup isEqualToString:group1], @"");
 }
 
 - (void)test_autoConsolidateGroups_2C
@@ -5959,55 +6377,55 @@ static YapDatabaseViewRowChange* (^RowOp)(NSArray*, NSUInteger) = ^(NSArray *rCh
 	
 	// Verify
 	
-	STAssertTrue([sectionChanges count] == 3, @"");
+	XCTAssertTrue([sectionChanges count] == 3, @"");
 	
-	STAssertTrue(SectionOp(sectionChanges, 0).type == YapDatabaseViewChangeDelete, @"");
-	STAssertTrue(SectionOp(sectionChanges, 0).index == 0, @"");
-	STAssertTrue([SectionOp(sectionChanges, 0).group isEqualToString:consolidatedGroupName], @"");
+	XCTAssertTrue(SectionOp(sectionChanges, 0).type == YapDatabaseViewChangeDelete, @"");
+	XCTAssertTrue(SectionOp(sectionChanges, 0).index == 0, @"");
+	XCTAssertTrue([SectionOp(sectionChanges, 0).group isEqualToString:consolidatedGroupName], @"");
 	
-	STAssertTrue(SectionOp(sectionChanges, 1).type == YapDatabaseViewChangeInsert, @"");
-	STAssertTrue(SectionOp(sectionChanges, 1).index == 0, @"");
-	STAssertTrue([SectionOp(sectionChanges, 1).group isEqualToString:group0], @"");
+	XCTAssertTrue(SectionOp(sectionChanges, 1).type == YapDatabaseViewChangeInsert, @"");
+	XCTAssertTrue(SectionOp(sectionChanges, 1).index == 0, @"");
+	XCTAssertTrue([SectionOp(sectionChanges, 1).group isEqualToString:group0], @"");
 	
-	STAssertTrue(SectionOp(sectionChanges, 2).type == YapDatabaseViewChangeInsert, @"");
-	STAssertTrue(SectionOp(sectionChanges, 2).index == 1, @"");
-	STAssertTrue([SectionOp(sectionChanges, 2).group isEqualToString:group1], @"");
+	XCTAssertTrue(SectionOp(sectionChanges, 2).type == YapDatabaseViewChangeInsert, @"");
+	XCTAssertTrue(SectionOp(sectionChanges, 2).index == 1, @"");
+	XCTAssertTrue([SectionOp(sectionChanges, 2).group isEqualToString:group1], @"");
 	
-	STAssertTrue([rowChanges count] == 5, @"");
+	XCTAssertTrue([rowChanges count] == 5, @"");
 	
-	STAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeInsert, @"");
-	STAssertTrue(RowOp(rowChanges, 0).finalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 0).finalIndex == 0, @"");
-	STAssertTrue([RowOp(rowChanges, 0).finalGroup isEqualToString:group0], @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeInsert, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).finalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).finalIndex == 0, @"");
+	XCTAssertTrue([RowOp(rowChanges, 0).finalGroup isEqualToString:group0], @"");
 	
-	STAssertTrue(RowOp(rowChanges, 1).type == YapDatabaseViewChangeInsert, @"");
-	STAssertTrue(RowOp(rowChanges, 1).finalSection == 1, @"");
-	STAssertTrue(RowOp(rowChanges, 1).finalIndex == 1, @"");
-	STAssertTrue([RowOp(rowChanges, 1).finalGroup isEqualToString:group1], @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).type == YapDatabaseViewChangeInsert, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).finalSection == 1, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).finalIndex == 1, @"");
+	XCTAssertTrue([RowOp(rowChanges, 1).finalGroup isEqualToString:group1], @"");
 	
-	STAssertTrue(RowOp(rowChanges, 2).type == YapDatabaseViewChangeMove, @"");
-	STAssertTrue(RowOp(rowChanges, 2).originalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 2).originalIndex == 0, @"");
-	STAssertTrue([RowOp(rowChanges, 2).originalGroup isEqualToString:consolidatedGroupName], @"");
-	STAssertTrue(RowOp(rowChanges, 2).finalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 2).finalIndex == 1, @"");
-	STAssertTrue([RowOp(rowChanges, 2).finalGroup isEqualToString:group0], @"");
+	XCTAssertTrue(RowOp(rowChanges, 2).type == YapDatabaseViewChangeMove, @"");
+	XCTAssertTrue(RowOp(rowChanges, 2).originalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 2).originalIndex == 0, @"");
+	XCTAssertTrue([RowOp(rowChanges, 2).originalGroup isEqualToString:consolidatedGroupName], @"");
+	XCTAssertTrue(RowOp(rowChanges, 2).finalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 2).finalIndex == 1, @"");
+	XCTAssertTrue([RowOp(rowChanges, 2).finalGroup isEqualToString:group0], @"");
 	
-	STAssertTrue(RowOp(rowChanges, 3).type == YapDatabaseViewChangeMove, @"");
-	STAssertTrue(RowOp(rowChanges, 3).originalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 3).originalIndex == 1, @"");
-	STAssertTrue([RowOp(rowChanges, 3).originalGroup isEqualToString:consolidatedGroupName], @"");
-	STAssertTrue(RowOp(rowChanges, 3).finalSection == 1, @"");
-	STAssertTrue(RowOp(rowChanges, 3).finalIndex == 0, @"");
-	STAssertTrue([RowOp(rowChanges, 3).finalGroup isEqualToString:group1], @"");
+	XCTAssertTrue(RowOp(rowChanges, 3).type == YapDatabaseViewChangeMove, @"");
+	XCTAssertTrue(RowOp(rowChanges, 3).originalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 3).originalIndex == 1, @"");
+	XCTAssertTrue([RowOp(rowChanges, 3).originalGroup isEqualToString:consolidatedGroupName], @"");
+	XCTAssertTrue(RowOp(rowChanges, 3).finalSection == 1, @"");
+	XCTAssertTrue(RowOp(rowChanges, 3).finalIndex == 0, @"");
+	XCTAssertTrue([RowOp(rowChanges, 3).finalGroup isEqualToString:group1], @"");
 	
-	STAssertTrue(RowOp(rowChanges, 4).type == YapDatabaseViewChangeMove, @"");
-	STAssertTrue(RowOp(rowChanges, 4).originalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 4).originalIndex == 2, @"");
-	STAssertTrue([RowOp(rowChanges, 4).originalGroup isEqualToString:consolidatedGroupName], @"");
-	STAssertTrue(RowOp(rowChanges, 4).finalSection == 1, @"");
-	STAssertTrue(RowOp(rowChanges, 4).finalIndex == 2, @"");
-	STAssertTrue([RowOp(rowChanges, 4).finalGroup isEqualToString:group1], @"");
+	XCTAssertTrue(RowOp(rowChanges, 4).type == YapDatabaseViewChangeMove, @"");
+	XCTAssertTrue(RowOp(rowChanges, 4).originalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 4).originalIndex == 2, @"");
+	XCTAssertTrue([RowOp(rowChanges, 4).originalGroup isEqualToString:consolidatedGroupName], @"");
+	XCTAssertTrue(RowOp(rowChanges, 4).finalSection == 1, @"");
+	XCTAssertTrue(RowOp(rowChanges, 4).finalIndex == 2, @"");
+	XCTAssertTrue([RowOp(rowChanges, 4).finalGroup isEqualToString:group1], @"");
 }
 
 - (void)test_autoConsolidateGroups_3A
@@ -6047,14 +6465,14 @@ static YapDatabaseViewRowChange* (^RowOp)(NSArray*, NSUInteger) = ^(NSArray *rCh
 	
 	// Verify
 	
-	STAssertTrue([sectionChanges count] == 0, @"");
+	XCTAssertTrue([sectionChanges count] == 0, @"");
 	
-	STAssertTrue([rowChanges count] == 1, @"");
+	XCTAssertTrue([rowChanges count] == 1, @"");
 	
-	STAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeDelete, @"");
-	STAssertTrue(RowOp(rowChanges, 0).originalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 0).originalIndex == 0, @"");
-	STAssertTrue([RowOp(rowChanges, 0).originalGroup isEqualToString:consolidatedGroupName], @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeDelete, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).originalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).originalIndex == 0, @"");
+	XCTAssertTrue([RowOp(rowChanges, 0).originalGroup isEqualToString:consolidatedGroupName], @"");
 }
 
 - (void)test_autoConsolidateGroups_3B
@@ -6094,14 +6512,14 @@ static YapDatabaseViewRowChange* (^RowOp)(NSArray*, NSUInteger) = ^(NSArray *rCh
 	
 	// Verify
 	
-	STAssertTrue([sectionChanges count] == 0, @"");
+	XCTAssertTrue([sectionChanges count] == 0, @"");
 	
-	STAssertTrue([rowChanges count] == 1, @"");
+	XCTAssertTrue([rowChanges count] == 1, @"");
 	
-	STAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeDelete, @"");
-	STAssertTrue(RowOp(rowChanges, 0).originalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 0).originalIndex == 3, @"");
-	STAssertTrue([RowOp(rowChanges, 0).originalGroup isEqualToString:consolidatedGroupName], @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeDelete, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).originalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).originalIndex == 3, @"");
+	XCTAssertTrue([RowOp(rowChanges, 0).originalGroup isEqualToString:consolidatedGroupName], @"");
 }
 
 - (void)test_autoConsolidateGroups_3C
@@ -6143,19 +6561,19 @@ static YapDatabaseViewRowChange* (^RowOp)(NSArray*, NSUInteger) = ^(NSArray *rCh
 	
 	// Verify
 	
-	STAssertTrue([sectionChanges count] == 0, @"");
+	XCTAssertTrue([sectionChanges count] == 0, @"");
 	
-	STAssertTrue([rowChanges count] == 2, @"");
+	XCTAssertTrue([rowChanges count] == 2, @"");
 	
-	STAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeDelete, @"");
-	STAssertTrue(RowOp(rowChanges, 0).originalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 0).originalIndex == 0, @"");
-	STAssertTrue([RowOp(rowChanges, 0).originalGroup isEqualToString:consolidatedGroupName], @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeDelete, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).originalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).originalIndex == 0, @"");
+	XCTAssertTrue([RowOp(rowChanges, 0).originalGroup isEqualToString:consolidatedGroupName], @"");
 	
-	STAssertTrue(RowOp(rowChanges, 1).type == YapDatabaseViewChangeDelete, @"");
-	STAssertTrue(RowOp(rowChanges, 1).originalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 1).originalIndex == 3, @"");
-	STAssertTrue([RowOp(rowChanges, 1).originalGroup isEqualToString:consolidatedGroupName], @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).type == YapDatabaseViewChangeDelete, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).originalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).originalIndex == 3, @"");
+	XCTAssertTrue([RowOp(rowChanges, 1).originalGroup isEqualToString:consolidatedGroupName], @"");
 }
 
 - (void)test_autoConsolidateGroups_3D
@@ -6195,14 +6613,14 @@ static YapDatabaseViewRowChange* (^RowOp)(NSArray*, NSUInteger) = ^(NSArray *rCh
 	
 	// Verify
 	
-	STAssertTrue([sectionChanges count] == 0, @"");
+	XCTAssertTrue([sectionChanges count] == 0, @"");
 	
-	STAssertTrue([rowChanges count] == 1, @"");
+	XCTAssertTrue([rowChanges count] == 1, @"");
 	
-	STAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeInsert, @"");
-	STAssertTrue(RowOp(rowChanges, 0).finalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 0).finalIndex == 0, @"");
-	STAssertTrue([RowOp(rowChanges, 0).finalGroup isEqualToString:consolidatedGroupName], @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeInsert, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).finalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).finalIndex == 0, @"");
+	XCTAssertTrue([RowOp(rowChanges, 0).finalGroup isEqualToString:consolidatedGroupName], @"");
 }
 
 - (void)test_autoConsolidateGroups_3E
@@ -6242,14 +6660,14 @@ static YapDatabaseViewRowChange* (^RowOp)(NSArray*, NSUInteger) = ^(NSArray *rCh
 	
 	// Verify
 	
-	STAssertTrue([sectionChanges count] == 0, @"");
+	XCTAssertTrue([sectionChanges count] == 0, @"");
 	
-	STAssertTrue([rowChanges count] == 1, @"");
+	XCTAssertTrue([rowChanges count] == 1, @"");
 	
-	STAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeInsert, @"");
-	STAssertTrue(RowOp(rowChanges, 0).finalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 0).finalIndex == 3, @"");
-	STAssertTrue([RowOp(rowChanges, 0).finalGroup isEqualToString:consolidatedGroupName], @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeInsert, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).finalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).finalIndex == 3, @"");
+	XCTAssertTrue([RowOp(rowChanges, 0).finalGroup isEqualToString:consolidatedGroupName], @"");
 }
 
 - (void)test_autoConsolidateGroups_3F
@@ -6291,19 +6709,321 @@ static YapDatabaseViewRowChange* (^RowOp)(NSArray*, NSUInteger) = ^(NSArray *rCh
 	
 	// Verify
 	
-	STAssertTrue([sectionChanges count] == 0, @"");
+	XCTAssertTrue([sectionChanges count] == 0, @"");
 	
-	STAssertTrue([rowChanges count] == 2, @"");
+	XCTAssertTrue([rowChanges count] == 2, @"");
 	
-	STAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeInsert, @"");
-	STAssertTrue(RowOp(rowChanges, 0).finalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 0).finalIndex == 0, @"");
-	STAssertTrue([RowOp(rowChanges, 0).finalGroup isEqualToString:consolidatedGroupName], @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).type == YapDatabaseViewChangeInsert, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).finalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 0).finalIndex == 0, @"");
+	XCTAssertTrue([RowOp(rowChanges, 0).finalGroup isEqualToString:consolidatedGroupName], @"");
 	
-	STAssertTrue(RowOp(rowChanges, 1).type == YapDatabaseViewChangeInsert, @"");
-	STAssertTrue(RowOp(rowChanges, 1).finalSection == 0, @"");
-	STAssertTrue(RowOp(rowChanges, 1).finalIndex == 3, @"");
-	STAssertTrue([RowOp(rowChanges, 1).finalGroup isEqualToString:consolidatedGroupName], @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).type == YapDatabaseViewChangeInsert, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).finalSection == 0, @"");
+	XCTAssertTrue(RowOp(rowChanges, 1).finalIndex == 3, @"");
+	XCTAssertTrue([RowOp(rowChanges, 1).finalGroup isEqualToString:consolidatedGroupName], @"");
+}
+
+- (void)test_setting_autoconsolidation_group_name_to_existing_group_should_result_in_nil_groupname_and_zero_threshold{
+    YapDatabaseViewMappings *mapping = [[YapDatabaseViewMappings alloc] initWithGroups:@[@"group1", @"group2"] view:@"view"];
+    
+    [mapping setAutoConsolidateGroupsThreshold:100 withName:@"group1"];
+
+    XCTAssertNil([mapping consolidatedGroupName]);
+    XCTAssertTrue([mapping autoConsolidateGroupsThreshold] == 0);
+}
+@end
+
+@interface TestViewMappingDynamicGroupAddition : TestViewMappingsBase
+@end
+
+@implementation TestViewMappingDynamicGroupAddition
+
+-(void)test_adding_group_should_cause_result_in_section_insert_change{
+    YapDatabaseViewMappings *originalMapping, *finalMapping;
+    originalMapping = [[YapDatabaseViewMappings alloc]
+                       initWithGroupFilterBlock:^BOOL(NSString *g, YapDatabaseReadTransaction *t){
+                           return YES;
+                       }
+                       sortBlock:^NSComparisonResult(NSString *l, NSString *r, YapDatabaseReadTransaction *t){
+                           return [l compare:r];
+                       }
+                       view:@"view"];
+    
+    
+    [originalMapping updateWithCounts:@{@"group1":@(5),
+                                @"group2":@(3)}];
+    
+    finalMapping = [originalMapping copy];
+    [finalMapping updateWithCounts:@{@"group1":@(5),
+                                     @"group2":@(3),
+                                     @"group3":@(2)}];
+    
+
+	[changes addObject:[YapDatabaseViewSectionChange insertGroup:@"group3"]];
+    
+    NSArray *sectionChanges = nil, *rowChanges = nil;
+    [YapDatabaseViewChange getSectionChanges:&sectionChanges
+                                  rowChanges:&rowChanges
+                        withOriginalMappings:originalMapping
+                               finalMappings:finalMapping
+                                 fromChanges:changes];
+    
+    XCTAssertTrue(sectionChanges.count == 1);
+    XCTAssertTrue(SectionOp(sectionChanges, 0).type == YapDatabaseViewChangeInsert);
+    XCTAssertTrue(SectionOp(sectionChanges, 0).index == 2);
+}
+
+-(void)test_adding_empty_group_when_dynamic_section_for_all_groups_is_set_should_not_result_in_section_insert_change{
+    YapDatabaseViewMappings *originalMapping, *finalMapping;
+    originalMapping = [[YapDatabaseViewMappings alloc]
+                       initWithGroupFilterBlock:^BOOL(NSString *g, YapDatabaseReadTransaction *t){
+                           return YES;
+                       }
+                       sortBlock:^NSComparisonResult(NSString *l, NSString *r, YapDatabaseReadTransaction *t){
+                           return [l compare:r];
+                       }
+                       view:@"view"];
+    originalMapping.isDynamicSectionForAllGroups = YES;
+    
+    
+    [originalMapping updateWithCounts:@{@"group1":@(5),
+                                        @"group2":@(3)}];
+    
+    finalMapping = [originalMapping copy];
+    [finalMapping updateWithCounts:@{@"group1":@(5),
+                                     @"group2":@(3),
+                                     @"group3":@(0)}];
+    
+    
+	[changes addObject:[YapDatabaseViewSectionChange insertGroup:@"group3"]];
+    
+    NSArray *sectionChanges = nil, *rowChanges = nil;
+    [YapDatabaseViewChange getSectionChanges:&sectionChanges
+                                  rowChanges:&rowChanges
+                        withOriginalMappings:originalMapping
+                               finalMappings:finalMapping
+                                 fromChanges:changes];
+    
+    
+    XCTAssertTrue(sectionChanges.count == 0);
+}
+
+-(void)test_range_options_transfer_when_new_group_is_added{
+    YapDatabaseViewMappings *originalMapping;
+    originalMapping = [[YapDatabaseViewMappings alloc]
+                       initWithGroupFilterBlock:^BOOL(NSString *g, YapDatabaseReadTransaction *t){
+                           return YES;
+                       }
+                       sortBlock:^NSComparisonResult(NSString *l, NSString *r, YapDatabaseReadTransaction *t){
+                           return [l compare:r];
+                       }
+                       view:@"view"];
+    originalMapping.isDynamicSectionForAllGroups = YES;
+    
+    
+    [originalMapping updateWithCounts:@{@"group1":@(30),
+                                        @"group2":@(3)}];
+    
+    YapDatabaseViewRangeOptions *rangeOpts =
+    [YapDatabaseViewRangeOptions fixedRangeWithLength:20 offset:0 from:YapDatabaseViewBeginning];
+    
+    [originalMapping setRangeOptions:rangeOpts forGroup:@"group1"];
+
+    [originalMapping updateWithCounts:@{@"group1":@(30),
+                                        @"group2":@(3),
+                                        @"group3":@(1)}];
+    
+    
+    XCTAssertNotNil([originalMapping rangeOptionsForGroup:@"group1"]);
+    XCTAssertTrue([originalMapping numberOfItemsInGroup:@"group1"] == 20);
+    XCTAssertTrue([originalMapping numberOfItemsInGroup:@"group3"] == 1);
+}
+
+- (void)test_range_options_can_be_set_before_update_with_transaction{
+    YapDatabaseViewMappings *originalMapping = [[YapDatabaseViewMappings alloc]
+                       initWithGroupFilterBlock:^BOOL(NSString *g, YapDatabaseReadTransaction *t){
+                           return YES;
+                       }
+                       sortBlock:^NSComparisonResult(NSString *l, NSString *r, YapDatabaseReadTransaction *t){
+                           return [l compare:r];
+                       }
+                       view:@"view"];
+    
+    YapDatabaseViewRangeOptions *rangeOpts = [YapDatabaseViewRangeOptions fixedRangeWithLength:10 offset:0 from:YapDatabaseViewBeginning];
+    [originalMapping setRangeOptions:rangeOpts forGroup:@"group2"];
+    
+    [originalMapping updateWithCounts:@{@"group1":@(30),
+                                        @"group2":@(15)}];
+    
+    XCTAssertNotNil([originalMapping rangeOptionsForGroup:@"group2"]);
+    XCTAssertTrue([originalMapping numberOfItemsInGroup:@"group2"] == 10);
+}
+
+- (void)test_isReversed_can_be_set_before_update_with_transaction{
+	YapDatabaseViewMappings *originalMapping = [[YapDatabaseViewMappings alloc]
+	                   initWithGroupFilterBlock:^BOOL(NSString *g, YapDatabaseReadTransaction *t){
+	                       return YES;
+	                   }
+	                   sortBlock:^NSComparisonResult(NSString *l, NSString *r, YapDatabaseReadTransaction *t){
+	                       return [l compare:r];
+	                   }
+	                   view:@"view"];
+    
+    [originalMapping setIsReversed:YES forGroup:@"group1"];
+    
+    [originalMapping updateWithCounts:@{@"group1":@(30),
+                                        @"group2":@(15)}];
+    
+    XCTAssertTrue([originalMapping isReversedForGroup:@"group1"]);
+    XCTAssertTrue([originalMapping indexForRow:29 inGroup:@"group1"] == 0 );
+}
+
+- (void)test_dependencies_can_be_set_before_update_with_transaction{
+	YapDatabaseViewMappings *originalMapping = [[YapDatabaseViewMappings alloc]
+	                   initWithGroupFilterBlock:^BOOL(NSString *g, YapDatabaseReadTransaction *t){
+	                       return YES;
+	                   }
+	                   sortBlock:^NSComparisonResult(NSString *l, NSString *r, YapDatabaseReadTransaction *t){
+	                       return [l compare:r];
+	                   }
+	                   view:@"view"];
+    
+    [originalMapping setCellDrawingDependencyForNeighboringCellWithOffset:-1 forGroup:@"group1"];
+    [originalMapping updateWithCounts:@{@"group1":@(30),
+                                        @"group2":@(15)}];
+    
+    YapDatabaseViewMappings *finalMapping = [originalMapping copy];
+    [finalMapping updateWithCounts:@{@"group1":@(30),
+                                     @"group2":@(15)}];
+    
+    
+	[changes addObject:[YapDatabaseViewRowChange updateKey:@"" changes:YapDatabaseViewChangedObject inGroup:@"group1" atIndex:3]];
+    
+    NSArray *sectionChanges = nil, *rowChanges = nil;
+    [YapDatabaseViewChange getSectionChanges:&sectionChanges
+                                  rowChanges:&rowChanges
+                        withOriginalMappings:originalMapping
+                               finalMappings:finalMapping
+                                 fromChanges:changes];
+    
+    XCTAssertTrue([[originalMapping cellDrawingDependencyOffsetsForGroup:@"group1"] isEqualToSet:[NSSet setWithObject:@(-1)]]);
+    XCTAssertTrue(rowChanges.count == 2);
+    XCTAssertTrue(RowOp(rowChanges, 0).changes == YapDatabaseViewChangedObject);
+    XCTAssertTrue(RowOp(rowChanges, 0).originalIndex == 3);
+    XCTAssertTrue(RowOp(rowChanges, 1).changes == YapDatabaseViewChangedDependency);
+    XCTAssertTrue(RowOp(rowChanges, 1).originalIndex == 4);
+}
+
+- (void)test_row_insert_in_removed_group_get_filtered_out{
+    YapDatabaseViewMappings *originalMapping, *finalMapping;
+    originalMapping = [[YapDatabaseViewMappings alloc]
+                       initWithGroupFilterBlock:^BOOL(NSString *g, YapDatabaseReadTransaction *t){
+                           return YES;
+                       }
+                       sortBlock:^NSComparisonResult(NSString *l, NSString *r, YapDatabaseReadTransaction *t){
+                           return [l compare:r];
+                       }
+                       view:@"view"];
+    [originalMapping updateWithCounts:@{@"group1":@(5),
+                                        @"group2":@(3),
+                                        @"group3":@(2)}];
+    finalMapping = [originalMapping copy];
+    [finalMapping updateWithCounts:@{@"group1":@(5),
+                                     @"group2":@(3)}];
+    [changes addObject:[YapDatabaseViewRowChange insertKey:@"key" inGroup:@"group3" atIndex:2]];
+    
+    
+    NSArray *sectionChanges = nil, *rowChanges = nil;
+    [YapDatabaseViewChange getSectionChanges:&sectionChanges
+                                  rowChanges:&rowChanges
+                        withOriginalMappings:originalMapping
+                               finalMappings:finalMapping
+                                 fromChanges:changes];
+    
+    
+    XCTAssertTrue(rowChanges.count == 0);
+}
+
+- (void)test_row_update_in_removed_group_get_filtered_out{
+    YapDatabaseViewMappings *originalMapping, *finalMapping;
+    originalMapping = [[YapDatabaseViewMappings alloc]
+                       initWithGroupFilterBlock:^BOOL(NSString *g, YapDatabaseReadTransaction *t){
+                           return YES;
+                       }
+                       sortBlock:^NSComparisonResult(NSString *l, NSString *r, YapDatabaseReadTransaction *t){
+                           return [l compare:r];
+                       }
+                       view:@"view"];
+    [originalMapping updateWithCounts:@{@"group1":@(5),
+                                        @"group2":@(3),
+                                        @"group3":@(2)}];
+    finalMapping = [originalMapping copy];
+    [finalMapping updateWithCounts:@{@"group1":@(5),
+                                     @"group2":@(3)}];
+    [changes addObject:[YapDatabaseViewRowChange updateKey:@"key" changes:YapDatabaseViewChangedObject inGroup:@"group3" atIndex:0]];
+    
+    
+    NSArray *sectionChanges = nil, *rowChanges = nil;
+    [YapDatabaseViewChange getSectionChanges:&sectionChanges
+                                  rowChanges:&rowChanges
+                        withOriginalMappings:originalMapping
+                               finalMappings:finalMapping
+                                 fromChanges:changes];
+    
+    
+    XCTAssertTrue(rowChanges.count == 0);
+}
+
+- (void)test_row_delete_in_removed_group_does_not_get_filtered_out{
+    YapDatabaseViewMappings *originalMapping, *finalMapping;
+    originalMapping = [[YapDatabaseViewMappings alloc]
+                       initWithGroupFilterBlock:^BOOL(NSString *g, YapDatabaseReadTransaction *t){
+                           return YES;
+                       }
+                       sortBlock:^NSComparisonResult(NSString *l, NSString *r, YapDatabaseReadTransaction *t){
+                           return [l compare:r];
+                       }
+                       view:@"view"];
+    [originalMapping updateWithCounts:@{@"group1":@(5),
+                                        @"group2":@(3),
+                                        @"group3":@(2)}];
+    finalMapping = [originalMapping copy];
+    [finalMapping updateWithCounts:@{@"group1":@(5),
+                                     @"group2":@(3)}];
+    [changes addObject:[YapDatabaseViewRowChange deleteKey:@"key" inGroup:@"group3" atIndex:0]];
+    
+    NSArray *sectionChanges = nil, *rowChanges = nil;
+    [YapDatabaseViewChange getSectionChanges:&sectionChanges
+                                  rowChanges:&rowChanges
+                        withOriginalMappings:originalMapping
+                               finalMappings:finalMapping
+                                 fromChanges:changes];
+    
+    
+    XCTAssertTrue(rowChanges.count == 1);
+}
+
+- (void)test_consolidation_threshhold_and_group_name_get_cleared_on_update_transaction_if_name_is_in_new_groups{
+	YapDatabaseViewMappings *originalMapping = [[YapDatabaseViewMappings alloc]
+	                   initWithGroupFilterBlock:^BOOL(NSString *g, YapDatabaseReadTransaction *t){
+	                       return YES;
+	                   }
+	                   sortBlock:^NSComparisonResult(NSString *l, NSString *r, YapDatabaseReadTransaction *t){
+	                       return [l compare:r];
+	                   }
+	                   view:@"view"];
+    [originalMapping setAutoConsolidateGroupsThreshold:100 withName:@"super-omega-group"];
+    XCTAssertEqualObjects([originalMapping consolidatedGroupName], @"super-omega-group");
+    XCTAssertTrue([originalMapping autoConsolidateGroupsThreshold] == 100);
+    
+    [originalMapping updateWithCounts:@{@"group1":@(30),
+                                        @"group2":@(15),
+                                        @"super-omega-group":@(10)}];
+
+    XCTAssertNil([originalMapping consolidatedGroupName]);
+    XCTAssertTrue([originalMapping autoConsolidateGroupsThreshold] == 0);
 }
 
 @end
+

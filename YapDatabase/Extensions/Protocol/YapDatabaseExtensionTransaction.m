@@ -8,16 +8,6 @@
 #warning This file must be compiled with ARC. Use -fobjc-arc flag (or convert project to ARC).
 #endif
 
-/**
- * Define log level for this file: OFF, ERROR, WARN, INFO, VERBOSE
- * See YapDatabaseLogging.h for more information.
- **/
-#if DEBUG
-  static const int ydbLogLevel = YDB_LOG_LEVEL_WARN;
-#else
-  static const int ydbLogLevel = YDB_LOG_LEVEL_WARN;
-#endif
-
 
 @implementation YapDatabaseExtensionTransaction
 
@@ -40,10 +30,28 @@
 }
 
 /**
+ * Subclasses may OPTIONALLY implement this method.
+ * This method is only called if within a readwrite transaction.
+ *
+ * Subclasses should ONLY implement this method if they need to make changes to the 'database' table.
+ * That is, the main collection/key/value table that directly stores the user's objects.
+ *
+ * Return NO if the extension does not directly modify the main database table.
+ * Return YES if the extension does modify the main database table,
+ * regardless of whether it made changes during this invocation.
+ *
+ * This method may be invoked several times in a row.
+**/
+- (BOOL)flushPendingChangesToMainDatabaseTable
+{
+	return NO;
+}
+
+/**
  * This method is called if within a readwrite transaction.
  * This method is optional.
 **/
-- (void)preCommitReadWriteTransaction
+- (void)prepareChangeset
 {
 	// Subclasses may optionally override this method to perform any "cleanup" before the changesets are requested.
 	// Remember, the changesets are requested before the commitTransaction method is invoked.
@@ -175,6 +183,12 @@
 {
 	NSString *registeredName = [[[self extensionConnection] extension] registeredName];
 	[[self databaseTransaction] setDataValue:value forKey:key extension:registeredName];
+}
+
+- (void)removeValueForExtensionKey:(NSString *)key
+{
+	NSString *registeredName = [[[self extensionConnection] extension] registeredName];
+	[[self databaseTransaction] removeValueForKey:key extension:registeredName];
 }
 
 @end

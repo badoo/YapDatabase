@@ -29,6 +29,8 @@
   static const int ydbLogLevel = YDB_LOG_LEVEL_WARN;
 #endif
 
+#define UNLIMITED_CACHE_LIMIT          0
+#define MIN_KEY_CACHE_LIMIT          500
 #define DEFAULT_OBJECT_CACHE_LIMIT   250
 #define DEFAULT_METADATA_CACHE_LIMIT 500
 
@@ -42,6 +44,7 @@
 	
 	sqlite3_stmt *yapGetDataForKeyStatement;   // Against "yap" database, for internal use
 	sqlite3_stmt *yapSetDataForKeyStatement;   // Against "yap" database, for internal use
+	sqlite3_stmt *yapRemoveForKeyStatement;    // Against "yap" database, for internal use
 	sqlite3_stmt *yapRemoveExtensionStatement; // Against "yap" database, for internal use
 	
 	sqlite3_stmt *getCollectionCountStatement;
@@ -50,15 +53,15 @@
 	sqlite3_stmt *getCountForRowidStatement;
 	sqlite3_stmt *getRowidForKeyStatement;
 	sqlite3_stmt *getKeyForRowidStatement;
-	sqlite3_stmt *getKeyDataForRowidStatement;
-	sqlite3_stmt *getKeyMetadataForRowidStatement;
 	sqlite3_stmt *getDataForRowidStatement;
+	sqlite3_stmt *getMetadataForRowidStatement;
 	sqlite3_stmt *getAllForRowidStatement;
 	sqlite3_stmt *getDataForKeyStatement;
 	sqlite3_stmt *getMetadataForKeyStatement;
 	sqlite3_stmt *getAllForKeyStatement;
 	sqlite3_stmt *insertForRowidStatement;
 	sqlite3_stmt *updateAllForRowidStatement;
+	sqlite3_stmt *updateObjectForRowidStatement;
 	sqlite3_stmt *updateMetadataForRowidStatement;
 	sqlite3_stmt *removeForRowidStatement;
 	sqlite3_stmt *removeCollectionStatement;
@@ -121,23 +124,43 @@
 		
 		extensions = [[NSMutableDictionary alloc] init];
 		
-		YapDatabaseDefaults *defaults = [database defaults];
+		YapDatabaseConnectionDefaults *defaults = [database connectionDefaults];
+		
+		NSUInteger keyCacheLimit = MIN_KEY_CACHE_LIMIT;
 		
 		if (defaults.objectCacheEnabled)
 		{
 			objectCacheLimit = defaults.objectCacheLimit;
 			objectCache = [[YapCache alloc] initWithKeyClass:[YapCollectionKey class]];
 			objectCache.countLimit = objectCacheLimit;
+			
+			if (keyCacheLimit != UNLIMITED_CACHE_LIMIT)
+			{
+				if (objectCacheLimit == UNLIMITED_CACHE_LIMIT)
+					keyCacheLimit = UNLIMITED_CACHE_LIMIT;
+				else
+					keyCacheLimit = MAX(keyCacheLimit, objectCacheLimit);
+			}
 		}
 		if (defaults.metadataCacheEnabled)
 		{
 			metadataCacheLimit = defaults.metadataCacheLimit;
 			metadataCache = [[YapCache alloc] initWithKeyClass:[YapCollectionKey class]];
 			metadataCache.countLimit = metadataCacheLimit;
+			
+			if (keyCacheLimit != UNLIMITED_CACHE_LIMIT)
+			{
+				if (metadataCacheLimit == UNLIMITED_CACHE_LIMIT)
+					keyCacheLimit = UNLIMITED_CACHE_LIMIT;
+				else
+					keyCacheLimit = MAX(keyCacheLimit, objectCacheLimit);
+			}
 		}
 		
+		keyCache = [[YapCache alloc] initWithKeyClass:[NSNumber class] countLimit:keyCacheLimit];
+		
 		#if TARGET_OS_IPHONE
-		self.autoFlushMemoryLevel = defaults.autoFlushMemoryLevel;
+		self.autoFlushMemoryFlags = defaults.autoFlushMemoryFlags;
 		#endif
 		
 		lock = OS_SPINLOCK_INIT;
@@ -188,6 +211,11 @@
 				// And in all my testing, I've only seen the busy_handler called once per db.
 				
 				sqlite3_busy_timeout(db, 50); // milliseconds
+                
+#ifdef SQLITE_HAS_CODEC
+                // Configure SQLCipher encryption for the new database connection.
+                [database configureEncryptionForDatabase:db];
+#endif
 			}
 		}
 		
@@ -214,6 +242,7 @@
 	registeredExtensions = [database registeredExtensions];
 	registeredTables = [database registeredTables];
 	extensionsOrder = [database extensionsOrder];
+	extensionDependencies = [database extensionDependencies];
 	
 	extensionsReady = ([registeredExtensions count] == 0);
 }
@@ -240,43 +269,7 @@
 	
 	[extensions removeAllObjects];
 	
-	sqlite_finalize_null(&beginTransactionStatement);
-	sqlite_finalize_null(&commitTransactionStatement);
-	sqlite_finalize_null(&rollbackTransactionStatement);
-	
-	sqlite_finalize_null(&yapGetDataForKeyStatement);
-	sqlite_finalize_null(&yapSetDataForKeyStatement);
-	sqlite_finalize_null(&yapRemoveExtensionStatement);
-	
-	sqlite_finalize_null(&getCollectionCountStatement);
-	sqlite_finalize_null(&getKeyCountForCollectionStatement);
-	sqlite_finalize_null(&getKeyCountForAllStatement);
-	sqlite_finalize_null(&getCountForRowidStatement);
-	sqlite_finalize_null(&getRowidForKeyStatement);
-	sqlite_finalize_null(&getKeyForRowidStatement);
-	sqlite_finalize_null(&getKeyDataForRowidStatement);
-	sqlite_finalize_null(&getKeyMetadataForRowidStatement);
-	sqlite_finalize_null(&getDataForRowidStatement);
-	sqlite_finalize_null(&getAllForRowidStatement);
-	sqlite_finalize_null(&getDataForKeyStatement);
-	sqlite_finalize_null(&getMetadataForKeyStatement);
-	sqlite_finalize_null(&getAllForKeyStatement);
-	sqlite_finalize_null(&insertForRowidStatement);
-	sqlite_finalize_null(&updateAllForRowidStatement);
-	sqlite_finalize_null(&updateMetadataForRowidStatement);
-	sqlite_finalize_null(&removeForRowidStatement);
-	sqlite_finalize_null(&removeCollectionStatement);
-	sqlite_finalize_null(&removeAllStatement);
-	sqlite_finalize_null(&enumerateCollectionsStatement);
-	sqlite_finalize_null(&enumerateCollectionsForKeyStatement);
-	sqlite_finalize_null(&enumerateKeysInCollectionStatement);
-	sqlite_finalize_null(&enumerateKeysInAllCollectionsStatement);
-	sqlite_finalize_null(&enumerateKeysAndMetadataInCollectionStatement);
-	sqlite_finalize_null(&enumerateKeysAndMetadataInAllCollectionsStatement);
-	sqlite_finalize_null(&enumerateKeysAndObjectsInCollectionStatement);
-	sqlite_finalize_null(&enumerateKeysAndObjectsInAllCollectionsStatement);
-	sqlite_finalize_null(&enumerateRowsInCollectionStatement);
-	sqlite_finalize_null(&enumerateRowsInAllCollectionsStatement);
+	[self _flushStatements];
 	
 	if (db)
 	{
@@ -304,75 +297,65 @@
 #pragma mark Memory
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-/**
- * Optional override hook.
- * Don't forget to invoke [super _flushMemoryWithLevel:level].
-**/
-- (void)_flushMemoryWithLevel:(int)level
+- (void)_flushStatements
 {
-	if (level >= YapDatabaseConnectionFlushMemoryLevelMild)
+	sqlite_finalize_null(&beginTransactionStatement);
+	sqlite_finalize_null(&commitTransactionStatement);
+	sqlite_finalize_null(&rollbackTransactionStatement);
+	
+	sqlite_finalize_null(&yapGetDataForKeyStatement);
+	sqlite_finalize_null(&yapSetDataForKeyStatement);
+	sqlite_finalize_null(&yapRemoveForKeyStatement);
+	sqlite_finalize_null(&yapRemoveExtensionStatement);
+	
+	sqlite_finalize_null(&getCollectionCountStatement);
+	sqlite_finalize_null(&getKeyCountForCollectionStatement);
+	sqlite_finalize_null(&getKeyCountForAllStatement);
+	sqlite_finalize_null(&getCountForRowidStatement);
+	sqlite_finalize_null(&getRowidForKeyStatement);
+	sqlite_finalize_null(&getKeyForRowidStatement);
+	sqlite_finalize_null(&getDataForRowidStatement);
+	sqlite_finalize_null(&getMetadataForRowidStatement);
+	sqlite_finalize_null(&getAllForRowidStatement);
+	sqlite_finalize_null(&getDataForKeyStatement);
+	sqlite_finalize_null(&getMetadataForKeyStatement);
+	sqlite_finalize_null(&getAllForKeyStatement);
+	sqlite_finalize_null(&insertForRowidStatement);
+	sqlite_finalize_null(&updateAllForRowidStatement);
+	sqlite_finalize_null(&updateObjectForRowidStatement);
+	sqlite_finalize_null(&updateMetadataForRowidStatement);
+	sqlite_finalize_null(&removeForRowidStatement);
+	sqlite_finalize_null(&removeCollectionStatement);
+	sqlite_finalize_null(&removeAllStatement);
+	sqlite_finalize_null(&enumerateCollectionsStatement);
+	sqlite_finalize_null(&enumerateCollectionsForKeyStatement);
+	sqlite_finalize_null(&enumerateKeysInCollectionStatement);
+	sqlite_finalize_null(&enumerateKeysInAllCollectionsStatement);
+	sqlite_finalize_null(&enumerateKeysAndMetadataInCollectionStatement);
+	sqlite_finalize_null(&enumerateKeysAndMetadataInAllCollectionsStatement);
+	sqlite_finalize_null(&enumerateKeysAndObjectsInCollectionStatement);
+	sqlite_finalize_null(&enumerateKeysAndObjectsInAllCollectionsStatement);
+	sqlite_finalize_null(&enumerateRowsInCollectionStatement);
+	sqlite_finalize_null(&enumerateRowsInAllCollectionsStatement);
+}
+
+- (void)_flushMemoryWithFlags:(YapDatabaseConnectionFlushMemoryFlags)flags
+{
+	if (flags & YapDatabaseConnectionFlushMemoryFlags_Caches)
 	{
+		[keyCache removeAllObjects];
 		[objectCache removeAllObjects];
 		[metadataCache removeAllObjects];
 	}
 	
-	if (level >= YapDatabaseConnectionFlushMemoryLevelModerate)
+	if (flags & YapDatabaseConnectionFlushMemoryFlags_Statements)
 	{
-	//	sqlite_finalize_null(&beginTransactionStatement);
-	//	sqlite_finalize_null(&commitTransactionStatement);
-		sqlite_finalize_null(&rollbackTransactionStatement);
-		
-		sqlite_finalize_null(&yapGetDataForKeyStatement);
-		sqlite_finalize_null(&yapSetDataForKeyStatement);
-		sqlite_finalize_null(&yapRemoveExtensionStatement);
-		
-		sqlite_finalize_null(&getCollectionCountStatement);
-		sqlite_finalize_null(&getKeyCountForCollectionStatement);
-		sqlite_finalize_null(&getKeyCountForAllStatement);
-		sqlite_finalize_null(&getCountForRowidStatement);
-	//	sqlite_finalize_null(&getRowidForKeyStatement);
-	//	sqlite_finalize_null(&getKeyForRowidStatement);
-		sqlite_finalize_null(&getKeyDataForRowidStatement);
-		sqlite_finalize_null(&getKeyMetadataForRowidStatement);
-	//	sqlite_finalize_null(&getDataForRowidStatement);
-		sqlite_finalize_null(&getAllForRowidStatement);
-	//	sqlite_finalize_null(&getDataForKeyStatement);
-		sqlite_finalize_null(&getMetadataForKeyStatement);
-		sqlite_finalize_null(&getAllForKeyStatement);
-	//	sqlite_finalize_null(&insertForRowidStatement);
-	//	sqlite_finalize_null(&updateAllForRowidStatement);
-		sqlite_finalize_null(&updateMetadataForRowidStatement);
-		sqlite_finalize_null(&removeForRowidStatement);
-		sqlite_finalize_null(&removeCollectionStatement);
-		sqlite_finalize_null(&removeAllStatement);
-		sqlite_finalize_null(&enumerateCollectionsStatement);
-		sqlite_finalize_null(&enumerateCollectionsForKeyStatement);
-		sqlite_finalize_null(&enumerateKeysInCollectionStatement);
-		sqlite_finalize_null(&enumerateKeysInAllCollectionsStatement);
-		sqlite_finalize_null(&enumerateKeysAndMetadataInCollectionStatement);
-		sqlite_finalize_null(&enumerateKeysAndMetadataInAllCollectionsStatement);
-		sqlite_finalize_null(&enumerateKeysAndObjectsInCollectionStatement);
-		sqlite_finalize_null(&enumerateKeysAndObjectsInAllCollectionsStatement);
-		sqlite_finalize_null(&enumerateRowsInCollectionStatement);
-		sqlite_finalize_null(&enumerateRowsInAllCollectionsStatement);
-	}
-	
-	if (level >= YapDatabaseConnectionFlushMemoryLevelFull)
-	{
-		sqlite_finalize_null(&beginTransactionStatement);
-		sqlite_finalize_null(&commitTransactionStatement);
-		
-		sqlite_finalize_null(&getRowidForKeyStatement);
-		sqlite_finalize_null(&getKeyForRowidStatement);
-		sqlite_finalize_null(&getDataForRowidStatement);
-		sqlite_finalize_null(&getDataForKeyStatement);
-		sqlite_finalize_null(&insertForRowidStatement);
-		sqlite_finalize_null(&updateAllForRowidStatement);
+		[self _flushStatements];
 	}
 	
 	[extensions enumerateKeysAndObjectsUsingBlock:^(id extNameObj, id extConnectionObj, BOOL *stop) {
 		
-		[(YapDatabaseExtensionConnection *)extConnectionObj _flushMemoryWithLevel:level];
+		[(YapDatabaseExtensionConnection *)extConnectionObj _flushMemoryWithFlags:flags];
 	}];
 }
 
@@ -394,11 +377,11 @@
  * YapDatabaseConnectionFlushMemoryLevelFull (3):
  *     Full flush of all caches and removes all pre-compiled sqlite statements.
 **/
-- (void)flushMemoryWithLevel:(int)level
+- (void)flushMemoryWithFlags:(YapDatabaseConnectionFlushMemoryFlags)flags
 {
 	dispatch_block_t block = ^{
 		
-		[self _flushMemoryWithLevel:level];
+		[self _flushMemoryWithFlags:flags];
 	};
 	
 	if (dispatch_get_specific(IsOnConnectionQueueKey))
@@ -410,7 +393,7 @@
 #if TARGET_OS_IPHONE
 - (void)didReceiveMemoryWarning:(NSNotification *)notification
 {
-	[self flushMemoryWithLevel:[self autoFlushMemoryLevel]];
+	[self flushMemoryWithFlags:[self autoFlushMemoryFlags]];
 }
 #endif
 
@@ -421,10 +404,8 @@
 @synthesize database = database;
 @synthesize name = _name;
 
-//@synthesize connectionQueue = connectionQueue;
-
 #if TARGET_OS_IPHONE
-@synthesize autoFlushMemoryLevel;
+@synthesize autoFlushMemoryFlags;
 #endif
 
 - (BOOL)objectCacheEnabled
@@ -459,6 +440,8 @@
 		{
 			objectCache = nil;
 		}
+		
+		[self updateKeyCacheLimit];
 	};
 	
 	if (dispatch_get_specific(IsOnConnectionQueueKey))
@@ -493,11 +476,12 @@
 			
 			if (objectCache == nil)
 			{
-				return; // Limit changed, but objectCache is still disabled
+				// Limit changed, but objectCache is still disabled
 			}
 			else
 			{
 				objectCache.countLimit = objectCacheLimit;
+				[self updateKeyCacheLimit];
 			}
 		}
 	};
@@ -540,6 +524,8 @@
 		{
 			metadataCache = nil;
 		}
+		
+		[self updateKeyCacheLimit];
 	};
 	
 	if (dispatch_get_specific(IsOnConnectionQueueKey))
@@ -574,11 +560,12 @@
 			
 			if (metadataCache == nil)
 			{
-				return; // Limit changed but metadataCache still disabled
+				// Limit changed but metadataCache still disabled
 			}
 			else
 			{
 				metadataCache.countLimit = metadataCacheLimit;
+				[self updateKeyCacheLimit];
 			}
 		}
 	};
@@ -678,6 +665,39 @@
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+#pragma mark Utilities
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+- (void)updateKeyCacheLimit
+{
+	NSUInteger keyCacheLimit = MIN_KEY_CACHE_LIMIT;
+	
+	if (keyCacheLimit != UNLIMITED_CACHE_LIMIT)
+	{
+		if (objectCache)
+		{
+			if (objectCacheLimit == UNLIMITED_CACHE_LIMIT)
+				keyCacheLimit = UNLIMITED_CACHE_LIMIT;
+			else
+				keyCacheLimit = MAX(keyCacheLimit, objectCacheLimit);
+		}
+	}
+	
+	if (keyCacheLimit != UNLIMITED_CACHE_LIMIT)
+	{
+		if (metadataCache)
+		{
+			if (objectCacheLimit == UNLIMITED_CACHE_LIMIT)
+				keyCacheLimit = UNLIMITED_CACHE_LIMIT;
+			else
+				keyCacheLimit = MAX(keyCacheLimit, objectCacheLimit);
+		}
+	}
+	
+	keyCache.countLimit = keyCacheLimit;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 #pragma mark Statements
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -691,7 +711,7 @@
 		int status = sqlite3_prepare_v2(db, stmt, stmtLen+1, &beginTransactionStatement, NULL);
 		if (status != SQLITE_OK)
 		{
-			YDBLogError(@"Error creating '%@': %d %s", NSStringFromSelector(_cmd), status, sqlite3_errmsg(db));
+			YDBLogError(@"Error creating '%@': %d %s", THIS_METHOD, status, sqlite3_errmsg(db));
 		}
 	}
 	
@@ -708,7 +728,7 @@
 		int status = sqlite3_prepare_v2(db, stmt, stmtLen+1, &commitTransactionStatement, NULL);
 		if (status != SQLITE_OK)
 		{
-			YDBLogError(@"Error creating '%@': %d %s", NSStringFromSelector(_cmd), status, sqlite3_errmsg(db));
+			YDBLogError(@"Error creating '%@': %d %s", THIS_METHOD, status, sqlite3_errmsg(db));
 		}
 	}
 	
@@ -725,7 +745,7 @@
 		int status = sqlite3_prepare_v2(db, stmt, stmtLen+1, &rollbackTransactionStatement, NULL);
 		if (status != SQLITE_OK)
 		{
-			YDBLogError(@"Error creating '%@': %d %s", NSStringFromSelector(_cmd), status, sqlite3_errmsg(db));
+			YDBLogError(@"Error creating '%@': %d %s", THIS_METHOD, status, sqlite3_errmsg(db));
 		}
 	}
 	
@@ -742,7 +762,7 @@
 		int status = sqlite3_prepare_v2(db, stmt, stmtLen+1, &yapGetDataForKeyStatement, NULL);
 		if (status != SQLITE_OK)
 		{
-			YDBLogError(@"Error creating '%@': %d %s", NSStringFromSelector(_cmd), status, sqlite3_errmsg(db));
+			YDBLogError(@"Error creating '%@': %d %s", THIS_METHOD, status, sqlite3_errmsg(db));
 		}
 	}
 	
@@ -759,11 +779,28 @@
 		int status = sqlite3_prepare_v2(db, stmt, stmtLen+1, &yapSetDataForKeyStatement, NULL);
 		if (status != SQLITE_OK)
 		{
-			YDBLogError(@"Error creating '%@': %d %s", NSStringFromSelector(_cmd), status, sqlite3_errmsg(db));
+			YDBLogError(@"Error creating '%@': %d %s", THIS_METHOD, status, sqlite3_errmsg(db));
 		}
 	}
 	
 	return yapSetDataForKeyStatement;
+}
+
+- (sqlite3_stmt *)yapRemoveForKeyStatement
+{
+	if (yapRemoveForKeyStatement == NULL)
+	{
+		char *stmt = "DELETE FROM \"yap2\" WHERE \"extension\" = ? AND \"key\" = ?;";
+		int stmtLen = (int)strlen(stmt);
+		
+		int status = sqlite3_prepare_v2(db, stmt, stmtLen+1, &yapRemoveForKeyStatement, NULL);
+		if (status != SQLITE_OK)
+		{
+			YDBLogError(@"Error creating '%@': %d %s", THIS_METHOD, status, sqlite3_errmsg(db));
+		}
+	}
+	
+	return yapRemoveForKeyStatement;
 }
 
 - (sqlite3_stmt *)yapRemoveExtensionStatement
@@ -776,7 +813,7 @@
 		int status = sqlite3_prepare_v2(db, stmt, stmtLen+1, &yapRemoveExtensionStatement, NULL);
 		if (status != SQLITE_OK)
 		{
-			YDBLogError(@"Error creating '%@': %d %s", NSStringFromSelector(_cmd), status, sqlite3_errmsg(db));
+			YDBLogError(@"Error creating '%@': %d %s", THIS_METHOD, status, sqlite3_errmsg(db));
 		}
 	}
 	
@@ -793,7 +830,7 @@
 		int status = sqlite3_prepare_v2(db, stmt, stmtLen+1, &getCollectionCountStatement, NULL);
 		if (status != SQLITE_OK)
 		{
-			YDBLogError(@"Error creating '%@': %d %s", NSStringFromSelector(_cmd), status, sqlite3_errmsg(db));
+			YDBLogError(@"Error creating '%@': %d %s", THIS_METHOD, status, sqlite3_errmsg(db));
 		}
 	}
 	
@@ -810,7 +847,7 @@
 		int status = sqlite3_prepare_v2(db, stmt, stmtLen+1, &getKeyCountForCollectionStatement, NULL);
 		if (status != SQLITE_OK)
 		{
-			YDBLogError(@"Error creating '%@': %d %s", NSStringFromSelector(_cmd), status, sqlite3_errmsg(db));
+			YDBLogError(@"Error creating '%@': %d %s", THIS_METHOD, status, sqlite3_errmsg(db));
 		}
 	}
 	
@@ -827,7 +864,7 @@
 		int status = sqlite3_prepare_v2(db, stmt, stmtLen+1, &getKeyCountForAllStatement, NULL);
 		if (status != SQLITE_OK)
 		{
-			YDBLogError(@"Error creating '%@': %d %s", NSStringFromSelector(_cmd), status, sqlite3_errmsg(db));
+			YDBLogError(@"Error creating '%@': %d %s", THIS_METHOD, status, sqlite3_errmsg(db));
 		}
 	}
 	
@@ -844,7 +881,7 @@
 		int status = sqlite3_prepare_v2(db, stmt, stmtLen+1, &getCountForRowidStatement, NULL);
 		if (status != SQLITE_OK)
 		{
-			YDBLogError(@"Error creating '%@': %d %s", NSStringFromSelector(_cmd), status, sqlite3_errmsg(db));
+			YDBLogError(@"Error creating '%@': %d %s", THIS_METHOD, status, sqlite3_errmsg(db));
 		}
 	}
 	
@@ -861,7 +898,7 @@
 		int status = sqlite3_prepare_v2(db, stmt, stmtLen+1, &getRowidForKeyStatement, NULL);
 		if (status != SQLITE_OK)
 		{
-			YDBLogError(@"Error creating '%@': %d %s", NSStringFromSelector(_cmd), status, sqlite3_errmsg(db));
+			YDBLogError(@"Error creating '%@': %d %s", THIS_METHOD, status, sqlite3_errmsg(db));
 		}
 	}
 	
@@ -878,45 +915,11 @@
 		int status = sqlite3_prepare_v2(db, stmt, stmtLen+1, &getKeyForRowidStatement, NULL);
 		if (status != SQLITE_OK)
 		{
-			YDBLogError(@"Error creating '%@': %d %s", NSStringFromSelector(_cmd), status, sqlite3_errmsg(db));
+			YDBLogError(@"Error creating '%@': %d %s", THIS_METHOD, status, sqlite3_errmsg(db));
 		}
 	}
 	
 	return getKeyForRowidStatement;
-}
-
-- (sqlite3_stmt *)getKeyDataForRowidStatement
-{
-	if (getKeyDataForRowidStatement == NULL)
-	{
-		char *stmt = "SELECT \"collection\", \"key\", \"data\" FROM \"database2\" WHERE \"rowid\" = ?;";
-		int stmtLen = (int)strlen(stmt);
-		
-		int status = sqlite3_prepare_v2(db, stmt, stmtLen+1, &getKeyDataForRowidStatement, NULL);
-		if (status != SQLITE_OK)
-		{
-			YDBLogError(@"Error creating '%@': %d %s", NSStringFromSelector(_cmd), status, sqlite3_errmsg(db));
-		}
-	}
-	
-	return getKeyDataForRowidStatement;
-}
-
-- (sqlite3_stmt *)getKeyMetadataForRowidStatement
-{
-	if (getKeyMetadataForRowidStatement == NULL)
-	{
-		char *stmt = "SELECT \"collection\", \"key\", \"metadata\" FROM \"database2\" WHERE \"rowid\" = ?;";
-		int stmtLen = (int)strlen(stmt);
-		
-		int status = sqlite3_prepare_v2(db, stmt, stmtLen+1, &getKeyMetadataForRowidStatement, NULL);
-		if (status != SQLITE_OK)
-		{
-			YDBLogError(@"Error creating '%@': %d %s", NSStringFromSelector(_cmd), status, sqlite3_errmsg(db));
-		}
-	}
-	
-	return getKeyMetadataForRowidStatement;
 }
 
 - (sqlite3_stmt *)getDataForRowidStatement
@@ -929,24 +932,41 @@
 		int status = sqlite3_prepare_v2(db, stmt, stmtLen+1, &getDataForRowidStatement, NULL);
 		if (status != SQLITE_OK)
 		{
-			YDBLogError(@"Error creating '%@': %d %s", NSStringFromSelector(_cmd), status, sqlite3_errmsg(db));
+			YDBLogError(@"Error creating '%@': %d %s", THIS_METHOD, status, sqlite3_errmsg(db));
 		}
 	}
 	
 	return getDataForRowidStatement;
 }
 
+- (sqlite3_stmt *)getMetadataForRowidStatement
+{
+	if (getMetadataForRowidStatement == NULL)
+	{
+		char *stmt = "SELECT \"metadata\" FROM \"database2\" WHERE \"rowid\" = ?;";
+		int stmtLen = (int)strlen(stmt);
+		
+		int status = sqlite3_prepare_v2(db, stmt, stmtLen+1, &getMetadataForRowidStatement, NULL);
+		if (status != SQLITE_OK)
+		{
+			YDBLogError(@"Error creating '%@': %d %s", THIS_METHOD, status, sqlite3_errmsg(db));
+		}
+	}
+	
+	return getMetadataForRowidStatement;
+}
+
 - (sqlite3_stmt *)getAllForRowidStatement
 {
 	if (getAllForRowidStatement == NULL)
 	{
-		char *stmt = "SELECT \"collection\", \"key\", \"data\", \"metadata\" FROM \"database2\" WHERE \"rowid\" = ?;";
+		char *stmt = "SELECT \"data\", \"metadata\" FROM \"database2\" WHERE \"rowid\" = ?;";
 		int stmtLen = (int)strlen(stmt);
 		
 		int status = sqlite3_prepare_v2(db, stmt, stmtLen+1, &getAllForRowidStatement, NULL);
 		if (status != SQLITE_OK)
 		{
-			YDBLogError(@"Error creating '%@': %d %s", NSStringFromSelector(_cmd), status, sqlite3_errmsg(db));
+			YDBLogError(@"Error creating '%@': %d %s", THIS_METHOD, status, sqlite3_errmsg(db));
 		}
 	}
 	
@@ -963,7 +983,7 @@
 		int status = sqlite3_prepare_v2(db, stmt, stmtLen+1, &getDataForKeyStatement, NULL);
 		if (status != SQLITE_OK)
 		{
-			YDBLogError(@"Error creating '%@': %d %s", NSStringFromSelector(_cmd), status, sqlite3_errmsg(db));
+			YDBLogError(@"Error creating '%@': %d %s", THIS_METHOD, status, sqlite3_errmsg(db));
 		}
 	}
 	
@@ -980,7 +1000,7 @@
 		int status = sqlite3_prepare_v2(db, stmt, stmtLen+1, &getMetadataForKeyStatement, NULL);
 		if (status != SQLITE_OK)
 		{
-			YDBLogError(@"Error creating '%@': %d %s", NSStringFromSelector(_cmd), status, sqlite3_errmsg(db));
+			YDBLogError(@"Error creating '%@': %d %s", THIS_METHOD, status, sqlite3_errmsg(db));
 		}
 	}
 	
@@ -997,7 +1017,7 @@
 		int status = sqlite3_prepare_v2(db, stmt, stmtLen+1, &getAllForKeyStatement, NULL);
 		if (status != SQLITE_OK)
 		{
-			YDBLogError(@"Error creating '%@': %d %s", NSStringFromSelector(_cmd), status, sqlite3_errmsg(db));
+			YDBLogError(@"Error creating '%@': %d %s", THIS_METHOD, status, sqlite3_errmsg(db));
 		}
 	}
 	
@@ -1015,7 +1035,7 @@
 		int status = sqlite3_prepare_v2(db, stmt, stmtLen+1, &insertForRowidStatement, NULL);
 		if (status != SQLITE_OK)
 		{
-			YDBLogError(@"Error creating '%@': %d %s", NSStringFromSelector(_cmd), status, sqlite3_errmsg(db));
+			YDBLogError(@"Error creating '%@': %d %s", THIS_METHOD, status, sqlite3_errmsg(db));
 		}
 	}
 	
@@ -1032,11 +1052,28 @@
 		int status = sqlite3_prepare_v2(db, stmt, stmtLen+1, &updateAllForRowidStatement, NULL);
 		if (status != SQLITE_OK)
 		{
-			YDBLogError(@"Error creating '%@': %d %s", NSStringFromSelector(_cmd), status, sqlite3_errmsg(db));
+			YDBLogError(@"Error creating '%@': %d %s", THIS_METHOD, status, sqlite3_errmsg(db));
 		}
 	}
 	
 	return updateAllForRowidStatement;
+}
+
+- (sqlite3_stmt *)updateObjectForRowidStatement
+{
+	if (updateObjectForRowidStatement == NULL)
+	{
+		char *stmt = "UPDATE \"database2\" SET \"data\" = ? WHERE \"rowid\" = ?;";
+		int stmtLen = (int)strlen(stmt);
+		
+		int status = sqlite3_prepare_v2(db, stmt, stmtLen+1, &updateObjectForRowidStatement, NULL);
+		if (status != SQLITE_OK)
+		{
+			YDBLogError(@"Error creating '%@': %d %s", THIS_METHOD, status, sqlite3_errmsg(db));
+		}
+	}
+	
+	return updateObjectForRowidStatement;
 }
 
 - (sqlite3_stmt *)updateMetadataForRowidStatement
@@ -1049,7 +1086,7 @@
 		int status = sqlite3_prepare_v2(db, stmt, stmtLen+1, &updateMetadataForRowidStatement, NULL);
 		if (status != SQLITE_OK)
 		{
-			YDBLogError(@"Error creating '%@': %d %s", NSStringFromSelector(_cmd), status, sqlite3_errmsg(db));
+			YDBLogError(@"Error creating '%@': %d %s", THIS_METHOD, status, sqlite3_errmsg(db));
 		}
 	}
 	
@@ -1066,7 +1103,7 @@
 		int status = sqlite3_prepare_v2(db, stmt, stmtLen+1, &removeForRowidStatement, NULL);
 		if (status != SQLITE_OK)
 		{
-			YDBLogError(@"Error creating '%@': %d %s", NSStringFromSelector(_cmd), status, sqlite3_errmsg(db));
+			YDBLogError(@"Error creating '%@': %d %s", THIS_METHOD, status, sqlite3_errmsg(db));
 		}
 	}
 	
@@ -1083,7 +1120,7 @@
 		int status = sqlite3_prepare_v2(db, stmt, stmtLen+1, &removeCollectionStatement, NULL);
 		if (status != SQLITE_OK)
 		{
-			YDBLogError(@"Error creating '%@': %d %s", NSStringFromSelector(_cmd), status, sqlite3_errmsg(db));
+			YDBLogError(@"Error creating '%@': %d %s", THIS_METHOD, status, sqlite3_errmsg(db));
 		}
 	}
 	
@@ -1100,7 +1137,7 @@
 		int status = sqlite3_prepare_v2(db, stmt, stmtLen+1, &removeAllStatement, NULL);
 		if (status != SQLITE_OK)
 		{
-			YDBLogError(@"Error creating '%@': %d %s", NSStringFromSelector(_cmd), status, sqlite3_errmsg(db));
+			YDBLogError(@"Error creating '%@': %d %s", THIS_METHOD, status, sqlite3_errmsg(db));
 		}
 	}
 	
@@ -1117,7 +1154,7 @@
 		int status = sqlite3_prepare_v2(db, stmt, stmtLen+1, &enumerateCollectionsStatement, NULL);
 		if (status != SQLITE_OK)
 		{
-			YDBLogError(@"Error creating '%@': %d %s", NSStringFromSelector(_cmd), status, sqlite3_errmsg(db));
+			YDBLogError(@"Error creating '%@': %d %s", THIS_METHOD, status, sqlite3_errmsg(db));
 		}
 	}
 	
@@ -1134,7 +1171,7 @@
 		int status = sqlite3_prepare_v2(db, stmt, stmtLen+1, &enumerateCollectionsForKeyStatement, NULL);
 		if (status != SQLITE_OK)
 		{
-			YDBLogError(@"Error creating '%@': %d %s", NSStringFromSelector(_cmd), status, sqlite3_errmsg(db));
+			YDBLogError(@"Error creating '%@': %d %s", THIS_METHOD, status, sqlite3_errmsg(db));
 		}
 	}
 	
@@ -1151,7 +1188,7 @@
 		int status = sqlite3_prepare_v2(db, stmt, stmtLen+1, &enumerateKeysInCollectionStatement, NULL);
 		if (status != SQLITE_OK)
 		{
-			YDBLogError(@"Error creating '%@': %d %s", NSStringFromSelector(_cmd), status, sqlite3_errmsg(db));
+			YDBLogError(@"Error creating '%@': %d %s", THIS_METHOD, status, sqlite3_errmsg(db));
 		}
 	}
 	
@@ -1168,7 +1205,7 @@
 		int status = sqlite3_prepare_v2(db, stmt, stmtLen+1, &enumerateKeysInAllCollectionsStatement, NULL);
 		if (status != SQLITE_OK)
 		{
-			YDBLogError(@"Error creating '%@': %d %s", NSStringFromSelector(_cmd), status, sqlite3_errmsg(db));
+			YDBLogError(@"Error creating '%@': %d %s", THIS_METHOD, status, sqlite3_errmsg(db));
 		}
 	}
 	
@@ -1185,7 +1222,7 @@
 		int status = sqlite3_prepare_v2(db, stmt, stmtLen+1, &enumerateKeysAndMetadataInCollectionStatement, NULL);
 		if (status != SQLITE_OK)
 		{
-			YDBLogError(@"Error creating '%@': %d %s", NSStringFromSelector(_cmd), status, sqlite3_errmsg(db));
+			YDBLogError(@"Error creating '%@': %d %s", THIS_METHOD, status, sqlite3_errmsg(db));
 		}
 	}
 	
@@ -1203,7 +1240,7 @@
 		int status = sqlite3_prepare_v2(db, stmt, stmtLen+1, &enumerateKeysAndMetadataInAllCollectionsStatement, NULL);
 		if (status != SQLITE_OK)
 		{
-			YDBLogError(@"Error creating '%@': %d %s", NSStringFromSelector(_cmd), status, sqlite3_errmsg(db));
+			YDBLogError(@"Error creating '%@': %d %s", THIS_METHOD, status, sqlite3_errmsg(db));
 		}
 	}
 	
@@ -1220,7 +1257,7 @@
 		int status = sqlite3_prepare_v2(db, stmt, stmtLen+1, &enumerateKeysAndObjectsInCollectionStatement, NULL);
 		if (status != SQLITE_OK)
 		{
-			YDBLogError(@"Error creating '%@': %d %s", NSStringFromSelector(_cmd), status, sqlite3_errmsg(db));
+			YDBLogError(@"Error creating '%@': %d %s", THIS_METHOD, status, sqlite3_errmsg(db));
 		}
 	}
 	
@@ -1238,7 +1275,7 @@
 		int status = sqlite3_prepare_v2(db, stmt, stmtLen+1, &enumerateKeysAndObjectsInAllCollectionsStatement, NULL);
 		if (status != SQLITE_OK)
 		{
-			YDBLogError(@"Error creating '%@': %d %s", NSStringFromSelector(_cmd), status, sqlite3_errmsg(db));
+			YDBLogError(@"Error creating '%@': %d %s", THIS_METHOD, status, sqlite3_errmsg(db));
 		}
 	}
 	
@@ -1255,7 +1292,7 @@
 		int status = sqlite3_prepare_v2(db, stmt, stmtLen+1, &enumerateRowsInCollectionStatement, NULL);
 		if (status != SQLITE_OK)
 		{
-			YDBLogError(@"Error creating '%@': %d %s", NSStringFromSelector(_cmd), status, sqlite3_errmsg(db));
+			YDBLogError(@"Error creating '%@': %d %s", THIS_METHOD, status, sqlite3_errmsg(db));
 		}
 	}
 	
@@ -1274,7 +1311,7 @@
 		int status = sqlite3_prepare_v2(db, stmt, stmtLen+1, &enumerateRowsInAllCollectionsStatement, NULL);
 		if (status != SQLITE_OK)
 		{
-			YDBLogError(@"Error creating '%@': %d %s", NSStringFromSelector(_cmd), status, sqlite3_errmsg(db));
+			YDBLogError(@"Error creating '%@': %d %s", THIS_METHOD, status, sqlite3_errmsg(db));
 		}
 	}
 	
@@ -1889,12 +1926,18 @@
 	
 	if (objectChanges == nil)
 		objectChanges = [[NSMutableDictionary alloc] init];
+	
 	if (metadataChanges == nil)
 		metadataChanges = [[NSMutableDictionary alloc] init];
+	
 	if (removedKeys == nil)
 		removedKeys = [[NSMutableSet alloc] init];
+	
 	if (removedCollections == nil)
 		removedCollections = [[NSMutableSet alloc] init];
+	
+	if (removedRowids == nil)
+		removedRowids = [[NSMutableSet alloc] init];
 	
 	allKeysRemoved = NO;
 	
@@ -2023,35 +2066,7 @@
 		{
 			if ([registeredExtensions objectForKey:prevExtensionName] == nil)
 			{
-				NSString *className = [transaction stringValueForKey:@"class" extension:prevExtensionName];
-				Class class = NSClassFromString(className);
-				
-				if (className == nil)
-				{
-					YDBLogWarn(@"Unable to auto-unregister extension(%@). Doesn't appear to be registered.",
-					           prevExtensionName);
-				}
-				else if (class == NULL)
-				{
-					YDBLogError(@"Unable to auto-unregister extension(%@) with unknown class(%@)",
-					            prevExtensionName, className);
-				}
-				if (![class isSubclassOfClass:[YapDatabaseExtension class]])
-				{
-					YDBLogError(@"Unable to auto-unregister extension(%@) with improper class(%@)",
-					            prevExtensionName, className);
-				}
-				else
-				{
-					YDBLogInfo(@"Auto-unregistering extension(%@) with class(%@)",
-					            prevExtensionName, className);
-					
-					// Drop tables
-					[class dropTablesForRegisteredName:prevExtensionName withTransaction:transaction];
-					
-					// Drop preferences (rows in yap2 table)
-					[transaction removeAllValuesForExtension:prevExtensionName];
-				}
+				[self _unregisterExtension:prevExtensionName withTransaction:transaction];
 			}
 		}
 		
@@ -2237,12 +2252,18 @@
 	
 	if ([objectChanges count] > 0)
 		objectChanges = nil;
+	
 	if ([metadataChanges count] > 0)
 		metadataChanges = nil;
+	
 	if ([removedKeys count] > 0)
 		removedKeys = nil;
+	
 	if ([removedCollections count] > 0)
 		removedCollections = nil;
+	
+	if ([removedRowids count] > 0)
+		removedRowids = nil;
 	
 	// Post-Write-Transaction: Step 11 of 11
 	//
@@ -2399,12 +2420,18 @@
 	
 	if ([objectChanges count] > 0)
 		objectChanges = nil;
+	
 	if ([metadataChanges count] > 0)
 		metadataChanges = nil;
+	
 	if ([removedKeys count] > 0)
 		removedKeys = nil;
+	
 	if ([removedCollections count] > 0)
 		removedCollections = nil;
+	
+	if ([removedRowids count] > 0)
+		removedRowids = nil;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -2554,11 +2581,13 @@
 	          YapDatabaseRegisteredExtensionsKey,
 	          YapDatabaseRegisteredTablesKey,
 			  YapDatabaseExtensionsOrderKey,
+			  YapDatabaseExtensionDependenciesKey,
 	          YapDatabaseNotificationKey,
 	          YapDatabaseObjectChangesKey,
 	          YapDatabaseMetadataChangesKey,
 	          YapDatabaseRemovedKeysKey,
 	          YapDatabaseRemovedCollectionsKey,
+	          YapDatabaseRemovedRowidsKey,
 	          YapDatabaseAllKeysRemovedKey ];
 }
 
@@ -2657,6 +2686,7 @@
 		
 		[internalChangeset setObject:registeredExtensions forKey:YapDatabaseRegisteredExtensionsKey];
 		[internalChangeset setObject:extensionsOrder forKey:YapDatabaseExtensionsOrderKey];
+		[internalChangeset setObject:extensionDependencies forKey:YapDatabaseExtensionDependenciesKey];
 	}
 	
 	if (registeredTablesChanged)
@@ -2675,7 +2705,8 @@
 	if ([objectChanges count]      > 0 ||
 		[metadataChanges count]    > 0 ||
 		[removedKeys count]        > 0 ||
-		[removedCollections count] > 0 || allKeysRemoved)
+		[removedCollections count] > 0 ||
+	    [removedRowids count]      > 0 || allKeysRemoved)
 	{
 		if (internalChangeset == nil)
 			internalChangeset = [NSMutableDictionary dictionaryWithSharedKeySet:sharedKeySetForInternalChangeset];
@@ -2716,6 +2747,11 @@
 			                      forKey:YapDatabaseRemovedCollectionsKey];
 		}
 		
+		if ([removedRowids count] > 0)
+		{
+			[internalChangeset setObject:removedRowids forKey:YapDatabaseRemovedRowidsKey];
+		}
+		
 		if (allKeysRemoved)
 		{
 			[internalChangeset setObject:@(YES) forKey:YapDatabaseAllKeysRemovedKey];
@@ -2744,6 +2780,7 @@
 		
 		registeredExtensions = changeset_registeredExtensions;
 		extensionsOrder = [changeset objectForKey:YapDatabaseExtensionsOrderKey];
+		extensionDependencies = [changeset objectForKey:YapDatabaseExtensionDependenciesKey];
 		
 		// Remove any extensions that have been dropped
 		
@@ -2797,8 +2834,9 @@
 	NSDictionary *changeset_objectChanges   =  [changeset objectForKey:YapDatabaseObjectChangesKey];
 	NSDictionary *changeset_metadataChanges =  [changeset objectForKey:YapDatabaseMetadataChangesKey];
 	
-	NSSet *changeset_removedKeys        =  [changeset objectForKey:YapDatabaseRemovedKeysKey];
-	NSSet *changeset_removedCollections =  [changeset objectForKey:YapDatabaseRemovedCollectionsKey];
+	NSSet *changeset_removedRowids      = [changeset objectForKey:YapDatabaseRemovedRowidsKey];
+	NSSet *changeset_removedKeys        = [changeset objectForKey:YapDatabaseRemovedKeysKey];
+	NSSet *changeset_removedCollections = [changeset objectForKey:YapDatabaseRemovedCollectionsKey];
 	
 	BOOL changeset_allKeysRemoved = [[changeset objectForKey:YapDatabaseAllKeysRemovedKey] boolValue];
 	
@@ -2806,6 +2844,45 @@
 	BOOL hasMetadataChanges    = [changeset_metadataChanges count] > 0;
 	BOOL hasRemovedKeys        = [changeset_removedKeys count] > 0;
 	BOOL hasRemovedCollections = [changeset_removedCollections count] > 0;
+	
+	// Update keyCache
+	
+	if (changeset_allKeysRemoved)
+	{
+		// Shortcut: Everything was removed from the database
+		
+		[keyCache removeAllObjects];
+	}
+	else
+	{
+		if (hasRemovedCollections)
+		{
+			__block NSMutableArray *toRemove = nil;
+			[keyCache enumerateKeysAndObjectsWithBlock:^(id key, id obj, BOOL *stop) {
+				
+				__unsafe_unretained NSNumber *rowidNumber = (NSNumber *)key;
+				__unsafe_unretained YapCollectionKey *collectionKey = (YapCollectionKey *)obj;
+				
+				if ([changeset_removedCollections containsObject:collectionKey.collection])
+				{
+					if (toRemove == nil)
+						toRemove = [NSMutableArray array];
+					
+					[toRemove addObject:rowidNumber];
+				}
+			}];
+			
+			[keyCache removeObjectsForKeys:toRemove];
+		}
+		
+		if (changeset_removedRowids)
+		{
+			[changeset_removedRowids enumerateObjectsUsingBlock:^(id obj, BOOL *stop) {
+				
+				[keyCache removeObjectForKey:obj];
+			}];
+		}
+	}
 	
 	// Update objectCache
 	
@@ -3504,6 +3581,10 @@
 		YapDatabaseReadWriteTransaction *transaction = [self newReadWriteTransaction];
 		[self preReadWriteTransaction:transaction];
 		
+		// Set the registeredName now.
+		// The extension will need this in order to perform the registration tasks such as creating tables, etc.
+		extension.registeredName = extensionName;
+		
 		YapDatabaseExtensionConnection *extensionConnection;
 		YapDatabaseExtensionTransaction *extensionTransaction;
 		
@@ -3528,6 +3609,9 @@
 		}
 		else
 		{
+			// Registration failed.
+			
+			extension.registeredName = nil;
 			[transaction rollback];
 		}
 		
@@ -3547,38 +3631,101 @@
 		YapDatabaseReadWriteTransaction *transaction = [self newReadWriteTransaction];
 		[self preReadWriteTransaction:transaction];
 		
-		NSString *className = [transaction stringValueForKey:@"class" extension:extensionName];
-		Class class = NSClassFromString(className);
+		// Unregister the given extension
 		
-		if (className == nil)
-		{
-			YDBLogWarn(@"Unable to unregister extension(%@). Doesn't appear to be registered.", extensionName);
-		}
-		else if (class == NULL)
-		{
-			YDBLogError(@"Unable to unregister extension(%@) with unknown class(%@)", extensionName, className);
-		}
-		if (![class isSubclassOfClass:[YapDatabaseExtension class]])
-		{
-			YDBLogError(@"Unable to unregister extension(%@) with improper class(%@)", extensionName, className);
-		}
-		else
-		{
-			// Drop tables
-			[class dropTablesForRegisteredName:extensionName withTransaction:transaction];
-			
-			// Drop preferences (rows in yap2 table)
-			[transaction removeAllValuesForExtension:extensionName];
-			
-			[self didUnregisterExtension:extensionName];
-			
-			[self removeRegisteredExtensionConnection:extensionName];
-			[transaction removeRegisteredExtensionTransaction:extensionName];
-		}
+		YapDatabaseExtension *extension = [registeredExtensions objectForKey:extensionName];
 		
+		[self _unregisterExtension:extensionName withTransaction:transaction];
+		extension.registeredName = nil;
+		
+		// Automatically unregister any extensions that were dependent upon this one.
+		
+		NSMutableArray *extensionNameStack = [NSMutableArray arrayWithCapacity:1];
+		[extensionNameStack addObject:extensionName];
+		
+		do
+		{
+			NSString *currentExtensionName = [extensionNameStack lastObject];
+			
+			__block NSString *dependentExtName = nil;
+			[extensionDependencies enumerateKeysAndObjectsUsingBlock:^(id key, id obj, BOOL *stop){
+				
+			//	__unsafe_unretained NSString *extName = (NSString *)key;
+				__unsafe_unretained NSSet *extDependencies = (NSSet *)obj;
+				
+				if ([extDependencies containsObject:currentExtensionName])
+				{
+					dependentExtName = (NSString *)key;
+					*stop = YES;
+				}
+			}];
+			
+			if (dependentExtName)
+			{
+				// We found an extension that was dependent upon the one we just unregistered.
+				// So we need to unregister it too.
+				
+				YapDatabaseExtension *dependentExt = [registeredExtensions objectForKey:dependentExtName];
+				
+				[self _unregisterExtension:dependentExtName withTransaction:transaction];
+				dependentExt.registeredName = nil;
+				
+				// And now we need to check and see if there were any extensions dependent upon this new one.
+				// So we add it to the top of the stack, and continue our search.
+				
+				[extensionNameStack addObject:dependentExtName];
+			}
+			else
+			{
+				[extensionNameStack removeLastObject];
+			}
+			
+		} while ([extensionNameStack count] > 0);
+		
+		
+		// Complete the transaction
 		[self postReadWriteTransaction:transaction];
+		
+		// And reset the registeredExtensionsChanged ivar.
+		// The above method already processed it, and included the appropriate information in the changeset.
 		registeredExtensionsChanged = NO;
 	}});
+}
+
+- (void)_unregisterExtension:(NSString *)extensionName withTransaction:(YapDatabaseReadWriteTransaction *)transaction
+{
+	NSString *className = [transaction stringValueForKey:@"class" extension:extensionName];
+	Class class = NSClassFromString(className);
+	
+	if (className == nil)
+	{
+		YDBLogWarn(@"Unable to unregister extension(%@). Doesn't appear to be registered.", extensionName);
+	}
+	else if (class == NULL)
+	{
+		YDBLogError(@"Unable to unregister extension(%@) with unknown class(%@)", extensionName, className);
+	}
+	if (![class isSubclassOfClass:[YapDatabaseExtension class]])
+	{
+		YDBLogError(@"Unable to unregister extension(%@) with improper class(%@)", extensionName, className);
+	}
+	else
+	{
+		// Drop tables
+		[class dropTablesForRegisteredName:extensionName withTransaction:transaction];
+		
+		// Drop preferences (rows in yap2 table)
+		[transaction removeAllValuesForExtension:extensionName];
+		
+		// Remove from registeredExtensions, extensionsOrder & extensionDependencies (if needed)
+		[self didUnregisterExtension:extensionName];
+		
+		// Remove YapDatabaseExtensionConnection subclass instance (if needed)
+		[self removeRegisteredExtensionConnection:extensionName];
+		
+		// Remove YapDatabaseExtensionTransaction subclass instance (if needed)
+		[transaction removeRegisteredExtensionTransaction:extensionName];
+	}
 }
 
 - (void)willRegisterExtension:(YapDatabaseExtension *)extension
@@ -3673,8 +3820,17 @@
 	
 	registeredExtensions = [newRegisteredExtensions copy];
 	extensionsOrder = [extensionsOrder arrayByAddingObject:extensionName];
-	extensionsReady = NO;
 	
+	NSSet *dependencies = [extension dependencies];
+	if (dependencies == nil)
+		dependencies = [NSSet set];
+	
+	NSMutableDictionary *newExtensionDependencies = [extensionDependencies mutableCopy];
+	[newExtensionDependencies setObject:dependencies forKey:extensionName];
+	
+	extensionDependencies = [newExtensionDependencies copy];
+	
+	extensionsReady = NO;
 	sharedKeySetForExtensions = [NSDictionary sharedKeySetForKeys:[registeredExtensions allKeys]];
 	
 	// Set the registeredExtensionsChanged flag.
@@ -3695,8 +3851,18 @@
 		[newRegisteredExtensions removeObjectForKey:extensionName];
 		
 		registeredExtensions = [newRegisteredExtensions copy];
-		extensionsReady = NO;
 		
+		NSMutableArray *newExtensionsOrder = [extensionsOrder mutableCopy];
+		[newExtensionsOrder removeObject:extensionName];
+		
+		extensionsOrder = [newExtensionsOrder copy];
+		
+		NSMutableDictionary *newExtensionDependencies = [extensionDependencies mutableCopy];
+		[newExtensionDependencies removeObjectForKey:extensionName];
+		
+		extensionDependencies = [newExtensionDependencies copy];
+		
+		extensionsReady = NO;
 		sharedKeySetForExtensions = [NSDictionary sharedKeySetForKeys:[registeredExtensions allKeys]];
 		
 		// Set the registeredExtensionsChanged flag.

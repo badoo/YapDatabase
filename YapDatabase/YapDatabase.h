@@ -1,5 +1,6 @@
 #import <Foundation/Foundation.h>
 
+#import "YapDatabaseOptions.h"
 #import "YapDatabaseConnection.h"
 #import "YapDatabaseTransaction.h"
 #import "YapDatabaseExtension.h"
@@ -141,9 +142,18 @@ extern NSString *const YapDatabaseAllKeysRemovedKey;
  * Opens or creates a sqlite database with the given path.
  * The default serializer and deserializer are used.
  * No sanitizer is used.
+ * The default options are used.
  *
  * @see defaultSerializer
  * @see defaultDeserializer
+ *
+ * Example code:
+ * 
+ *   NSArray *paths = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES);
+ *   NSString *baseDir = ([paths count] > 0) ? [paths objectAtIndex:0] : NSTemporaryDirectory();
+ *   NSString *databasePath = [baseDir stringByAppendingPathComponent:@"myDatabase.sqlite"];
+ * 
+ *   YapDatabase *database = [[YapDatabase alloc] initWithPath:databasePath];
 **/
 - (id)initWithPath:(NSString *)path;
 
@@ -187,6 +197,19 @@ extern NSString *const YapDatabaseAllKeysRemovedKey;
                                 metadataDeserializer:(YapDatabaseDeserializer)metadataDeserializer
                                      objectSanitizer:(YapDatabaseSanitizer)objectSanitizer
                                    metadataSanitizer:(YapDatabaseSanitizer)metadataSanitizer;
+
+/**
+ * Opens or creates a sqlite database with the given path.
+ * The given serializers and deserializers are used.
+ * The given sanitizers are used.
+**/
+- (id)initWithPath:(NSString *)path objectSerializer:(YapDatabaseSerializer)objectSerializer
+                                  objectDeserializer:(YapDatabaseDeserializer)objectDeserializer
+                                  metadataSerializer:(YapDatabaseSerializer)metadataSerializer
+                                metadataDeserializer:(YapDatabaseDeserializer)metadataDeserializer
+                                     objectSanitizer:(YapDatabaseSanitizer)objectSanitizer
+                                   metadataSanitizer:(YapDatabaseSanitizer)metadataSanitizer
+                                             options:(YapDatabaseOptions *)options;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 #pragma mark Properties
@@ -330,7 +353,7 @@ extern NSString *const YapDatabaseAllKeysRemovedKey;
 
 #if TARGET_OS_IPHONE
 /**
- * Allows you to set the default autoFlushMemoryLevel for all new connections.
+ * Allows you to set the default autoFlushMemoryFlags for all new connections.
  *
  * When you create a connection via [database newConnection], that new connection will inherit
  * its initial configuration via the default values configured for the parent database.
@@ -339,12 +362,12 @@ extern NSString *const YapDatabaseAllKeysRemovedKey;
  * Changing the default values only affects future connections that will be created.
  * It does not affect connections that have already been created.
  * 
- * The default defaultAutoFlushMemoryLevel is YapDatabaseConnectionFlushMemoryLevelMild.
+ * The default defaultAutoFlushMemoryFlags is YapDatabaseConnectionFlushMemoryFlags_All.
  *
  * For more detailed documentation on these properties, see the YapDatabaseConnection header file.
- * @see YapDatabaseConnection autoFlushMemoryLevel
+ * @see YapDatabaseConnection autoFlushMemoryFlags
 **/
-@property (atomic, assign, readwrite) int defaultAutoFlushMemoryLevel;
+@property (atomic, assign, readwrite) int defaultAutoFlushMemoryFlags;
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

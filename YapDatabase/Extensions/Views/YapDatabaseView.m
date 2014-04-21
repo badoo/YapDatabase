@@ -89,7 +89,7 @@
 @synthesize groupingBlockType = groupingBlockType;
 @synthesize sortingBlockType = sortingBlockType;
 
-@synthesize version = version;
+@synthesize versionTag = versionTag;
 @dynamic options;
 
 - (id)initWithGroupingBlock:(YapDatabaseViewGroupingBlock)inGroupingBlock
@@ -101,7 +101,7 @@
 	                 groupingBlockType:inGroupingBlockType
 	                      sortingBlock:inSortingBlock
 	                  sortingBlockType:inSortingBlockType
-	                           version:0
+	                        versionTag:@""
 	                           options:nil];
 }
 
@@ -109,13 +109,13 @@
           groupingBlockType:(YapDatabaseViewBlockType)inGroupingBlockType
                sortingBlock:(YapDatabaseViewSortingBlock)inSortingBlock
            sortingBlockType:(YapDatabaseViewBlockType)inSortingBlockType
-                    version:(int)inVersion
+                 versionTag:(NSString *)inVersionTag
 {
 	return [self initWithGroupingBlock:inGroupingBlock
 	                 groupingBlockType:inGroupingBlockType
 	                      sortingBlock:inSortingBlock
 	                  sortingBlockType:inSortingBlockType
-	                           version:inVersion
+	                        versionTag:inVersionTag
 	                           options:nil];
 }
 
@@ -123,11 +123,14 @@
           groupingBlockType:(YapDatabaseViewBlockType)inGroupingBlockType
                sortingBlock:(YapDatabaseViewSortingBlock)inSortingBlock
            sortingBlockType:(YapDatabaseViewBlockType)inSortingBlockType
-                    version:(int)inVersion
-                    options:(YapDatabaseViewOptions *)inOptions;
+                 versionTag:(NSString *)inVersionTag
+                    options:(YapDatabaseViewOptions *)inOptions
 {
 	if ((self = [super init]))
 	{
+		NSAssert(inGroupingBlock != NULL, @"Invalid grouping block");
+		NSAssert(inSortingBlock != NULL, @"Invalid sorting block");
+		
 		NSAssert(inGroupingBlockType == YapDatabaseViewBlockTypeWithKey ||
 		         inGroupingBlockType == YapDatabaseViewBlockTypeWithObject ||
 		         inGroupingBlockType == YapDatabaseViewBlockTypeWithMetadata ||
@@ -146,7 +149,7 @@
 		sortingBlock = inSortingBlock;
 		sortingBlockType = inSortingBlockType;
 		
-		version = inVersion;
+		versionTag = inVersionTag ? [inVersionTag copy] : @"";
 		
 		options = inOptions ? [inOptions copy] : [[YapDatabaseViewOptions alloc] init];
 	}

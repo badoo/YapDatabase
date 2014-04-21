@@ -182,6 +182,21 @@
 	}
 }
 
+- (YapCollectionKey *)collectionKey
+{
+	// Note: The key should always be a YapCollectionKey,
+	// except for unit tests which might use a string for simplicity.
+	
+	if ([key isKindOfClass:[YapCollectionKey class]])
+	{
+		return (YapCollectionKey *)key;
+	}
+	else
+	{
+		return nil;
+	}
+}
+
 - (id)copyWithZone:(NSZone *)zone
 {
 	YapDatabaseViewRowChange *op = [[YapDatabaseViewRowChange alloc] init];
@@ -369,8 +384,9 @@
 	NSMutableArray *sectionChanges = [NSMutableArray arrayWithCapacity:1];
 	NSMutableArray *rowChanges = [NSMutableArray arrayWithCapacity:[changes count]];
 	
-	NSSet *groups = [NSSet setWithArray:[originalMappings allGroups]];
-	
+	NSSet *originalGroups = [NSSet setWithArray:[originalMappings allGroups]];
+	NSSet *finalGroups = [NSSet setWithArray:[finalMappings allGroups]];
+    
 	NSMutableDictionary *counts = [originalMappings counts];
 	NSDictionary *dependencies = [originalMappings dependencies];
 	
@@ -383,7 +399,7 @@
 			
 			if (immutableSectionChange->type == YapDatabaseViewChangeDelete)
 			{
-				if ([groups containsObject:immutableSectionChange->group])
+				if ([originalGroups containsObject:immutableSectionChange->group])
 				{
 					YapDatabaseViewSectionChange *sectionChange = [immutableSectionChange copy];
 					[sectionChanges addObject:sectionChange];
@@ -449,7 +465,7 @@
 			}
 			else if (immutableSectionChange->type == YapDatabaseViewChangeInsert)
 			{
-				if ([groups containsObject:immutableSectionChange->group])
+				if ([finalGroups containsObject:immutableSectionChange->group])
 				{
 					YapDatabaseViewSectionChange *sectionChange = [immutableSectionChange copy];
 					[sectionChanges addObject:sectionChange];
@@ -464,10 +480,10 @@
 			NSUInteger groupCount = 0;
 			NSUInteger groupIndex = 0;
 			BOOL wasDelete = 0;
-			
+
 			if (immutableRowChange->type == YapDatabaseViewChangeDelete)
 			{
-				if ([groups containsObject:immutableRowChange->originalGroup])
+				if ([originalGroups containsObject:immutableRowChange->originalGroup])
 				{
 					YapDatabaseViewRowChange *rowChange = [immutableRowChange copy];
 					[rowChanges addObject:rowChange];
@@ -484,7 +500,7 @@
 			}
 			else if (immutableRowChange->type == YapDatabaseViewChangeInsert)
 			{
-				if ([groups containsObject:immutableRowChange->finalGroup])
+				if ([finalGroups containsObject:immutableRowChange->finalGroup])
 				{
 					YapDatabaseViewRowChange *rowChange = [immutableRowChange copy];
 					[rowChanges addObject:rowChange];
@@ -499,7 +515,7 @@
 			}
 			else if (immutableRowChange->type == YapDatabaseViewChangeUpdate)
 			{
-				if ([groups containsObject:immutableRowChange->originalGroup])
+				if ([finalGroups containsObject:immutableRowChange->originalGroup])
 				{
 					YapDatabaseViewRowChange *rowChange = [immutableRowChange copy];
 					[rowChanges addObject:rowChange];
@@ -813,6 +829,7 @@
 					firstChangeForKey->type = YapDatabaseViewChangeMove;
 					firstChangeForKey->finalIndex = lastChangeForKey->finalIndex;
 					firstChangeForKey->finalGroup = lastChangeForKey->finalGroup;
+					firstChangeForKey->opFinalIndex = lastChangeForKey->opFinalIndex; // for postProcessing
 					
 					[changes removeObjectsAtIndexes:indexSet];
 					i++;
@@ -833,6 +850,7 @@
 					firstChangeForKey->type = YapDatabaseViewChangeMove;
 					firstChangeForKey->finalIndex = lastChangeForKey->finalIndex;
 					firstChangeForKey->finalGroup = lastChangeForKey->finalGroup;
+					firstChangeForKey->opFinalIndex = lastChangeForKey->opFinalIndex; // for postProcessing
 					
 					[changes removeObjectsAtIndexes:indexSet];
 					i++;
@@ -848,7 +866,6 @@
 					
 					[changes removeObjectsAtIndexes:indexSet];
 					[changes removeObjectAtIndex:i];
-					
 				}
 				else if (lastChangeForKey->type == YapDatabaseViewChangeInsert)
 				{
@@ -901,10 +918,13 @@
 					// then the tableView/collectionView will offset the update's index
 					// based on insertions & deletions at smaller indexes,
 					// and may ultimately update the wrong cell.
+					//
+					// The final location comes from the last update
 					
 					firstChangeForKey->type = YapDatabaseViewChangeMove;
 					firstChangeForKey->finalIndex = lastChangeForKey->finalIndex;
 					firstChangeForKey->finalGroup = lastChangeForKey->finalGroup;
+					firstChangeForKey->opFinalIndex = lastChangeForKey->opFinalIndex; // for postProcessing
 					
 					[changes removeObjectsAtIndexes:indexSet];
 					i++;
@@ -947,6 +967,7 @@
 						firstChangeForKey->type = YapDatabaseViewChangeMove;
 						firstChangeForKey->finalIndex = lastChangeForKey->finalIndex;
 						firstChangeForKey->finalGroup = lastChangeForKey->finalGroup;
+						firstChangeForKey->opFinalIndex = lastChangeForKey->opFinalIndex; // for postProcessing
 						
 						[changes removeObjectsAtIndexes:indexSet];
 						i++;
@@ -1035,6 +1056,8 @@
 					i++;
 				}
 			}
+            
+            [indexSet removeAllIndexes];
 		}
 	}
 }

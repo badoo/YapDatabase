@@ -171,7 +171,7 @@ static NSMutableArray *keys;
 	
 	NSTimeInterval elapsed = [start timeIntervalSinceNow] * -1.0;
 	
-	NSLog(@"Fetch %lu random objs: total time: %.6f, average time per key: %.6f (cache hit %%: %.2f)",
+	NSLog(@"Fetch %lu random objs: total time: %.6f, average time per obj: %.6f (cache hit %%: %.2f)",
 		  (unsigned long)loopCount, elapsed, (elapsed / loopCount), hitPercentage);
 }
 
@@ -228,7 +228,17 @@ static NSMutableArray *keys;
 	[[NSFileManager defaultManager] removeItemAtPath:databasePath error:NULL];
 	
 	// Create database
-	database = [[YapDatabase alloc] initWithPath:databasePath];
+	YapDatabaseOptions *options = [[YapDatabaseOptions alloc] init];
+//	options.pragmaSynchronous = YapDatabasePragmaSynchronous_Off; // Uncomment for full speed
+
+	database = [[YapDatabase alloc] initWithPath:databasePath
+	                            objectSerializer:NULL
+	                          objectDeserializer:NULL
+	                          metadataSerializer:NULL
+	                        metadataDeserializer:NULL
+	                             objectSanitizer:NULL
+	                           metadataSanitizer:NULL
+	                                     options:options];
 	
 	// Create database connection (can have multiple for concurrency)
 	connection = [database newConnection];

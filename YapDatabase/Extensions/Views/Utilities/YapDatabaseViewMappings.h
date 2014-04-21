@@ -173,6 +173,8 @@ struct YapDatabaseViewRangePosition {
 };
 typedef struct YapDatabaseViewRangePosition YapDatabaseViewRangePosition;
 
+typedef BOOL (^YapDatabaseViewMappingGroupFilter)(NSString *group, YapDatabaseReadTransaction *transaction);
+typedef NSComparisonResult (^YapDatabaseViewMappingGroupSort)(NSString *group1, NSString *group2, YapDatabaseReadTransaction *transaction);
 
 @interface YapDatabaseViewMappings : NSObject <NSCopying>
 
@@ -202,6 +204,21 @@ typedef struct YapDatabaseViewRangePosition YapDatabaseViewRangePosition;
 **/
 - (id)initWithGroups:(NSArray *)allGroups
 				view:(NSString *)registeredViewName;
+
+
+/**
+ * Initializes a new mappings object that uses a filterBlock and a sortBlock to dynamically construct sections from view.
+ * @param filterBlock
+ *      Block that takes a string and returns a BOOL.  returning YES will include the group in the sections of the mapping.
+ * @param sortBlock
+ *      Block used to sort group names for groups that pass the filter.
+ * @param registeredViewName
+ *      This is the name of the view, as you registered it with the database system.
+ *
+**/
+- (id)initWithGroupFilterBlock:(YapDatabaseViewMappingGroupFilter)filterBlock
+                     sortBlock:(YapDatabaseViewMappingGroupSort)sortBlock
+                          view:(NSString *)registeredViewName;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 #pragma mark Accessors
@@ -542,7 +559,7 @@ typedef struct YapDatabaseViewRangePosition YapDatabaseViewRangePosition;
 - (BOOL)isEmpty;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-#pragma mark Mapping: UI -> View
+#pragma mark Mapping: UI -> YapDatabaseView
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 /**
@@ -649,7 +666,7 @@ typedef struct YapDatabaseViewRangePosition YapDatabaseViewRangePosition;
 - (NSUInteger)indexForRow:(NSUInteger)row inGroup:(NSString *)group;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-#pragma mark Mapping: View -> UI
+#pragma mark Mapping: YapDatabaseView -> UI
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 /**

@@ -23,6 +23,9 @@
 **/
 #define YAP_DATABASE_VIEW_CLASS_VERSION 3
 
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+#pragma mark -
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 @interface YapDatabaseView () {
 @public
@@ -32,7 +35,7 @@
 	YapDatabaseViewBlockType groupingBlockType;
 	YapDatabaseViewBlockType sortingBlockType;
 	
-	int version;
+	NSString *versionTag;
 	
 	YapDatabaseViewOptions *options;
 }
@@ -109,6 +112,8 @@
 	__unsafe_unretained YapDatabaseReadTransaction *databaseTransaction;
 	
 	NSString *lastHandledGroup;
+	
+	BOOL isRepopulate;
 }
 
 - (id)initWithViewConnection:(YapDatabaseViewConnection *)viewConnection
@@ -116,6 +121,7 @@
 
 // The following are declared for view subclasses (such as YapDatabaseFilteredView)
 
+- (void)dropTablesForOldClassVersion:(int)oldClassVersion;
 - (BOOL)createTables;
 
 - (NSString *)registeredName;
@@ -145,9 +151,32 @@
             inGroup:(NSString *)group;
 
 - (void)removeRowid:(int64_t)rowid collectionKey:(YapCollectionKey *)collectionKey;
+- (void)removeAllRowidsInGroup:(NSString *)group;
 - (void)removeAllRowids;
 
 - (void)enumerateRowidsInGroup:(NSString *)group
                     usingBlock:(void (^)(int64_t rowid, NSUInteger index, BOOL *stop))block;
+- (void)enumerateRowidsInGroup:(NSString *)group
+                   withOptions:(NSEnumerationOptions)inOptions
+                    usingBlock:(void (^)(int64_t rowid, NSUInteger index, BOOL *stop))block;
+
+- (BOOL)containsRowid:(int64_t)rowid;
+
+@end
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+#pragma mark -
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+enum {
+	YDB_GroupingBlockChanged  = 1 << 0,
+	YDB_SortingBlockChanged   = 1 << 1,
+	YDB_FilteringBlockChanged = 1 << 2
+};
+
+@protocol YapDatabaseViewDependency <NSObject>
+@optional
+
+- (void)view:(NSString *)registeredName didRepopulateWithFlags:(int)flags;
 
 @end

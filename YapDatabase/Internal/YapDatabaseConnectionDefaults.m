@@ -1,7 +1,7 @@
-#import "YapDatabaseDefaults.h"
+#import "YapDatabaseConnectionDefaults.h"
 
 
-@implementation YapDatabaseDefaults
+@implementation YapDatabaseConnectionDefaults
 
 @synthesize objectCacheEnabled = objectCacheEnabled;
 @synthesize objectCacheLimit = objectCacheLimit;
@@ -13,7 +13,7 @@
 @synthesize metadataPolicy = metadataPolicy;
 
 #if TARGET_OS_IPHONE
-@synthesize autoFlushMemoryLevel = autoFlushMemoryLevel;
+@synthesize autoFlushMemoryFlags = autoFlushMemoryFlags;
 #endif
 
 - (id)init
@@ -30,7 +30,7 @@
 		metadataPolicy = YapDatabasePolicyContainment;
 		
 		#if TARGET_OS_IPHONE
-		autoFlushMemoryLevel = YapDatabaseConnectionFlushMemoryLevelMild;
+		autoFlushMemoryFlags = YapDatabaseConnectionFlushMemoryFlags_All;
 		#endif
 	}
 	return self;
@@ -38,7 +38,7 @@
 
 - (id)copyWithZone:(NSZone *)zone
 {
-	YapDatabaseDefaults *copy = [[[self class] alloc] init];
+	YapDatabaseConnectionDefaults *copy = [[[self class] alloc] init];
 	
 	copy->objectCacheEnabled = objectCacheEnabled;
 	copy->objectCacheLimit = objectCacheLimit;
@@ -50,7 +50,7 @@
 	copy->metadataPolicy = metadataPolicy;
 	
 	#if TARGET_OS_IPHONE
-	copy->autoFlushMemoryLevel = autoFlushMemoryLevel;
+	copy->autoFlushMemoryFlags = autoFlushMemoryFlags;
 	#endif
 	
 	return copy;

@@ -78,12 +78,57 @@
 
 - (void)preCommitReadWriteTransaction
 {
+	// Step 1:
+	//
+	// Allow extensions to flush changes to the main database table.
+	// This is different from flushing changes to their own private tables.
+	// We're referring here to the main collection/key/value table that's public.
+	
+	__block BOOL restart;
+	__block BOOL prevExtModifiesMainDatabaseTable;
+	do
+	{
+		isMutated = NO;
+		
+		restart = NO;
+		prevExtModifiesMainDatabaseTable = NO;
+		
+		[extensions enumerateKeysAndObjectsUsingBlock:^(id extNameObj, id extTransactionObj, BOOL *stop) {
+			
+			BOOL extModifiesMainDatabaseTable =
+			  [(YapDatabaseExtensionTransaction *)extTransactionObj flushPendingChangesToMainDatabaseTable];
+			
+			if (extModifiesMainDatabaseTable)
+			{
+				if (!isMutated)
+				{
+					prevExtModifiesMainDatabaseTable = YES;
+				}
+				else
+				{
+					if (prevExtModifiesMainDatabaseTable)
+					{
+						restart = YES;
+						*stop = YES;
+					}
+					else
+					{
+						prevExtModifiesMainDatabaseTable = YES;
+					}
+				}
+			}
+		}];
+	
+	} while (restart);
+	
+	// Step 2:
+	//
 	// Allow extensions to perform any "cleanup" code needed before the changesets are requested,
 	// and before the commit is executed.
 	
 	[extensions enumerateKeysAndObjectsUsingBlock:^(id extNameObj, id extTransactionObj, BOOL *stop) {
 		
-		[(YapDatabaseExtensionTransaction *)extTransactionObj preCommitReadWriteTransaction];
+		[(YapDatabaseExtensionTransaction *)extTransactionObj prepareChangeset];
 	}];
 }
 
@@ -328,23 +373,25 @@
 	return result;
 }
 
-- (BOOL)getKey:(NSString **)keyPtr collection:(NSString **)collectionPtr forRowid:(int64_t)rowid
+- (YapCollectionKey *)collectionKeyForRowid:(int64_t)rowid
 {
+	NSNumber *rowidNumber = @(rowid);
+	
+	YapCollectionKey *collectionKey = [connection->keyCache objectForKey:rowidNumber];
+	if (collectionKey)
+	{
+		return collectionKey;
+	}
+	
 	sqlite3_stmt *statement = [connection getKeyForRowidStatement];
 	if (statement == NULL) {
-		if (keyPtr) *keyPtr = nil;
-		if (collectionPtr) *collectionPtr = nil;
-		return NO;
+		return nil;
 	}
 	
 	// SELECT "collection", "key" FROM "database2" WHERE "rowid" = ?;
 	
 	sqlite3_bind_int64(statement, 1, rowid);
 	
-	NSString *collection = nil;
-	NSString *key = nil;
-	BOOL result = NO;
-	
 	int status = sqlite3_step(statement);
 	if (status == SQLITE_ROW)
 	{
@@ -357,10 +404,12 @@
 		const unsigned char *text1 = sqlite3_column_text(statement, 1);
 		int textSize1 = sqlite3_column_bytes(statement, 1);
 		
-		collection = [[NSString alloc] initWithBytes:text0 length:textSize0 encoding:NSUTF8StringEncoding];
-		key        = [[NSString alloc] initWithBytes:text1 length:textSize1 encoding:NSUTF8StringEncoding];
+		NSString *collection = [[NSString alloc] initWithBytes:text0 length:textSize0 encoding:NSUTF8StringEncoding];
+		NSString *key        = [[NSString alloc] initWithBytes:text1 length:textSize1 encoding:NSUTF8StringEncoding];
 		
-		result = YES;
+		collectionKey = [[YapCollectionKey alloc] initWithCollection:collection key:key];
+		
+		[connection->keyCache setObject:collectionKey forKey:rowidNumber];
 	}
 	else if (status == SQLITE_ERROR)
 	{
@@ -370,266 +419,74 @@
 	sqlite3_clear_bindings(statement);
 	sqlite3_reset(statement);
 	
-	if (keyPtr) *keyPtr = key;
-	if (collectionPtr) *collectionPtr = collection;
-	return result;
+	return collectionKey;
 }
 
-- (BOOL)getKey:(NSString **)keyPtr
-    collection:(NSString **)collectionPtr
-        object:(id *)objectPtr
-      forRowid:(int64_t)rowid
+- (BOOL)getCollectionKey:(YapCollectionKey **)collectionKeyPtr object:(id *)objectPtr forRowid:(int64_t)rowid
 {
-	sqlite3_stmt *statement = [connection getKeyDataForRowidStatement];
-	if (statement == NULL) {
-		if (keyPtr) *keyPtr = nil;
-		if (collectionPtr) *collectionPtr = nil;
+	YapCollectionKey *collectionKey = [self collectionKeyForRowid:rowid];
+	if (collectionKey)
+	{
+		id object = [self objectForCollectionKey:collectionKey withRowid:rowid];
+	
+		if (collectionKeyPtr) *collectionKeyPtr = collectionKey;
+		if (objectPtr) *objectPtr = object;
+		return YES;
+	}
+	else
+	{
+		if (collectionKeyPtr) *collectionKeyPtr = nil;
 		if (objectPtr) *objectPtr = nil;
 		return NO;
 	}
-	
-	// SELECT "collection", "key", "data" FROM "database2" WHERE "rowid" = ?;
-	
-	sqlite3_bind_int64(statement, 1, rowid);
-	
-	NSString *collection = nil;
-	NSString *key = nil;
-	id object = nil;
-	BOOL result = NO;
-	
-	int status = sqlite3_step(statement);
-	if (status == SQLITE_ROW)
-	{
-		if (connection->needsMarkSqlLevelSharedReadLock)
-			[connection markSqlLevelSharedReadLockAcquired];
-		
-		const unsigned char *text0 = sqlite3_column_text(statement, 0);
-		int textSize0 = sqlite3_column_bytes(statement, 0);
-		
-		const unsigned char *text1 = sqlite3_column_text(statement, 1);
-		int textSize1 = sqlite3_column_bytes(statement, 1);
-		
-		collection = [[NSString alloc] initWithBytes:text0 length:textSize0 encoding:NSUTF8StringEncoding];
-		key        = [[NSString alloc] initWithBytes:text1 length:textSize1 encoding:NSUTF8StringEncoding];
-		
-		YapCollectionKey *cacheKey = [[YapCollectionKey alloc] initWithCollection:collection key:key];
-		
-		object = [connection->objectCache objectForKey:cacheKey];
-		if (object == nil)
-		{
-			const void *blob = sqlite3_column_blob(statement, 2);
-			int blobSize = sqlite3_column_bytes(statement, 2);
-			
-			// Performance tuning:
-			// Use dataWithBytesNoCopy to avoid an extra allocation and memcpy.
-			
-			NSData *data = [NSData dataWithBytesNoCopy:(void *)blob length:blobSize freeWhenDone:NO];
-			object = connection->database->objectDeserializer(collection, key, data);
-			
-			if (object)
-				[connection->objectCache setObject:object forKey:cacheKey];
-		}
-		
-		result = YES;
-	}
-	else if (status == SQLITE_ERROR)
-	{
-		YDBLogError(@"Error executing 'getKeyDataForRowidStatement': %d %s", status, sqlite3_errmsg(connection->db));
-	}
-	
-	sqlite3_clear_bindings(statement);
-	sqlite3_reset(statement);
-	
-	if (keyPtr) *keyPtr = key;
-	if (collectionPtr) *collectionPtr = collection;
-	if (objectPtr) *objectPtr = object;
-	return result;
 }
 
-- (BOOL)getKey:(NSString **)keyPtr
-    collection:(NSString **)collectionPtr
-      metadata:(id *)metadataPtr
-      forRowid:(int64_t)rowid
+- (BOOL)getCollectionKey:(YapCollectionKey **)collectionKeyPtr metadata:(id *)metadataPtr forRowid:(int64_t)rowid
 {
-	sqlite3_stmt *statement = [connection getKeyMetadataForRowidStatement];
-	if (statement == NULL) {
-		if (keyPtr) *keyPtr = nil;
-		if (collectionPtr) *collectionPtr = nil;
+	YapCollectionKey *collectionKey = [self collectionKeyForRowid:rowid];
+	if (collectionKey)
+	{
+		id metadata = [self metadataForCollectionKey:collectionKey withRowid:rowid];
+		
+		if (collectionKeyPtr) *collectionKeyPtr = collectionKey;
+		if (metadataPtr) *metadataPtr = metadata;
+		return YES;
+	}
+	else
+	{
+		if (collectionKeyPtr) *collectionKeyPtr = nil;
 		if (metadataPtr) *metadataPtr = nil;
 		return NO;
 	}
-	
-	// SELECT "collection", "key", "metadata" FROM "database2" WHERE "rowid" = ?;
-	
-	sqlite3_bind_int64(statement, 1, rowid);
-	
-	NSString *collection = nil;
-	NSString *key = nil;
-	id metadata = nil;
-	BOOL result = NO;
-	
-	int status = sqlite3_step(statement);
-	if (status == SQLITE_ROW)
-	{
-		if (connection->needsMarkSqlLevelSharedReadLock)
-			[connection markSqlLevelSharedReadLockAcquired];
-		
-		const unsigned char *text0 = sqlite3_column_text(statement, 0);
-		int textSize0 = sqlite3_column_bytes(statement, 0);
-		
-		const unsigned char *text1 = sqlite3_column_text(statement, 1);
-		int textSize1 = sqlite3_column_bytes(statement, 1);
-		
-		collection = [[NSString alloc] initWithBytes:text0 length:textSize0 encoding:NSUTF8StringEncoding];
-		key        = [[NSString alloc] initWithBytes:text1 length:textSize1 encoding:NSUTF8StringEncoding];
-		
-		YapCollectionKey *cacheKey = [[YapCollectionKey alloc] initWithCollection:collection key:key];
-		
-		metadata = [connection->metadataCache objectForKey:cacheKey];
-		if (metadata)
-		{
-			if (metadata == [YapNull null])
-				metadata = nil;
-		}
-		else
-		{
-			const void *blob = sqlite3_column_blob(statement, 2);
-			int blobSize = sqlite3_column_bytes(statement, 2);
-			
-			if (blobSize > 0)
-			{
-				// Performance tuning:
-				// Use dataWithBytesNoCopy to avoid an extra allocation and memcpy.
-				
-				NSData *mData = [NSData dataWithBytesNoCopy:(void *)blob length:blobSize freeWhenDone:NO];
-				metadata = connection->database->metadataDeserializer(collection, key, mData);
-			}
-			
-			if (metadata)
-				[connection->metadataCache setObject:metadata forKey:cacheKey];
-			else
-				[connection->metadataCache setObject:[YapNull null] forKey:cacheKey];
-		}
-		
-		result = YES;
-	}
-	else if (status == SQLITE_ERROR)
-	{
-		YDBLogError(@"Error executing 'getKeyMetadataForRowidStatement': %d %s",
-		            status, sqlite3_errmsg(connection->db));
-	}
-	
-	sqlite3_clear_bindings(statement);
-	sqlite3_reset(statement);
-	
-	if (keyPtr) *keyPtr = key;
-	if (collectionPtr) *collectionPtr = collection;
-	if (metadataPtr) *metadataPtr = metadata;
-	return result;
 }
 
-- (BOOL)getKey:(NSString **)keyPtr
-    collection:(NSString **)collectionPtr
-        object:(id *)objectPtr
-      metadata:(id *)metadataPtr
-      forRowid:(int64_t)rowid
+- (BOOL)getCollectionKey:(YapCollectionKey **)collectionKeyPtr
+                  object:(id *)objectPtr
+                metadata:(id *)metadataPtr
+                forRowid:(int64_t)rowid
 {
-	sqlite3_stmt *statement = [connection getAllForRowidStatement];
-	if (statement == NULL) {
-		if (keyPtr) *keyPtr = nil;
-		if (collectionPtr) *collectionPtr = nil;
+	YapCollectionKey *collectionKey = [self collectionKeyForRowid:rowid];
+	if (collectionKey == nil)
+	{
+		if (collectionKeyPtr) *collectionKeyPtr = nil;
 		if (objectPtr) *objectPtr = nil;
 		if (metadataPtr) *metadataPtr = nil;
 		return NO;
 	}
 	
-	// SELECT "collection", "key", "data", "metadata" FROM "database2" WHERE "rowid" = ?;
-	
-	sqlite3_bind_int64(statement, 1, rowid);
-	
-	NSString *collection = nil;
-	NSString *key = nil;
-	id object = nil;
-	id metadata = nil;
-	BOOL result = NO;
-	
-	int status = sqlite3_step(statement);
-	if (status == SQLITE_ROW)
+	if ([self getObject:objectPtr metadata:metadataPtr forCollectionKey:collectionKey withRowid:rowid])
 	{
-		if (connection->needsMarkSqlLevelSharedReadLock)
-			[connection markSqlLevelSharedReadLockAcquired];
-		
-		const unsigned char *text0 = sqlite3_column_text(statement, 0);
-		int textSize0 = sqlite3_column_bytes(statement, 0);
-		
-		const unsigned char *text1 = sqlite3_column_text(statement, 1);
-		int textSize1 = sqlite3_column_bytes(statement, 1);
-		
-		collection = [[NSString alloc] initWithBytes:text0 length:textSize0 encoding:NSUTF8StringEncoding];
-		key        = [[NSString alloc] initWithBytes:text1 length:textSize1 encoding:NSUTF8StringEncoding];
-		
-		YapCollectionKey *cacheKey = [[YapCollectionKey alloc] initWithCollection:collection key:key];
-		
-		object = [connection->objectCache objectForKey:cacheKey];
-		if (object == nil)
-		{
-			const void *blob = sqlite3_column_blob(statement, 2);
-			int blobSize = sqlite3_column_bytes(statement, 2);
-			
-			// Performance tuning:
-			// Use dataWithBytesNoCopy to avoid an extra allocation and memcpy.
-			
-			NSData *data = [NSData dataWithBytesNoCopy:(void *)blob length:blobSize freeWhenDone:NO];
-			object = connection->database->objectDeserializer(collection, key, data);
-			
-			if (object)
-				[connection->objectCache setObject:object forKey:cacheKey];
-		}
-		
-		metadata = [connection->metadataCache objectForKey:cacheKey];
-		if (metadata)
-		{
-			if (metadata == [YapNull null])
-				metadata = nil;
-		}
-		else
-		{
-			const void *blob = sqlite3_column_blob(statement, 3);
-			int blobSize = sqlite3_column_bytes(statement, 3);
-			
-			if (blobSize > 0)
-			{
-				// Performance tuning:
-				// Use dataWithBytesNoCopy to avoid an extra allocation and memcpy.
-				
-				NSData *mData = [NSData dataWithBytesNoCopy:(void *)blob length:blobSize freeWhenDone:NO];
-				metadata = connection->database->metadataDeserializer(collection, key, mData);
-			}
-			
-			if (metadata)
-				[connection->metadataCache setObject:metadata forKey:cacheKey];
-			else
-				[connection->metadataCache setObject:[YapNull null] forKey:cacheKey];
-		}
-		
-		result = YES;
+		if (collectionKeyPtr) *collectionKeyPtr = collectionKey;
+		return YES;
 	}
-	else if (status == SQLITE_ERROR)
+	else
 	{
-		YDBLogError(@"Error executing 'getKeyForRowidStatement': %d %s", status, sqlite3_errmsg(connection->db));
+		if (collectionKeyPtr) *collectionKeyPtr = nil;
+		return NO;
 	}
-	
-	sqlite3_clear_bindings(statement);
-	sqlite3_reset(statement);
-	
-	if (keyPtr) *keyPtr = key;
-	if (collectionPtr) *collectionPtr = collection;
-	if (objectPtr) *objectPtr = object;
-	if (metadataPtr) *metadataPtr = metadata;
-	return result;
 }
 
-- (BOOL)hasRowForRowid:(int64_t)rowid
+- (BOOL)hasRowid:(int64_t)rowid
 {
 	sqlite3_stmt *statement = [connection getCountForRowidStatement];
 	if (statement == NULL) return NO;
@@ -661,10 +518,14 @@
 
 - (id)objectForKey:(NSString *)key inCollection:(NSString *)collection withRowid:(int64_t)rowid
 {
-	if (key == nil) return nil;
-	if (collection == nil) collection = @"";
-	
 	YapCollectionKey *cacheKey = [[YapCollectionKey alloc] initWithCollection:collection key:key];
+	
+	return [self objectForCollectionKey:cacheKey withRowid:rowid];
+}
+
+- (id)objectForCollectionKey:(YapCollectionKey *)cacheKey withRowid:(int64_t)rowid
+{
+	if (cacheKey == nil) return nil;
 	
 	id object = [connection->objectCache objectForKey:cacheKey];
 	if (object)
@@ -690,7 +551,7 @@
 		// Use dataWithBytesNoCopy to avoid an extra allocation and memcpy.
 		
 		NSData *data = [NSData dataWithBytesNoCopy:(void *)blob length:blobSize freeWhenDone:NO];
-		object = connection->database->objectDeserializer(collection, key, data);
+		object = connection->database->objectDeserializer(cacheKey.collection, cacheKey.key, data);
 		
 		if (object)
 			[connection->objectCache setObject:object forKey:cacheKey];
@@ -704,6 +565,140 @@
 	sqlite3_reset(statement);
 	
 	return object;
+}
+
+- (id)metadataForKey:(NSString *)key inCollection:(NSString *)collection withRowid:(int64_t)rowid
+{
+	YapCollectionKey *cacheKey = [[YapCollectionKey alloc] initWithCollection:collection key:key];
+	
+	return [self metadataForCollectionKey:cacheKey withRowid:rowid];
+}
+
+- (id)metadataForCollectionKey:(YapCollectionKey *)cacheKey withRowid:(int64_t)rowid
+{
+	if (cacheKey == nil) return nil;
+	
+	id metadata = [connection->metadataCache objectForKey:cacheKey];
+	if (metadata)
+		return metadata;
+	
+	sqlite3_stmt *statement = [connection getMetadataForRowidStatement];
+	if (statement == NULL) return nil;
+	
+	// SELECT "metadata" FROM "database2" WHERE "rowid" = ?;
+	
+	sqlite3_bind_int64(statement, 1, rowid);
+	
+	int status = sqlite3_step(statement);
+	if (status == SQLITE_ROW)
+	{
+		if (connection->needsMarkSqlLevelSharedReadLock)
+			[connection markSqlLevelSharedReadLockAcquired];
+		
+		const void *blob = sqlite3_column_blob(statement, 0);
+		int blobSize = sqlite3_column_bytes(statement, 0);
+		
+		// Performance tuning:
+		// Use dataWithBytesNoCopy to avoid an extra allocation and memcpy.
+		
+		NSData *data = [NSData dataWithBytesNoCopy:(void *)blob length:blobSize freeWhenDone:NO];
+		metadata = connection->database->metadataDeserializer(cacheKey.collection, cacheKey.key, data);
+		
+		if (metadata)
+			[connection->metadataCache setObject:metadata forKey:cacheKey];
+	}
+	else if (status == SQLITE_ERROR)
+	{
+		YDBLogError(@"Error executing 'getMetadataForRowidStatement': %d %s", status, sqlite3_errmsg(connection->db));
+	}
+	
+	sqlite3_clear_bindings(statement);
+	sqlite3_reset(statement);
+	
+	return metadata;
+}
+
+- (BOOL)getObject:(id *)objectPtr
+		 metadata:(id *)metadataPtr
+ forCollectionKey:(YapCollectionKey *)collectionKey
+		withRowid:(int64_t)rowid
+{
+	id object = [connection->objectCache objectForKey:collectionKey];
+	id metadata = [connection->metadataCache objectForKey:collectionKey];
+	
+	if (object || metadata)
+	{
+		if (object == nil)
+		{
+			object = [self objectForCollectionKey:collectionKey withRowid:rowid];
+		}
+		else if (metadata == nil)
+		{
+			metadata = [self metadataForCollectionKey:collectionKey withRowid:rowid];
+		}
+		
+		if (objectPtr) *objectPtr = object;
+		if (metadataPtr) *metadataPtr = metadata;
+		return YES;
+	}
+	
+	sqlite3_stmt *statement = [connection getAllForRowidStatement];
+	if (statement == NULL) {
+		if (objectPtr) *objectPtr = nil;
+		if (metadataPtr) *metadataPtr = nil;
+		return NO;
+	}
+	
+	// SELECT "data", "metadata" FROM "database2" WHERE "rowid" = ?;
+	
+	sqlite3_bind_int64(statement, 1, rowid);
+	
+	int status = sqlite3_step(statement);
+	if (status == SQLITE_ROW)
+	{
+		if (connection->needsMarkSqlLevelSharedReadLock)
+			[connection markSqlLevelSharedReadLockAcquired];
+		
+		const void *blob = sqlite3_column_blob(statement, 0);
+		int blobSize = sqlite3_column_bytes(statement, 0);
+		
+		// Performance tuning:
+		// Use dataWithBytesNoCopy to avoid an extra allocation and memcpy.
+		
+		NSData *data = [NSData dataWithBytesNoCopy:(void *)blob length:blobSize freeWhenDone:NO];
+		object = connection->database->objectDeserializer(collectionKey.collection, collectionKey.key, data);
+		
+		if (object)
+			[connection->objectCache setObject:object forKey:collectionKey];
+		
+		const void *mBlob = sqlite3_column_blob(statement, 1);
+		int mBlobSize = sqlite3_column_bytes(statement, 1);
+		
+		if (mBlobSize > 0)
+		{
+			// Performance tuning:
+			// Use dataWithBytesNoCopy to avoid an extra allocation and memcpy.
+			
+			NSData *mData = [NSData dataWithBytesNoCopy:(void *)mBlob length:mBlobSize freeWhenDone:NO];
+			metadata = connection->database->metadataDeserializer(collectionKey.collection, collectionKey.key, mData);
+		}
+		
+		if (metadata)
+			[connection->metadataCache setObject:metadata forKey:collectionKey];
+		else
+			[connection->metadataCache setObject:[YapNull null] forKey:collectionKey];
+	}
+	else if (status == SQLITE_ERROR)
+	{
+		YDBLogError(@"Error executing 'getKeyForRowidStatement': %d %s", status, sqlite3_errmsg(connection->db));
+	}
+	
+	sqlite3_clear_bindings(statement);
+	sqlite3_reset(statement);
+	
+	if (objectPtr) *objectPtr = object;
+	if (metadataPtr) *metadataPtr = metadata;
+	return YES;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -3758,25 +3753,6 @@
 	return orderedExtensions;
 }
 
-- (void)addRegisteredExtensionTransaction:(YapDatabaseExtensionTransaction *)extTransaction
-{
-	// This method is INTERNAL
-	
-	if (extensions == nil)
-		extensions = [[NSMutableDictionary alloc] init];
-	
-	NSString *extName = [[[extTransaction extensionConnection] extension] registeredName];
-	
-	[extensions setObject:extTransaction forKey:extName];
-}
-
-- (void)removeRegisteredExtensionTransaction:(NSString *)extName
-{
-	// This method is INTERNAL
-	
-	[extensions removeObjectForKey:extName];
-}
-
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 #pragma mark Memory Tables
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -4140,6 +4116,45 @@
 	FreeYapDatabaseString(&_key);
 }
 
+- (void)removeValueForKey:(NSString *)key extension:(NSString *)extensionName
+{
+	// Be careful with this statement.
+	//
+	// The snapshot value is in the yap table, and uses an empty string for the extensionName.
+	// The snapshot value is critical to the underlying architecture of the system.
+	// Removing it could cripple the system.
+	
+	NSAssert(key != nil, @"Invalid key!");
+	NSAssert(extensionName != nil, @"Invalid extensionName!");
+	
+	sqlite3_stmt *statement = [connection yapRemoveForKeyStatement];
+	if (statement == NULL) return;
+	
+	// DELETE FROM "yap2" WHERE "extension" = ? AND "key" = ?;
+	
+	YapDatabaseString _extension; MakeYapDatabaseString(&_extension, extensionName);
+	sqlite3_bind_text(statement, 1, _extension.str, _extension.length, SQLITE_STATIC);
+	
+	YapDatabaseString _key; MakeYapDatabaseString(&_key, key);
+	sqlite3_bind_text(statement, 2, _key.str, _key.length, SQLITE_STATIC);
+	
+	int status = sqlite3_step(statement);
+	if (status == SQLITE_DONE)
+	{
+		connection->hasDiskChanges = YES;
+	}
+	else
+	{
+		YDBLogError(@"Error executing 'yapRemoveForKeyStatement': %d %s, extension(%@)",
+					status, sqlite3_errmsg(connection->db), extensionName);
+	}
+	
+	sqlite3_clear_bindings(statement);
+	sqlite3_reset(statement);
+	FreeYapDatabaseString(&_extension);
+	FreeYapDatabaseString(&_key);
+}
+
 - (void)removeAllValuesForExtension:(NSString *)extensionName
 {
 	// Be careful with this statement.
@@ -4148,7 +4163,7 @@
 	// The snapshot value is critical to the underlying architecture of the system.
 	// Removing it could cripple the system.
 	
-	NSAssert(extensionName != nil, @"Invalid extensionName. Would result in removing snapshot from yap table!");
+	NSAssert(extensionName != nil, @"Invalid extensionName!");
 	
 	sqlite3_stmt *statement = [connection yapRemoveExtensionStatement];
 	if (statement == NULL) return;
@@ -4227,23 +4242,60 @@
  *
  * Thus it is recommended you integrate your own notification information into this existing notification,
  * as opposed to broadcasting your own separate notification.
- *
- * Invoking this method from within a read-only transaction does nothing.
+ * 
+ * For more information, and code samples, please see the wiki article:
+ * https://github.com/yaptv/YapDatabase/wiki/YapDatabaseModifiedNotification
 **/
-- (void)setCustomObjectForYapDatabaseModifiedNotification:(id)object
-{
-	customObjectForNotification = object;
-}
+@synthesize yapDatabaseModifiedNotificationCustomObject = customObjectForNotification;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 #pragma mark Primitive
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+/**
+ * Primitive access.
+ * This method is available in case you need to store irregular data that
+ * shouldn't go through the configured serializer/deserializer.
+ *
+ * Primitive data is stored into the database, but doesn't get routed through any of the extensions.
+ *
+ * Remember that if you place primitive data into the database via this method,
+ * you are responsible for accessing it via the appropriate primitive accessor (such as
+ * primitiveDataForKey:inCollection:). If you attempt to access it via the object accessor
+ * (objectForKey:inCollection), then the system will attempt to deserialize the primitive data via the
+ * configured deserializer, which may or may not work depending on the primitive data you're storing.
+ *
+ * This method is the primitive version of setObject:forKey:inCollection:.
+ * For more information see the documentation for setObject:forKey:inCollection:.
+ *
+ * @see setObject:forKey:inCollection:
+ * @see primitiveDataForKey:inCollection:
+**/
 - (void)setPrimitiveData:(NSData *)primitiveData forKey:(NSString *)key inCollection:(NSString *)collection
 {
 	[self setPrimitiveData:primitiveData forKey:key inCollection:collection withPrimitiveMetadata:nil];
 }
 
+/**
+ * Primitive access.
+ * This method is available in case you need to store irregular data that
+ * shouldn't go through the configured serializer/deserializer.
+ *
+ * Primitive data is stored into the database, but doesn't get routed through any of the extensions.
+ *
+ * Remember that if you place primitive data into the database via this method,
+ * you are responsible for accessing it via the appropriate primitive accessor (such as
+ * primitiveDataForKey:inCollection:). If you attempt to access it via the object accessor
+ * (objectForKey:inCollection), then the system will attempt to deserialize the primitive data via the
+ * configured deserializer, which may or may not work depending on the primitive data you're storing.
+ *
+ * This method is the primitive version of setObject:forKey:inCollection:withMetadata:.
+ * For more information see the documentation for setObject:forKey:inCollection:withMetadata:.
+ *
+ * @see setObject:forKey:inCollection:withMetadata:
+ * @see primitiveDataForKey:inCollection:
+ * @see primitiveMetadataForKey:inCollection:
+**/
 - (void)setPrimitiveData:(NSData *)primitiveData
                   forKey:(NSString *)key
             inCollection:(NSString *)collection
@@ -4374,14 +4426,99 @@
 		
 		for (id <YapDatabaseExtensionTransaction_Hooks> extTransaction in [self orderedExtensions])
 		{
-			[extTransaction handleRemoveObjectForKey:cacheKey.key        // mutable string protection
-										inCollection:cacheKey.collection // mutable string protection
-										   withRowid:rowid];
+			[extTransaction handleRemoveObjectForCollectionKey:cacheKey withRowid:rowid];
 		}
 	}
 }
 
-- (void)setPrimitiveMetadata:(NSData *)primitiveMetadata forKey:(NSString *)key inCollection:(NSString *)collection
+/**
+ * Primitive access.
+ * This method is available in case you need to store irregular data that
+ * shouldn't go through the configured serializer/deserializer.
+ *
+ * Primitive data is stored into the database, but doesn't get routed through any of the extensions.
+ *
+ * Remember that if you place primitive data into the database via this method,
+ * you are responsible for accessing it via the appropriate primitive accessor (such as
+ * primitiveDataForKey:inCollection:). If you attempt to access it via the object accessor
+ * (objectForKey:inCollection), then the system will attempt to deserialize the primitive data via the
+ * configured deserializer, which may or may not work depending on the primitive data you're storing.
+ *
+ * This method is the primitive version of replaceObject:forKey:inCollection:.
+ * For more information see the documentation for replaceObject:forKey:inCollection:.
+ *
+ * @see replaceObject:forKey:inCollection:
+ * @see primitiveDataForKey:inCollection:
+**/
+- (void)replacePrimitiveData:(NSData *)primitiveData forKey:(NSString *)key inCollection:(NSString *)collection
+{
+	if (primitiveData == nil)
+	{
+		[self removeObjectForKey:key inCollection:collection];
+		return;
+	}
+	
+	if (collection == nil) collection = @"";
+	
+	int64_t rowid = 0;
+	if (![self getRowid:&rowid forKey:key inCollection:collection]) return;
+	
+	sqlite3_stmt *statement = [connection updateObjectForRowidStatement];
+	if (statement == NULL) return;
+	
+	// UPDATE "database2" SET "data" = ? WHERE "rowid" = ?;
+	
+	sqlite3_bind_blob(statement, 1, primitiveData.bytes, (int)primitiveData.length, SQLITE_STATIC);
+	sqlite3_bind_int64(statement, 2, rowid);
+	
+	BOOL updated = YES;
+	
+	int status = sqlite3_step(statement);
+	if (status != SQLITE_DONE)
+	{
+		YDBLogError(@"Error executing 'updateObjectForRowidStatement': %d %s",
+		            status, sqlite3_errmsg(connection->db));
+		updated = NO;
+	}
+	
+	sqlite3_clear_bindings(statement);
+	sqlite3_reset(statement);
+	
+	if (!updated) return;
+	
+	connection->hasDiskChanges = YES;
+	isMutated = YES;  // mutation during enumeration protection
+	YapCollectionKey *cacheKey = [[YapCollectionKey alloc] initWithCollection:collection key:key];
+	
+	[connection->objectCache removeObjectForKey:cacheKey];
+	[connection->objectChanges setObject:[YapNull null] forKey:cacheKey];
+	
+	for (id <YapDatabaseExtensionTransaction_Hooks> extTransaction in [self orderedExtensions])
+	{
+		[extTransaction handleRemoveObjectForCollectionKey:cacheKey withRowid:rowid];
+	}
+}
+
+/**
+ * Primitive access.
+ * This method is available in case you need to store irregular data that
+ * shouldn't go through the configured serializer/deserializer.
+ *
+ * Primitive data is stored into the database, but doesn't get routed through any of the extensions.
+ *
+ * Remember that if you place primitive data into the database via this method,
+ * you are responsible for accessing it via the appropriate primitive accessor (such as
+ * primitiveMetadataForKey:inCollection:). If you attempt to access it via the object accessor
+ * (metadataForKey:inCollection), then the system will attempt to deserialize the primitive data via the
+ * configured deserializer, which may or may not work depending on the primitive data you're storing.
+ *
+ * This method is the primitive version of replaceMetadata:forKey:inCollection:.
+ * For more information see the documentation for replaceMetadata:forKey:inCollection:.
+ *
+ * @see replaceMetadata:forKey:inCollection:
+ * @see primitiveMetadataForKey:inCollection:
+**/
+- (void)replacePrimitiveMetadata:(NSData *)primitiveMetadata forKey:(NSString *)key inCollection:(NSString *)collection
 {
 	if (collection == nil) collection = @"";
 	
@@ -4392,9 +4529,6 @@
 	if (statement == NULL) return;
 	
 	// UPDATE "database2" SET "metadata" = ? WHERE "rowid" = ?;
-	//
-	// To use SQLITE_STATIC on our data blob, we use the objc_precise_lifetime attribute.
-	// This ensures the data isn't released until it goes out of scope.
 	
 	sqlite3_bind_blob(statement, 1, primitiveMetadata.bytes, (int)primitiveMetadata.length, SQLITE_STATIC);
 	sqlite3_bind_int64(statement, 2, rowid);
@@ -4423,11 +4557,16 @@
 	
 	for (id <YapDatabaseExtensionTransaction_Hooks> extTransaction in [self orderedExtensions])
 	{
-		[extTransaction handleUpdateMetadata:nil
-		                              forKey:cacheKey.key        // mutable string protection
-		                        inCollection:cacheKey.collection // mutable string protection
-		                           withRowid:rowid];
+		[extTransaction handleReplaceMetadata:nil forCollectionKey:cacheKey withRowid:rowid];
 	}
+}
+
+/**
+ * DEPRECATED: Use replacePrimitiveMetadata:forKey:inCollection: instead.
+**/
+- (void)setPrimitiveMetadata:(NSData *)primitiveMetadata forKey:(NSString *)key inCollection:(NSString *)collection
+{
+	[self replacePrimitiveMetadata:primitiveMetadata forKey:key inCollection:collection];
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -4591,6 +4730,8 @@
 	isMutated = YES;  // mutation during enumeration protection
 	YapCollectionKey *cacheKey = [[YapCollectionKey alloc] initWithCollection:collection key:key];
 	
+	[connection->keyCache setObject:cacheKey forKey:@(rowid)];
+	
 	id _object = nil;
 	if (connection->objectPolicy == YapDatabasePolicyContainment) {
 		_object = [YapNull null];
@@ -4639,25 +4780,138 @@
 	{
 		if (found)
 			[extTransaction handleUpdateObject:object
-			                            forKey:cacheKey.key        // mutable string protection
-			                      inCollection:cacheKey.collection // mutable string protection
+			                  forCollectionKey:cacheKey
 			                      withMetadata:metadata
 			                             rowid:rowid];
 		else
 			[extTransaction handleInsertObject:object
-			                            forKey:cacheKey.key        // mutable string protection
-			                      inCollection:cacheKey.collection // mutable string protection
+			                  forCollectionKey:cacheKey
 			                      withMetadata:metadata
 			                             rowid:rowid];
 	}
 }
 
-- (void)setMetadata:(id)metadata forKey:(NSString *)key inCollection:(NSString *)collection
+/**
+ * If a row with the given key/collection exists, then replaces the object for that row with the new value.
+ * It only replaces the object. The metadata for the row doesn't change.
+ *
+ * If there is no row in the database for the given key/collection then this method does nothing.
+ *
+ * If you pass nil for the object, then this method will remove
+**/
+- (void)replaceObject:(id)object forKey:(NSString *)key inCollection:(NSString *)collection
 {
+	int64_t rowid = 0;
+	if ([self getRowid:&rowid forKey:key inCollection:collection])
+	{
+		[self replaceObject:object forKey:key inCollection:collection withRowid:rowid];
+	}
+}
+
+- (void)replaceObject:(id)object forKey:(NSString *)key inCollection:(NSString *)collection withRowid:(int64_t)rowid
+{
+	if (object == nil)
+	{
+		[self removeObjectForKey:key inCollection:collection];
+		return;
+	}
+	
+	NSAssert(key != nil, @"Internal error");
 	if (collection == nil) collection = @"";
 	
+	if (connection->database->objectSanitizer)
+	{
+		object = connection->database->objectSanitizer(collection, key, object);
+		if (object == nil)
+		{
+			YDBLogWarn(@"Object sanitizer returned nil for key(%@) object: %@", key, object);
+			
+			[self removeObjectForKey:key inCollection:collection withRowid:rowid];
+			return;
+		}
+	}
+	
+	sqlite3_stmt *statement = [connection updateObjectForRowidStatement];
+	if (statement == NULL) return;
+	
+	// UPDATE "database2" SET "data" = ? WHERE "rowid" = ?;
+	//
+	// To use SQLITE_STATIC on our data blob, we use the objc_precise_lifetime attribute.
+	// This ensures the data isn't released until it goes out of scope.
+	
+	__attribute__((objc_precise_lifetime)) NSData *rawData =
+	  connection->database->objectSerializer(collection, key, object);
+	sqlite3_bind_blob(statement, 1, rawData.bytes, (int)rawData.length, SQLITE_STATIC);
+	
+	sqlite3_bind_int64(statement, 2, rowid);
+	
+	BOOL updated = YES;
+	
+	int status = sqlite3_step(statement);
+	if (status != SQLITE_DONE)
+	{
+		YDBLogError(@"Error executing 'updateDataForRowidStatement': %d %s",
+		                                                    status, sqlite3_errmsg(connection->db));
+		updated = NO;
+	}
+	
+	sqlite3_clear_bindings(statement);
+	sqlite3_reset(statement);
+	
+	if (!updated) return;
+	
+	connection->hasDiskChanges = YES;
+	isMutated = YES;  // mutation during enumeration protection
+	YapCollectionKey *cacheKey = [[YapCollectionKey alloc] initWithCollection:collection key:key];
+	
+	id _object = nil;
+	if (connection->objectPolicy == YapDatabasePolicyContainment) {
+		_object = [YapNull null];
+	}
+	else if (connection->objectPolicy == YapDatabasePolicyShare) {
+		_object = object;
+	}
+	else // if (connection->objectPolicy = YapDatabasePolicyCopy)
+	{
+		if ([object conformsToProtocol:@protocol(NSCopying)])
+			_object = [object copy];
+		else
+			_object = [YapNull null];
+	}
+	
+	[connection->objectCache setObject:object forKey:cacheKey];
+	[connection->objectChanges setObject:_object forKey:cacheKey];
+	
+	for (id <YapDatabaseExtensionTransaction_Hooks> extTransaction in [self orderedExtensions])
+	{
+		[extTransaction handleReplaceObject:object forCollectionKey:cacheKey withRowid:rowid];
+	}
+}
+
+/**
+ * If a row with the given key/collection exists, then replaces the metadata for that row with the new value.
+ * It only replaces the metadata. The object for the row doesn't change.
+ *
+ * If there is no row in the database for the given key/collection then this method does nothing.
+ *
+ * If you pass nil for the metadata, any metadata previously associated with the key/collection is removed.
+**/
+- (void)replaceMetadata:(id)metadata forKey:(NSString *)key inCollection:(NSString *)collection
+{
 	int64_t rowid = 0;
-	if (![self getRowid:&rowid forKey:key inCollection:collection]) return;
+	if ([self getRowid:&rowid forKey:key inCollection:collection])
+	{
+		[self replaceMetadata:metadata forKey:key inCollection:collection withRowid:rowid];
+	}
+}
+
+- (void)replaceMetadata:(id)metadata
+                 forKey:(NSString *)key
+           inCollection:(NSString *)collection
+              withRowid:(int64_t)rowid
+{
+	NSAssert(key != nil, @"Internal error");
+	if (collection == nil) collection = @"";
 	
 	if (metadata && connection->database->metadataSanitizer)
 	{
@@ -4729,11 +4983,16 @@
 	
 	for (id <YapDatabaseExtensionTransaction_Hooks> extTransaction in [self orderedExtensions])
 	{
-		[extTransaction handleUpdateMetadata:metadata
-		                              forKey:cacheKey.key        // mutable string protection
-		                        inCollection:cacheKey.collection // mutable string protection
-		                           withRowid:rowid];
+		[extTransaction handleReplaceMetadata:metadata forCollectionKey:cacheKey withRowid:rowid];
 	}
+}
+
+/**
+ * DEPRECATED: Use replaceMetadata:forKey:inCollection: instead.
+**/
+- (void)setMetadata:(id)metadata forKey:(NSString *)key inCollection:(NSString *)collection
+{
+	[self replaceMetadata:metadata forKey:key inCollection:collection];
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -4757,9 +5016,7 @@
 	
 	for (id <YapDatabaseExtensionTransaction_Hooks> extTransaction in [self orderedExtensions])
 	{
-		[extTransaction handleTouchObjectForKey:cacheKey.key        // mutable string protection
-			                       inCollection:cacheKey.collection // mutable string protection
-		                              withRowid:rowid];
+		[extTransaction handleTouchObjectForCollectionKey:cacheKey withRowid:rowid];
 	}
 }
 
@@ -4777,9 +5034,7 @@
 	
 	for (id <YapDatabaseExtensionTransaction_Hooks> extTransaction in [self orderedExtensions])
 	{
-		[extTransaction handleTouchMetadataForKey:cacheKey.key        // mutable string protection
-		                             inCollection:cacheKey.collection // mutable string protection
-		                                withRowid:rowid];
+		[extTransaction handleTouchMetadataForCollectionKey:cacheKey withRowid:rowid];
 	}
 }
 
@@ -4787,12 +5042,10 @@
 #pragma mark Remove
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-- (void)removeObjectForKey:(NSString *)key inCollection:(NSString *)collection
+- (void)removeObjectForKey:(NSString *)key inCollection:(NSString *)collection withRowid:(int64_t)rowid
 {
+	if (key == nil) return;
 	if (collection == nil) collection = @"";
-	
-	int64_t rowid = 0;
-	if (![self getRowid:&rowid forKey:key inCollection:collection]) return;
 	
 	sqlite3_stmt *statement = [connection removeForRowidStatement];
 	if (statement == NULL) return;
@@ -4819,19 +5072,29 @@
 	connection->hasDiskChanges = YES;
 	isMutated = YES;  // mutation during enumeration protection
 	YapCollectionKey *cacheKey = [[YapCollectionKey alloc] initWithCollection:collection key:key];
+	NSNumber *rowidNumber = @(rowid);
 	
+	[connection->keyCache removeObjectForKey:rowidNumber];
 	[connection->objectCache removeObjectForKey:cacheKey];
 	[connection->metadataCache removeObjectForKey:cacheKey];
 	
 	[connection->objectChanges removeObjectForKey:cacheKey];
 	[connection->metadataChanges removeObjectForKey:cacheKey];
 	[connection->removedKeys addObject:cacheKey];
+	[connection->removedRowids addObject:rowidNumber];
 	
 	for (id <YapDatabaseExtensionTransaction_Hooks> extTransaction in [self orderedExtensions])
 	{
-		[extTransaction handleRemoveObjectForKey:cacheKey.key        // mutable string protection
-		                            inCollection:cacheKey.collection // mutable string protection
-		                               withRowid:rowid];
+		[extTransaction handleRemoveObjectForCollectionKey:cacheKey withRowid:rowid];
+	}
+}
+
+- (void)removeObjectForKey:(NSString *)key inCollection:(NSString *)collection
+{
+	int64_t rowid = 0;
+	if ([self getRowid:&rowid forKey:key inCollection:collection])
+	{
+		[self removeObjectForKey:key inCollection:collection withRowid:rowid];
 	}
 }
 
@@ -4998,6 +5261,9 @@
 			connection->hasDiskChanges = YES;
 			isMutated = YES;  // mutation during enumeration protection
 			
+			[connection->keyCache removeObjectsForKeys:foundRowids];
+			[connection->removedRowids addObjectsFromArray:foundRowids];
+			
 			for (NSString *key in foundKeys)
 			{
 				YapCollectionKey *cacheKey = [[YapCollectionKey alloc] initWithCollection:collection key:key];
@@ -5038,38 +5304,82 @@
 	
 	// Purge the caches and changesets
 	
-	NSMutableArray *keysToRemove = [NSMutableArray array];
+	NSMutableArray *toRemove = [NSMutableArray array];
 	
-	void(^block)(id, BOOL*) = ^void (id key, BOOL *stop) {
+	{ // keyCache
 		
-		__unsafe_unretained YapCollectionKey *cacheKey = (YapCollectionKey *)key;
-		if ([cacheKey.collection isEqualToString:collection])
+		[connection->keyCache enumerateKeysAndObjectsWithBlock:^(id key, id obj, BOOL *stop) {
+			
+			__unsafe_unretained NSNumber *rowidNumber = (NSNumber *)key;
+			__unsafe_unretained YapCollectionKey *collectionKey = (YapCollectionKey *)obj;
+			if ([collectionKey.collection isEqualToString:collection])
+			{
+				[toRemove addObject:rowidNumber];
+			}
+		}];
+		
+		[connection->keyCache removeObjectsForKeys:toRemove];
+		[toRemove removeAllObjects];
+	}
+	
+	{ // objectCache
+		
+		[connection->objectCache enumerateKeysWithBlock:^(id key, BOOL *stop) {
+			
+			__unsafe_unretained YapCollectionKey *cacheKey = (YapCollectionKey *)key;
+			if ([cacheKey.collection isEqualToString:collection])
+			{
+				[toRemove addObject:cacheKey];
+			}
+		}];
+		
+		[connection->objectCache removeObjectsForKeys:toRemove];
+		[toRemove removeAllObjects];
+	}
+	
+	{ // objectChanges
+		
+		for (id key in [connection->objectChanges keyEnumerator])
 		{
-			[keysToRemove addObject:cacheKey];
+			__unsafe_unretained YapCollectionKey *cacheKey = (YapCollectionKey *)key;
+			if ([cacheKey.collection isEqualToString:collection])
+			{
+				[toRemove addObject:cacheKey];
+			}
 		}
-	};
-	
-	[connection->objectCache enumerateKeysWithBlock:block];
-	[connection->objectCache removeObjectsForKeys:keysToRemove];
-	
-	[keysToRemove removeAllObjects];
-	
-	for (id key in [connection->objectChanges keyEnumerator]) {
-		block(key, NULL);
+		
+		[connection->objectChanges removeObjectsForKeys:toRemove];
+		[toRemove removeAllObjects];
 	}
-	[connection->objectChanges removeObjectsForKeys:keysToRemove];
 	
-	[keysToRemove removeAllObjects];
-	
-	[connection->metadataCache enumerateKeysWithBlock:block];
-	[connection->metadataCache removeObjectsForKeys:keysToRemove];
-	
-	[keysToRemove removeAllObjects];
-	
-	for (id key in [connection->metadataChanges keyEnumerator]) {
-		block(key, NULL);
+	{ // metadataCache
+		
+		[connection->metadataCache enumerateKeysWithBlock:^(id key, BOOL *stop) {
+			
+			__unsafe_unretained YapCollectionKey *cacheKey = (YapCollectionKey *)key;
+			if ([cacheKey.collection isEqualToString:collection])
+			{
+				[toRemove addObject:cacheKey];
+			}
+		}];
+		
+		[connection->metadataCache removeObjectsForKeys:toRemove];
+		[toRemove removeAllObjects];
 	}
-	[connection->metadataChanges removeObjectsForKeys:keysToRemove];
+	
+	{ // metadataChanges
+		
+		for (id key in [connection->metadataChanges keyEnumerator])
+		{
+			__unsafe_unretained YapCollectionKey *cacheKey = (YapCollectionKey *)key;
+			if ([cacheKey.collection isEqualToString:collection])
+			{
+				[toRemove addObject:cacheKey];
+			}
+		}
+		
+		[connection->metadataChanges removeObjectsForKeys:toRemove];
+	}
 	
 	[connection->removedCollections addObject:collection];
 	
@@ -5230,6 +5540,8 @@
 			connection->hasDiskChanges = YES;
 			isMutated = YES;  // mutation during enumeration protection
 			
+			[connection->removedRowids addObjectsFromArray:foundRowids];
+			
 			for (id <YapDatabaseExtensionTransaction_Hooks> extTransaction in [self orderedExtensions])
 			{
 				[extTransaction handleRemoveObjectsForKeys:foundKeys
@@ -5271,12 +5583,36 @@
 	[connection->metadataChanges removeAllObjects];
 	[connection->removedKeys removeAllObjects];
 	[connection->removedCollections removeAllObjects];
+	[connection->removedRowids removeAllObjects];
 	connection->allKeysRemoved = YES;
 	
 	for (id <YapDatabaseExtensionTransaction_Hooks> extTransaction in [self orderedExtensions])
 	{
 		[extTransaction handleRemoveAllObjectsInAllCollections];
 	}
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+#pragma mark Extensions
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+- (void)addRegisteredExtensionTransaction:(YapDatabaseExtensionTransaction *)extTransaction
+{
+	// This method is INTERNAL
+	
+	if (extensions == nil)
+		extensions = [[NSMutableDictionary alloc] init];
+	
+	NSString *extName = [[[extTransaction extensionConnection] extension] registeredName];
+	
+	[extensions setObject:extTransaction forKey:extName];
+}
+
+- (void)removeRegisteredExtensionTransaction:(NSString *)extName
+{
+	// This method is INTERNAL
+	
+	[extensions removeObjectForKey:extName];
 }
 
 @end

@@ -22,11 +22,11 @@
 #endif
 
 /**
- * This version number is stored in the yap2 table.
- * If there is a major re-write to this class, then the version number will be incremented,
- * and the class can automatically rebuild the tables as needed.
+ * Declare that this class implements YapDatabaseExtensionTransaction_Hooks protocol.
+ * This is done privately, as the protocol is internal.
 **/
-#define YAP_DATABASE_SECONDARY_INDEX_CLASS_VERSION 1
+@interface YapDatabaseSecondaryIndexTransaction () <YapDatabaseExtensionTransaction_Hooks>
+@end
 
 
 @implementation YapDatabaseSecondaryIndexTransaction
@@ -54,14 +54,17 @@
 **/
 - (BOOL)createIfNeeded
 {
-	int oldClassVersion = [self intValueForExtensionKey:@"classVersion"];
+	int oldClassVersion = 0;
+	BOOL hasOldClassVersion = [self getIntValue:&oldClassVersion forExtensionKey:@"classVersion"];
 	int classVersion = YAP_DATABASE_SECONDARY_INDEX_CLASS_VERSION;
 	
 	if (oldClassVersion != classVersion)
 	{
-		// First time registration
+		// First time registration (or at least for this version)
 		
-		[self upgradeFromForOldClassVersion:oldClassVersion];
+		if (hasOldClassVersion) {
+			if (![self dropTable]) return NO;
+		}
 		
 		if (![self createTable]) return NO;
 		if (![self populate]) return NO;
@@ -87,6 +90,53 @@
 			
 			[self setIntValue:newVersion forExtensionKey:@"version"];
 		}
+		
+		// The following code is designed to assist developers in understanding extension changes.
+		// The rules are straight-forward and easy to remember:
+		//
+		// - If you make ANY changes to the configuration of the extension then you MUST change the version.
+		//
+		// For this extension, that means you MUST change the version if ANY of the following are true:
+		//
+		// - you changed the setup
+		// - you changed the block in any meaningful way (which would result in different values for any existing row)
+		//
+		// Note: The code below detects only changes to the setup.
+		// It could theoretically handle such changes, and automatically force a repopulation.
+		// This is a bad idea for two reasons:
+		//
+		// - First, it complicates the rules. The rules, as stated above, are simple. They follow the KISS principle.
+		//   Changing these rules would pose a complication that increases cognitive overhead.
+		//   It may be easy to remember now, but 6 months from now the nuance has become hazy.
+		//   Additionally, the rest of the database system follows the same set of rules.
+		//   So adding a complication for just a particular extension is even more confusing.
+		//
+		// - Second, it adds overhead to the registration process.
+		//   This sanity check doesn't come for free.
+		//   And the overhead is only helpful during the development lifecycle.
+		//   It's certainly not something you want in a shipped version.
+		//
+		#if DEBUG
+		else
+		{
+			__unsafe_unretained YapDatabase *database = databaseTransaction->connection->database;
+			sqlite3 *db = databaseTransaction->connection->db;
+			
+			NSDictionary *columns = [database columnNamesAndAffinityForTable:[self tableName] using:db];
+			
+			YapDatabaseSecondaryIndexSetup *setup = secondaryIndexConnection->secondaryIndex->setup;
+			
+			if (![setup matchesExistingColumnNamesAndAffinity:columns])
+			{
+				YDBLogError(@"Error creating secondary index extension (%@):"
+				            @" The given setup doesn't match the previously registered setup."
+				            @" If you change the setup, or you change the block in any meaningful way,"
+				            @" then you MUST change the version as well.",
+				            THIS_METHOD);
+				return NO;
+			}
+		}
+		#endif
 	}
 	
 	return YES;
@@ -106,16 +156,6 @@
 - (BOOL)prepareIfNeeded
 {
 	return YES;
-}
-
-/**
- * Internal method.
- *
- * This method is used to handle the upgrade process from earlier architectures of this class.
-**/
-- (void)upgradeFromForOldClassVersion:(int)oldClassVersion
-{
-	// Reserved for future use...
 }
 
 /**
@@ -591,14 +631,16 @@
  * This method is invoked by a YapDatabaseReadWriteTransaction as a post-operation-hook.
 **/
 - (void)handleInsertObject:(id)object
-                    forKey:(NSString *)key
-              inCollection:(NSString *)collection
+          forCollectionKey:(YapCollectionKey *)collectionKey
               withMetadata:(id)metadata
                      rowid:(int64_t)rowid
 {
 	YDBLogAutoTrace();
 	
 	__unsafe_unretained YapDatabaseSecondaryIndex *secondaryIndex = secondaryIndexConnection->secondaryIndex;
+	
+	__unsafe_unretained NSString *collection = collectionKey.collection;
+	__unsafe_unretained NSString *key = collectionKey.key;
 	
 	// Invoke the block to find out if the object should be included in the index.
 	
@@ -650,14 +692,16 @@
  * This method is invoked by a YapDatabaseReadWriteTransaction as a post-operation-hook.
 **/
 - (void)handleUpdateObject:(id)object
-                    forKey:(NSString *)key
-              inCollection:(NSString *)collection
+          forCollectionKey:(YapCollectionKey *)collectionKey
               withMetadata:(id)metadata
                      rowid:(int64_t)rowid
 {
 	YDBLogAutoTrace();
 	
 	__unsafe_unretained YapDatabaseSecondaryIndex *secondaryIndex = secondaryIndexConnection->secondaryIndex;
+	
+	__unsafe_unretained NSString *collection = collectionKey.collection;
+	__unsafe_unretained NSString *key = collectionKey.key;
 	
 	// Invoke the block to find out if the object should be included in the index.
 	
@@ -711,14 +755,78 @@
  * YapDatabase extension hook.
  * This method is invoked by a YapDatabaseReadWriteTransaction as a post-operation-hook.
 **/
-- (void)handleUpdateMetadata:(id)metadata
-                      forKey:(NSString *)key
-                inCollection:(NSString *)collection
-                   withRowid:(int64_t)rowid
+- (void)handleReplaceObject:(id)object forCollectionKey:(YapCollectionKey *)collectionKey withRowid:(int64_t)rowid
 {
 	YDBLogAutoTrace();
 	
 	__unsafe_unretained YapDatabaseSecondaryIndex *secondaryIndex = secondaryIndexConnection->secondaryIndex;
+	
+	__unsafe_unretained NSString *collection = collectionKey.collection;
+	__unsafe_unretained NSString *key = collectionKey.key;
+	
+	// Invoke the block to find out if the object should be included in the index.
+	
+	id metadata = nil;
+	
+	if (secondaryIndex->blockType == YapDatabaseSecondaryIndexBlockTypeWithKey ||
+	    secondaryIndex->blockType == YapDatabaseSecondaryIndexBlockTypeWithMetadata)
+	{
+		// Index values are based on the key or object.
+		// Neither have changed, and thus the values haven't changed.
+		
+		return;
+	}
+	else
+	{
+		// Index values are based on object or row (object+metadata).
+		// Invoke block to see what the new values are.
+		
+		if (secondaryIndex->blockType == YapDatabaseSecondaryIndexBlockTypeWithObject)
+		{
+			__unsafe_unretained YapDatabaseSecondaryIndexWithObjectBlock block =
+			  (YapDatabaseSecondaryIndexWithObjectBlock)secondaryIndex->block;
+			
+			block(secondaryIndexConnection->blockDict, collection, key, object);
+		}
+		else
+		{
+			__unsafe_unretained YapDatabaseSecondaryIndexWithRowBlock block =
+			  (YapDatabaseSecondaryIndexWithRowBlock)secondaryIndex->block;
+			
+			metadata = [databaseTransaction objectForCollectionKey:collectionKey withRowid:rowid];
+			block(secondaryIndexConnection->blockDict, collection, key, object, metadata);
+		}
+		
+		if ([secondaryIndexConnection->blockDict count] == 0)
+		{
+			// Remove associated values from index (if needed).
+			// This was an update operation, so the rowid may have previously had values in the index.
+			
+			[self removeRowid:rowid];
+		}
+		else
+		{
+			// Add values to index (or update them).
+			// This was an update operation, so we need to insert or update.
+			
+			[self addRowid:rowid isNew:NO];
+			[secondaryIndexConnection->blockDict removeAllObjects];
+		}
+	}
+}
+
+/**
+ * YapDatabase extension hook.
+ * This method is invoked by a YapDatabaseReadWriteTransaction as a post-operation-hook.
+**/
+- (void)handleReplaceMetadata:(id)metadata forCollectionKey:(YapCollectionKey *)collectionKey withRowid:(int64_t)rowid
+{
+	YDBLogAutoTrace();
+	
+	__unsafe_unretained YapDatabaseSecondaryIndex *secondaryIndex = secondaryIndexConnection->secondaryIndex;
+	
+	__unsafe_unretained NSString *collection = collectionKey.collection;
+	__unsafe_unretained NSString *key = collectionKey.key;
 	
 	// Invoke the block to find out if the object should be included in the index.
 	
@@ -749,7 +857,7 @@
 			__unsafe_unretained YapDatabaseSecondaryIndexWithRowBlock block =
 		        (YapDatabaseSecondaryIndexWithRowBlock)secondaryIndex->block;
 			
-			object = [databaseTransaction objectForKey:key inCollection:collection];
+			object = [databaseTransaction objectForCollectionKey:collectionKey withRowid:rowid];
 			block(secondaryIndexConnection->blockDict, collection, key, object, metadata);
 		}
 		
@@ -775,7 +883,7 @@
  * YapDatabase extension hook.
  * This method is invoked by a YapDatabaseReadWriteTransaction as a post-operation-hook.
 **/
-- (void)handleTouchObjectForKey:(NSString *)key inCollection:(NSString *)collection withRowid:(int64_t)rowid
+- (void)handleTouchObjectForCollectionKey:(YapCollectionKey *)collectionKey withRowid:(int64_t)rowid
 {
 	// Nothing to do for this extension
 }
@@ -784,7 +892,7 @@
  * YapDatabase extension hook.
  * This method is invoked by a YapDatabaseReadWriteTransaction as a post-operation-hook.
 **/
-- (void)handleTouchMetadataForKey:(NSString *)key inCollection:(NSString *)collection withRowid:(int64_t)rowid
+- (void)handleTouchMetadataForCollectionKey:(YapCollectionKey *)collectionKey withRowid:(int64_t)rowid
 {
 	// Nothing to do for this extension
 }
@@ -793,7 +901,7 @@
  * YapDatabase extension hook.
  * This method is invoked by a YapDatabaseReadWriteTransaction as a post-operation-hook.
 **/
-- (void)handleRemoveObjectForKey:(NSString *)key inCollection:(NSString *)collection withRowid:(int64_t)rowid
+- (void)handleRemoveObjectForCollectionKey:(YapCollectionKey *)collectionKey withRowid:(int64_t)rowid
 {
 	YDBLogAutoTrace();
 	
@@ -958,11 +1066,9 @@
 	
 	BOOL result = [self _enumerateRowidsMatchingQuery:query usingBlock:^(int64_t rowid, BOOL *stop) {
 		
-		NSString *key = nil;
-		NSString *collection = nil;
-		[databaseTransaction getKey:&key collection:&collection forRowid:rowid];
+		YapCollectionKey *ck = [databaseTransaction collectionKeyForRowid:rowid];
 		
-		block(collection, key, stop);
+		block(ck.collection, ck.key, stop);
 	}];
 	
 	return result;
@@ -977,12 +1083,11 @@
 	
 	BOOL result = [self _enumerateRowidsMatchingQuery:query usingBlock:^(int64_t rowid, BOOL *stop) {
 		
-		NSString *key = nil;
-		NSString *collection = nil;
+		YapCollectionKey *ck = nil;
 		id metadata = nil;
-		[databaseTransaction getKey:&key collection:&collection metadata:&metadata forRowid:rowid];
+		[databaseTransaction getCollectionKey:&ck metadata:&metadata forRowid:rowid];
 		
-		block(collection, key, metadata, stop);
+		block(ck.collection, ck.key, metadata, stop);
 	}];
 	
 	return result;
@@ -997,12 +1102,11 @@
 	
 	BOOL result = [self _enumerateRowidsMatchingQuery:query usingBlock:^(int64_t rowid, BOOL *stop) {
 		
-		NSString *key = nil;
-		NSString *collection = nil;
+		YapCollectionKey *ck = nil;
 		id object = nil;
-		[databaseTransaction getKey:&key collection:&collection object:&object forRowid:rowid];
+		[databaseTransaction getCollectionKey:&ck object:&object forRowid:rowid];
 		
-		block(collection, key, object, stop);
+		block(ck.collection, ck.key, object, stop);
 	}];
 	
 	return result;
@@ -1017,13 +1121,12 @@
 	
 	BOOL result = [self _enumerateRowidsMatchingQuery:query usingBlock:^(int64_t rowid, BOOL *stop) {
 		
-		NSString *key = nil;
-		NSString *collection = nil;
+		YapCollectionKey *ck = nil;
 		id object = nil;
 		id metadata = nil;
-		[databaseTransaction getKey:&key collection:&collection object:&object metadata:&metadata forRowid:rowid];
+		[databaseTransaction getCollectionKey:&ck object:&object metadata:&metadata forRowid:rowid];
 		
-		block(collection, key, object, metadata, stop);
+		block(ck.collection, ck.key, object, metadata, stop);
 	}];
 	
 	return result;
