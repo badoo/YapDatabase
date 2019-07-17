@@ -64,6 +64,7 @@ NSString *const YapDatabaseRegisteredMemoryTablesKey = @"registeredMemoryTables"
 NSString *const YapDatabaseExtensionsOrderKey        = @"extensionsOrder";
 NSString *const YapDatabaseExtensionDependenciesKey  = @"extensionDependencies";
 NSString *const YapDatabaseNotificationKey           = @"notification";
+YapDatabaseInitStatus YapDatabaseStatus              = YapDatabaseInitStatusSuccess;
 
 /**
  * ConnectionPool value dictionary keys.
@@ -409,6 +410,8 @@ static int connectionBusyHandler(void *ptr, int count) {
                                  metadataPostSanitizer:(YapDatabasePostSanitizer)inMetadataPostSanitizer
                                                options:(YapDatabaseOptions *)inOptions
 {
+    YapDatabaseInitStatus YapDatabaseStatus = YapDatabaseInitStatusSuccess;
+
 	// First, standardize path.
 	// This allows clients to be lazy when passing paths.
 	NSString *path = [inPath stringByStandardizingPath];
@@ -419,6 +422,7 @@ static int connectionBusyHandler(void *ptr, int count) {
 	{
 		YDBLogError(@"Only a single database instance is allowed per file. "
 		            @"For concurrency you create multiple connections from a single database instance.");
+        YapDatabaseStatus = YapDatabaseInitStatusFailedDatabaseAlreadyExists;
 		return nil;
 	}
 	
@@ -434,11 +438,20 @@ static int connectionBusyHandler(void *ptr, int count) {
 			BOOL result = YES;
 			
 			if (result) result = [self openDatabase];
+            if (!result) {
+                YapDatabaseStatus = YapDatabaseInitStatusFailedCantOpenDatabaseConnection;
+            }
 #ifdef SQLITE_HAS_CODEC
             if (result) result = [self configureEncryptionForDatabase:db];
 #endif
 			if (result) result = [self configureDatabase:isNewDatabaseFile];
+            if (!result) {
+                YapDatabaseStatus = YapDatabaseInitStatusFailedConfigurationFailed;
+            }
 			if (result) result = [self createTables];
+            if (!result) {
+                YapDatabaseStatus = YapDatabaseInitStatusFailedCreateTablesFailed;
+            }
 			
 			if (!result && db)
 			{
@@ -499,10 +512,12 @@ static int connectionBusyHandler(void *ptr, int count) {
 					isNewDatabaseFile = YES;
 					result = openConfigCreate();
 					if (result) {
+                        YapDatabaseInitStatus YapDatabaseStatus = YapDatabaseInitStatusSuccess;
 						YDBLogInfo(@"Database corruption resolved. Renamed corrupt file. (newDB=%@) (corruptDB=%@)",
 						           [databasePath lastPathComponent], [newDatabasePath lastPathComponent]);
 					}
 					else {
+                        YapDatabaseStatus = YapDatabaseInitStatusFailedCorruptRenameActionFailed;
 						YDBLogError(@"Database corruption unresolved. (name=%@)", [databasePath lastPathComponent]);
 					}
 				}
@@ -520,10 +535,12 @@ static int connectionBusyHandler(void *ptr, int count) {
 					isNewDatabaseFile = YES;
 					result = openConfigCreate();
 					if (result) {
+                        YapDatabaseInitStatus YapDatabaseStatus = YapDatabaseInitStatusSuccess;
 						YDBLogInfo(@"Database corruption resolved. Deleted corrupt file. (name=%@)",
 						                                                          [databasePath lastPathComponent]);
 					}
 					else {
+                        YapDatabaseStatus = YapDatabaseInitStatusFailedCorruptDeleteActionFailed;
 						YDBLogError(@"Database corruption unresolved. (name=%@)", [databasePath lastPathComponent]);
 					}
 				}

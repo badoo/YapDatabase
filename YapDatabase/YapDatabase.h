@@ -4,6 +4,7 @@
 #import "YapDatabaseConnection.h"
 #import "YapDatabaseTransaction.h"
 #import "YapDatabaseExtension.h"
+#import "YapDatabaseInitStatus.h"
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -188,6 +189,7 @@ extern NSString *const YapDatabaseRemovedCollectionsKey;
 extern NSString *const YapDatabaseAllKeysRemovedKey;
 extern NSString *const YapDatabaseModifiedExternallyKey;
 
+extern YapDatabaseInitStatus YapDatabaseStatus;
 
 @interface YapDatabase : NSObject
 
