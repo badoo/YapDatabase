@@ -1008,7 +1008,6 @@
 		DCE7618E1D78B91C009C83A0 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = DCE761881D78B91C009C83A0 /* Assets.xcassets */; };
 		DCE761911D78B91C009C83A0 /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = DCE7618D1D78B91C009C83A0 /* main.m */; };
 		DCE761941D78B948009C83A0 /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = DCE761921D78B948009C83A0 /* Main.storyboard */; };
-		DEC7231722DF5288009B6D47 /* YapDatabaseInitStatus.h in Headers */ = {isa = PBXBuildFile; fileRef = DEB21A3622DE108800CF79EC /* YapDatabaseInitStatus.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		DCE975231F6D7EAE00496D00 /* YapDatabaseConnectionConfig.m in Sources */ = {isa = PBXBuildFile; fileRef = DCE975211F6D7EAE00496D00 /* YapDatabaseConnectionConfig.m */; };
 		DCE975241F6D7EAE00496D00 /* YapDatabaseConnectionConfig.m in Sources */ = {isa = PBXBuildFile; fileRef = DCE975211F6D7EAE00496D00 /* YapDatabaseConnectionConfig.m */; };
 		DCE975251F6D7EAE00496D00 /* YapDatabaseConnectionConfig.m in Sources */ = {isa = PBXBuildFile; fileRef = DCE975211F6D7EAE00496D00 /* YapDatabaseConnectionConfig.m */; };
@@ -1448,7 +1447,6 @@
 		DCE975221F6D7EAE00496D00 /* YapDatabaseConnectionConfig.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = YapDatabaseConnectionConfig.h; sourceTree = "<group>"; };
 		DCF7C2AE1BCC8E610087ED39 /* YapDatabase.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = YapDatabase.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		DCF7C2BE1BCC8E870087ED39 /* YapDatabase.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = YapDatabase.framework; sourceTree = BUILT_PRODUCTS_DIR; };
-		DEB21A3622DE108800CF79EC /* YapDatabaseInitStatus.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = YapDatabaseInitStatus.h; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -1622,7 +1620,6 @@
 				DC651FEA1BCEC77E00188E23 /* YapDatabaseOptions.m */,
 				DC651FEB1BCEC77E00188E23 /* YapDatabaseTransaction.h */,
 				DC651FEC1BCEC77E00188E23 /* YapDatabaseTransaction.m */,
-				DEB21A3622DE108800CF79EC /* YapDatabaseInitStatus.h */,
 			);
 			path = YapDatabase;
 			sourceTree = "<group>";
@@ -2776,7 +2773,6 @@
 				DC6521621BCEC77E00188E23 /* YapDatabaseTransaction.h in Headers */,
 				DC6520B61BCEC77E00188E23 /* YapDatabaseSearchResultsViewTransaction.h in Headers */,
 				DC6C28E91CAAFE3B00166CE4 /* YapDatabaseActionManagerPrivate.h in Headers */,
-				DEC7231722DF5288009B6D47 /* YapDatabaseInitStatus.h in Headers */,
 				DC65214E1BCEC77E00188E23 /* YapSet.h in Headers */,
 				DC6C28E71CAAFE3B00166CE4 /* YapActionItemPrivate.h in Headers */,
 				DCE975281F6D7EAE00496D00 /* YapDatabaseConnectionConfig.h in Headers */,

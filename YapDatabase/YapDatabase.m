@@ -421,7 +421,7 @@ static int connectionBusyHandler(void *ptr, int count) {
                                  metadataPostSanitizer:(YapDatabasePostSanitizer)inMetadataPostSanitizer
                                                options:(YapDatabaseOptions *)inOptions
 {
-    YapDatabaseInitStatus YapDatabaseStatus = YapDatabaseInitStatusSuccess;
+    YapDatabaseStatus = YapDatabaseInitStatusSuccess;
 
 	// First, standardize path.
 	// This allows clients to be lazy when passing paths.
@@ -527,7 +527,7 @@ static int connectionBusyHandler(void *ptr, int count) {
 					isNewDatabaseFile = YES;
 					result = openConfigCreate();
 					if (result) {
-                        YapDatabaseInitStatus YapDatabaseStatus = YapDatabaseInitStatusSuccess;
+                        YapDatabaseStatus = YapDatabaseInitStatusSuccess;
 						YDBLogInfo(@"Database corruption resolved. Renamed corrupt file. (newDB=%@) (corruptDB=%@)",
 						           [databasePath lastPathComponent], [newDatabasePath lastPathComponent]);
 					}
@@ -550,7 +550,7 @@ static int connectionBusyHandler(void *ptr, int count) {
 					isNewDatabaseFile = YES;
 					result = openConfigCreate();
 					if (result) {
-                        YapDatabaseInitStatus YapDatabaseStatus = YapDatabaseInitStatusSuccess;
+                        YapDatabaseStatus = YapDatabaseInitStatusSuccess;
 						YDBLogInfo(@"Database corruption resolved. Deleted corrupt file. (name=%@)",
 						                                                          [databasePath lastPathComponent]);
 					}

@@ -6,9 +6,17 @@
 #import "YapDatabaseExtension.h"
 #import "YapDatabaseConnectionConfig.h"
 
-#import "YapDatabaseInitStatus.h"
-
 NS_ASSUME_NONNULL_BEGIN
+
+typedef enum : NSUInteger {
+    YapDatabaseInitStatusSuccess,
+    YapDatabaseInitStatusFailedDatabaseAlreadyExists,
+    YapDatabaseInitStatusFailedCantOpenDatabaseConnection,
+    YapDatabaseInitStatusFailedConfigurationFailed,
+    YapDatabaseInitStatusFailedCreateTablesFailed,
+    YapDatabaseInitStatusFailedCorruptRenameActionFailed,
+    YapDatabaseInitStatusFailedCorruptDeleteActionFailed
+} YapDatabaseInitStatus;
 
 /**
  * Welcome to YapDatabase!
