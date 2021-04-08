@@ -33,7 +33,7 @@
  *
  * For more information, see the wiki article about rtree indexes:
  * https://github.com/yapstudios/YapDatabase/wiki/RTree-Indexes
-**/
+ */
 @interface YapDatabaseRTreeIndex : YapDatabaseExtension
 
 /**
@@ -41,7 +41,6 @@
  * After creation, you'll need to register the extension with the database system.
  *
  * @param setup
- *
  *   A YapDatabaseRTreeIndexSetup instance allows you to specify the column names.
  *   The column names can be whatever you want, with a few exceptions for reserved names such as "rowid".
  *   Sqlite rtrees require that your columns must be a even list, each pair corresponding to a dimension
@@ -49,7 +48,6 @@
  *   between 1 and 5.
  *
  * @param handler
- *
  *   The block (and blockType) that handles extracting rtree index information from a row in the database.
  *
  *
@@ -57,7 +55,7 @@
  * @see YapDatabaseRTreeIndexHandler
  *
  * @see YapDatabase registerExtension:withName:
-**/
+ */
 - (id)initWithSetup:(YapDatabaseRTreeIndexSetup *)setup
             handler:(YapDatabaseRTreeIndexHandler *)handler;
 
@@ -66,7 +64,6 @@
  * After creation, you'll need to register the extension with the database system.
  *
  * @param setup
- *
  *   A YapDatabaseRTreeIndexSetup instance allows you to specify the column names.
  *   The column names can be whatever you want, with a few exceptions for reserved names such as "rowid".
  *   Sqlite rtrees require that your columns must be a even list, each pair corresponding to a dimension
@@ -74,11 +71,9 @@
  *   between 1 and 5.
  *
  * @param handler
- *
  *   The block (and blockType) that handles extracting secondary index information from a row in the database.
  *
- * @param version
- *
+ * @param versionTag
  *   If, after creating the rtree index, you need to change the setup or block,
  *   then simply increment the version parameter. If you pass a version that is different from the last
  *   initialization of the extension, then it will automatically re-create itself.
@@ -87,7 +82,7 @@
  * @see YapDatabaseRTreeIndexHandler
  *
  * @see YapDatabase registerExtension:withName:
-**/
+ */
 - (id)initWithSetup:(YapDatabaseRTreeIndexSetup *)setup
             handler:(YapDatabaseRTreeIndexHandler *)handler
          versionTag:(NSString *)versionTag;
@@ -97,7 +92,6 @@
  * After creation, you'll need to register the extension with the database system.
  *
  * @param setup
- *
  *   A YapDatabaseRTreeIndexSetup instance allows you to specify the column names.
  *   The column names can be whatever you want, with a few exceptions for reserved names such as "rowid".
  *   Sqlite rtrees require that your columns must be a even list, each pair corresponding to a dimension
@@ -105,17 +99,14 @@
  *   between 1 and 5.
  *
  * @param handler
- *
  *   The block (and blockType) that handles extracting secondary index information from a row in the database.
  *
- * @param version
- *
+ * @param versionTag
  *   If, after creating the rtree index, you need to change the setup or block,
  *   then simply increment the version parameter. If you pass a version that is different from the last
  *   initialization of the extension, then it will automatically re-create itself.
  *
  * @param options
- *
  *   Allows you to specify extra options to configure the extension.
  *   See the YapDatabaseRTreeIndexOptions class for more information.
  *
@@ -123,7 +114,7 @@
  * @see YapDatabaseRTreeIndexHandler
  *
  * @see YapDatabase registerExtension:withName:
-**/
+ */
 - (id)initWithSetup:(YapDatabaseRTreeIndexSetup *)setup
             handler:(YapDatabaseRTreeIndexHandler *)handler
          versionTag:(NSString *)versionTag
@@ -145,7 +136,7 @@
  * If you need to change the columnNames and/or block,
  * then simply pass a different versionTag during the init method,
  * and the extension will automatically update itself.
-**/
+ */
 @property (nonatomic, copy, readonly) NSString *versionTag;
 
 @end

@@ -11,13 +11,17 @@
 #import "YapCache.h"
 #import "YapMutationStack.h"
 
-#import "sqlite3.h"
+#ifdef SQLITE_HAS_CODEC
+  #import <SQLCipher/sqlite3.h>
+#else
+  #import "sqlite3.h"
+#endif
 
 /**
  * This version number is stored in the yap2 table.
  * If there is a major re-write to this class, then the version number will be incremented,
  * and the class can automatically rebuild the table as needed.
-**/
+ */
 #define YAP_DATABASE_RTREE_INDEX_CLASS_VERSION 1
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -44,11 +48,10 @@
  * This method compares its setup to a current table structure.
  *
  * @param columns
- *
  *   Dictionary of column names and affinity.
  *
  * @see YapDatabase columnNamesAndAffinityForTable:using:
-**/
+ */
 - (BOOL)matchesExistingColumnNamesAndAffinity:(NSDictionary *)columns;
 
 @end

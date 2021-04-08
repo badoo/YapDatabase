@@ -25,25 +25,25 @@ NS_ASSUME_NONNULL_BEGIN
  * 
  * For more information & sample code, please see the wiki:
  * https://github.com/yapstudios/YapDatabase/wiki/YapDatabaseCloudKit#RecordHandlerBlock
-**/
+ */
 @interface YapDatabaseCloudKitRecordHandler : NSObject
 
 typedef id YapDatabaseCloudKitRecordBlock; // One of the YapDatabaseCloutKitGetRecordX types below.
 
 typedef void (^YapDatabaseCloudKitRecordWithKeyBlock)
-    (YapDatabaseReadTransaction *transaction, CKRecord *_Nonnull *_Nullable inOutRecordPtr, YDBCKRecordInfo *recordInfo,
+    (YapDatabaseReadTransaction *transaction, CKRecord *_Nullable *_Nonnull inOutRecordPtr, YDBCKRecordInfo *recordInfo,
      NSString *collection, NSString *key);
 
 typedef void (^YapDatabaseCloudKitRecordWithObjectBlock)
-    (YapDatabaseReadTransaction *transaction, CKRecord *_Nonnull *_Nullable inOutRecordPtr, YDBCKRecordInfo *recordInfo,
+    (YapDatabaseReadTransaction *transaction, CKRecord *_Nullable *_Nonnull inOutRecordPtr, YDBCKRecordInfo *recordInfo,
      NSString *collection, NSString *key, id object);
 
 typedef void (^YapDatabaseCloudKitRecordWithMetadataBlock)
-    (YapDatabaseReadTransaction *transaction, CKRecord *_Nonnull *_Nullable inOutRecordPtr, YDBCKRecordInfo *recordInfo,
+    (YapDatabaseReadTransaction *transaction, CKRecord *_Nullable *_Nonnull inOutRecordPtr, YDBCKRecordInfo *recordInfo,
      NSString *collection, NSString *key, __nullable id metadata);
 
 typedef void (^YapDatabaseCloudKitRecordWithRowBlock)
-    (YapDatabaseReadTransaction *transaction, CKRecord *_Nonnull *_Nullable inOutRecordPtr, YDBCKRecordInfo *recordInfo,
+(YapDatabaseReadTransaction *transaction, CKRecord *_Nullable *_Nonnull inOutRecordPtr, YDBCKRecordInfo *recordInfo,
      NSString *collection, NSString *key, id object, __nullable id metadata);
 
 + (instancetype)withKeyBlock:(YapDatabaseCloudKitRecordWithKeyBlock)recordBlock;
@@ -76,7 +76,7 @@ typedef void (^YapDatabaseCloudKitRecordWithRowBlock)
  * 
  * For more information & sample code, please see the wiki:
  * https://github.com/yapstudios/YapDatabase/wiki/YapDatabaseCloudKit#MergeBlock
-**/
+ */
 typedef void (^YapDatabaseCloudKitMergeBlock)
     (YapDatabaseReadWriteTransaction *transaction, NSString * _Nullable collection, NSString * _Nullable key,
 	 CKRecord *remoteRecord, YDBCKMergeInfo *mergeInfo);
@@ -94,7 +94,7 @@ typedef void (^YapDatabaseCloudKitMergeBlock)
  * 
  * For more information, please see the wiki:
  * https://github.com/yapstudios/YapDatabase/wiki/YapDatabaseCloudKit#OperationErrorBlock
-**/
+ */
 typedef void (^YapDatabaseCloudKitOperationErrorBlock)
        (NSString *databaseIdentifier, NSError *operationError);
 
@@ -127,7 +127,7 @@ typedef void (^YapDatabaseCloudKitOperationErrorBlock)
  * 
  * For more information & sample code, please see the wiki:
  * https://github.com/yapstudios/YapDatabase/wiki/YapDatabaseCloudKit#The_databaseIdentifier
-**/
+ */
 typedef CKDatabase * _Nullable (^YapDatabaseCloudKitDatabaseIdentifierBlock)(NSString *databaseIdentifier);
 
 NS_ASSUME_NONNULL_END

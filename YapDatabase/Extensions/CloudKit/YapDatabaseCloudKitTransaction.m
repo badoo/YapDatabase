@@ -15,9 +15,9 @@
  * See YapDatabaseLogging.h for more information.
 **/
 #if DEBUG
-  static const int ydbLogLevel = YDB_LOG_LEVEL_VERBOSE | YDB_LOG_FLAG_TRACE;
+  static const int ydbLogLevel = YDBLogLevelWarning; // YDBLogLevelVerbose | YDBLogFlagTrace;
 #else
-  static const int ydbLogLevel = YDB_LOG_LEVEL_WARN;
+  static const int ydbLogLevel = YDBLogLevelWarning;
 #endif
 #pragma unused(ydbLogLevel)
 
@@ -197,8 +197,7 @@ static BOOL ClassVersionsAreCompatible(int oldClassVersion, int newClassVersion)
 	status = sqlite3_exec(db, [createMappingTable UTF8String], NULL, NULL, NULL);
 	if (status != SQLITE_OK)
 	{
-		YDBLogError(@"%@ - Failed creating table (%@): %d %s",
-		            THIS_METHOD, mappingTableName, status, sqlite3_errmsg(db));
+		YDBLogError(@"Failed creating table (%@): %d %s", mappingTableName, status, sqlite3_errmsg(db));
 		return NO;
 	}
 	
@@ -206,8 +205,7 @@ static BOOL ClassVersionsAreCompatible(int oldClassVersion, int newClassVersion)
 	status = sqlite3_exec(db, [createMappingTableIndex UTF8String], NULL, NULL, NULL);
 	if (status != SQLITE_OK)
 	{
-		YDBLogError(@"%@ - Failed creating index on table (%@): %d %s",
-					THIS_METHOD, mappingTableName, status, sqlite3_errmsg(db));
+		YDBLogError(@"Failed creating index on table (%@): %d %s", mappingTableName, status, sqlite3_errmsg(db));
 		return NO;
 	}
 	
@@ -229,8 +227,7 @@ static BOOL ClassVersionsAreCompatible(int oldClassVersion, int newClassVersion)
 	status = sqlite3_exec(db, [createRecordTable UTF8String], NULL, NULL, NULL);
 	if (status != SQLITE_OK)
 	{
-		YDBLogError(@"%@ - Failed creating table (%@): %d %s",
-		            THIS_METHOD, recordTableName, status, sqlite3_errmsg(db));
+		YDBLogError(@"Failed creating table (%@): %d %s", recordTableName, status, sqlite3_errmsg(db));
 		return NO;
 	}
 	
@@ -253,8 +250,7 @@ static BOOL ClassVersionsAreCompatible(int oldClassVersion, int newClassVersion)
 	status = sqlite3_exec(db, [createQueueTable UTF8String], NULL, NULL, NULL);
 	if (status != SQLITE_OK)
 	{
-		YDBLogError(@"%@ - Failed creating table (%@): %d %s",
-		            THIS_METHOD, queueTableName, status, sqlite3_errmsg(db));
+		YDBLogError(@"Failed creating table (%@): %d %s", queueTableName, status, sqlite3_errmsg(db));
 		return NO;
 	}
 	
@@ -303,7 +299,7 @@ static BOOL ClassVersionsAreCompatible(int oldClassVersion, int newClassVersion)
 	status = sqlite3_prepare_v2(db, [enumerate UTF8String], -1, &statement, NULL);
 	if (status != SQLITE_OK)
 	{
-		YDBLogError(@"%@: Error creating prepared statement: %d %s", THIS_METHOD, status, sqlite3_errmsg(db));
+		YDBLogError(@"Error creating prepared statement: %d %s", status, sqlite3_errmsg(db));
 		
 		return NO;
 	}
@@ -371,7 +367,7 @@ static BOOL ClassVersionsAreCompatible(int oldClassVersion, int newClassVersion)
 	
 	if (status != SQLITE_DONE)
 	{
-		YDBLogError(@"%@ - Error executing statement: %d %s", THIS_METHOD,
+		YDBLogError(@"Error executing statement: %d %s",
 					status, sqlite3_errmsg(databaseTransaction->connection->db));
 	}
 	
@@ -472,12 +468,16 @@ static BOOL ClassVersionsAreCompatible(int oldClassVersion, int newClassVersion)
 		  (YapDatabaseCloudKitRecordWithKeyBlock)recordHandler->block;
 		
 		RestoreRecordBlock = ^(int64_t rowid, CKRecord **inOutRecord, YDBCKRecordInfo *recordInfo) {
+		#pragma clang diagnostic push
+		#pragma clang diagnostic ignored "-Wimplicit-retain-self"
 			
 			YapCollectionKey *ck = [databaseTransaction collectionKeyForRowid:rowid];
 			if (ck)
 			{
 				recordBlock(databaseTransaction, inOutRecord, recordInfo, ck.collection, ck.key);
 			}
+			
+		#pragma clang diagnostic pop
 		};
 	}
 	else if (recordHandler->blockType == YapDatabaseBlockTypeWithObject)
@@ -486,6 +486,8 @@ static BOOL ClassVersionsAreCompatible(int oldClassVersion, int newClassVersion)
 		  (YapDatabaseCloudKitRecordWithObjectBlock)recordHandler->block;
 		
 		RestoreRecordBlock = ^(int64_t rowid, CKRecord **inOutRecord, YDBCKRecordInfo *recordInfo) {
+		#pragma clang diagnostic push
+		#pragma clang diagnostic ignored "-Wimplicit-retain-self"
 			
 			YapCollectionKey *ck = nil;
 			id object = nil;
@@ -494,6 +496,8 @@ static BOOL ClassVersionsAreCompatible(int oldClassVersion, int newClassVersion)
 			{
 				recordBlock(databaseTransaction, inOutRecord, recordInfo, ck.collection, ck.key, object);
 			}
+			
+		#pragma clang diagnostic pop
 		};
 	}
 	else if (recordHandler->blockType == YapDatabaseBlockTypeWithMetadata)
@@ -502,6 +506,8 @@ static BOOL ClassVersionsAreCompatible(int oldClassVersion, int newClassVersion)
 		  (YapDatabaseCloudKitRecordWithMetadataBlock)recordHandler->block;
 		
 		RestoreRecordBlock = ^(int64_t rowid, CKRecord **inOutRecord, YDBCKRecordInfo *recordInfo) {
+		#pragma clang diagnostic push
+		#pragma clang diagnostic ignored "-Wimplicit-retain-self"
 			
 			YapCollectionKey *ck = nil;
 			id metadata = nil;
@@ -510,6 +516,8 @@ static BOOL ClassVersionsAreCompatible(int oldClassVersion, int newClassVersion)
 			{
 				recordBlock(databaseTransaction, inOutRecord, recordInfo, ck.collection, ck.key, metadata);
 			}
+			
+		#pragma clang diagnostic pop
 		};
 	}
 	else // if (recordHandler->blockType == YapDatabaseBlockTypeWithRow)
@@ -518,6 +526,8 @@ static BOOL ClassVersionsAreCompatible(int oldClassVersion, int newClassVersion)
 		  (YapDatabaseCloudKitRecordWithRowBlock)recordHandler->block;
 		
 		RestoreRecordBlock = ^(int64_t rowid, CKRecord **inOutRecord, YDBCKRecordInfo *recordInfo) {
+		#pragma clang diagnostic push
+		#pragma clang diagnostic ignored "-Wimplicit-retain-self"
 			
 			YapCollectionKey *ck = nil;
 			id object = nil;
@@ -527,6 +537,8 @@ static BOOL ClassVersionsAreCompatible(int oldClassVersion, int newClassVersion)
 			{
 				recordBlock(databaseTransaction, inOutRecord, recordInfo, ck.collection, ck.key, object, metadata);
 			}
+			
+		#pragma clang diagnostic pop
 		};
 	}
 	
@@ -576,6 +588,8 @@ static BOOL ClassVersionsAreCompatible(int oldClassVersion, int newClassVersion)
 	
 	void (^InsertRecord)(CKRecord*, YDBCKRecordInfo*, int64_t);
 	InsertRecord = ^(CKRecord *record, YDBCKRecordInfo *recordInfo, int64_t rowid) {
+	#pragma clang diagnostic push
+	#pragma clang diagnostic ignored "-Wimplicit-retain-self"
 		
 		NSString *databaseIdentifier = recordInfo.databaseIdentifier;
 		NSString *hash = [self hashRecordID:record.recordID databaseIdentifier:databaseIdentifier];
@@ -615,6 +629,8 @@ static BOOL ClassVersionsAreCompatible(int oldClassVersion, int newClassVersion)
 			[dirtyRecordTableInfo incrementOwnerCount];
 			[dirtyRecordTableInfo mergeOriginalValues:recordInfo.originalValues];
 		}
+		
+	#pragma clang diagnostic pop
 	};
 	
 	YDBCKRecordInfo *recordInfo = [[YDBCKRecordInfo alloc] init];
@@ -636,7 +652,7 @@ static BOOL ClassVersionsAreCompatible(int oldClassVersion, int newClassVersion)
 			recordInfo.databaseIdentifier = nil;
 			recordInfo.originalValues = nil;
 			
-			recordBlock(databaseTransaction, &record, recordInfo, collection, key);
+			recordBlock(self->databaseTransaction, &record, recordInfo, collection, key);
 			
 			if (record) {
 				InsertRecord(record, recordInfo, rowid);
@@ -649,7 +665,7 @@ static BOOL ClassVersionsAreCompatible(int oldClassVersion, int newClassVersion)
 				
 				if ([allowedCollections isAllowed:collection])
 				{
-					[databaseTransaction _enumerateKeysInCollections:@[ collection ] usingBlock:enumBlock];
+					[self->databaseTransaction _enumerateKeysInCollections:@[ collection ] usingBlock:enumBlock];
 				}
 			}];
 		}
@@ -670,7 +686,7 @@ static BOOL ClassVersionsAreCompatible(int oldClassVersion, int newClassVersion)
 			recordInfo.databaseIdentifier = nil;
 			recordInfo.originalValues = nil;
 			
-			recordBlock(databaseTransaction, &record, recordInfo, collection, key, object);
+			recordBlock(self->databaseTransaction, &record, recordInfo, collection, key, object);
 			
 			if (record) {
 				InsertRecord(record, recordInfo, rowid);
@@ -683,7 +699,7 @@ static BOOL ClassVersionsAreCompatible(int oldClassVersion, int newClassVersion)
 				
 				if ([allowedCollections isAllowed:collection])
 				{
-					[databaseTransaction _enumerateKeysAndObjectsInCollections:@[ collection ] usingBlock:enumBlock];
+					[self->databaseTransaction _enumerateKeysAndObjectsInCollections:@[ collection ] usingBlock:enumBlock];
 				}
 			}];
 		}
@@ -704,7 +720,7 @@ static BOOL ClassVersionsAreCompatible(int oldClassVersion, int newClassVersion)
 			recordInfo.databaseIdentifier = nil;
 			recordInfo.originalValues = nil;
 			
-			recordBlock(databaseTransaction, &record, recordInfo, collection, key, metadata);
+			recordBlock(self->databaseTransaction, &record, recordInfo, collection, key, metadata);
 			
 			if (record) {
 				InsertRecord(record, recordInfo, rowid);
@@ -717,7 +733,7 @@ static BOOL ClassVersionsAreCompatible(int oldClassVersion, int newClassVersion)
 				
 				if ([allowedCollections isAllowed:collection])
 				{
-					[databaseTransaction _enumerateKeysAndMetadataInCollections:@[ collection ] usingBlock:enumBlock];
+					[self->databaseTransaction _enumerateKeysAndMetadataInCollections:@[ collection ] usingBlock:enumBlock];
 				}
 			}];
 		}
@@ -738,7 +754,7 @@ static BOOL ClassVersionsAreCompatible(int oldClassVersion, int newClassVersion)
 			recordInfo.databaseIdentifier = nil;
 			recordInfo.originalValues = nil;
 			
-			recordBlock(databaseTransaction, &record, recordInfo, collection, key, object, metadata);
+			recordBlock(self->databaseTransaction, &record, recordInfo, collection, key, object, metadata);
 			
 			if (record) {
 				InsertRecord(record, recordInfo, rowid);
@@ -751,7 +767,7 @@ static BOOL ClassVersionsAreCompatible(int oldClassVersion, int newClassVersion)
 				
 				if ([allowedCollections isAllowed:collection])
 				{
-					[databaseTransaction _enumerateRowsInCollections:@[ collection ] usingBlock:enumBlock];
+					[self->databaseTransaction _enumerateRowsInCollections:@[ collection ] usingBlock:enumBlock];
 				}
 			}];
 		}
@@ -816,7 +832,7 @@ static BOOL ClassVersionsAreCompatible(int oldClassVersion, int newClassVersion)
 		enumBlock = ^(int64_t rowid, NSString *collection, NSString *key, BOOL *stop) {
 			
 			enumHelperBlock(rowid);
-			recordBlock(databaseTransaction, &record, recordInfo, collection, key);
+			recordBlock(self->databaseTransaction, &record, recordInfo, collection, key);
 			
 			[self processRecord:record recordInfo:recordInfo
 			                    preCalculatedHash:nil
@@ -832,7 +848,7 @@ static BOOL ClassVersionsAreCompatible(int oldClassVersion, int newClassVersion)
 				
 				if ([allowedCollections isAllowed:collection])
 				{
-					[databaseTransaction _enumerateKeysInCollections:@[ collection ] usingBlock:enumBlock];
+					[self->databaseTransaction _enumerateKeysInCollections:@[ collection ] usingBlock:enumBlock];
 				}
 			}];
 		}
@@ -850,7 +866,7 @@ static BOOL ClassVersionsAreCompatible(int oldClassVersion, int newClassVersion)
 		enumBlock = ^(int64_t rowid, NSString *collection, NSString *key, id object, BOOL *stop) {
 			
 			enumHelperBlock(rowid);
-			recordBlock(databaseTransaction, &record, recordInfo, collection, key, object);
+			recordBlock(self->databaseTransaction, &record, recordInfo, collection, key, object);
 			
 			[self processRecord:record recordInfo:recordInfo
 			                    preCalculatedHash:nil
@@ -866,7 +882,7 @@ static BOOL ClassVersionsAreCompatible(int oldClassVersion, int newClassVersion)
 				
 				if ([allowedCollections isAllowed:collection])
 				{
-					[databaseTransaction _enumerateKeysAndObjectsInCollections:@[ collection ] usingBlock:enumBlock];
+					[self->databaseTransaction _enumerateKeysAndObjectsInCollections:@[ collection ] usingBlock:enumBlock];
 				}
 			}];
 		}
@@ -884,7 +900,7 @@ static BOOL ClassVersionsAreCompatible(int oldClassVersion, int newClassVersion)
 		enumBlock = ^(int64_t rowid, NSString *collection, NSString *key, id metadata, BOOL *stop) {
 			
 			enumHelperBlock(rowid);
-			recordBlock(databaseTransaction, &record, recordInfo, collection, key, metadata);
+			recordBlock(self->databaseTransaction, &record, recordInfo, collection, key, metadata);
 			
 			[self processRecord:record recordInfo:recordInfo
 			                    preCalculatedHash:nil
@@ -900,7 +916,7 @@ static BOOL ClassVersionsAreCompatible(int oldClassVersion, int newClassVersion)
 				
 				if ([allowedCollections isAllowed:collection])
 				{
-					[databaseTransaction _enumerateKeysAndMetadataInCollections:@[ collection ] usingBlock:enumBlock];
+					[self->databaseTransaction _enumerateKeysAndMetadataInCollections:@[ collection ] usingBlock:enumBlock];
 				}
 			}];
 		}
@@ -918,7 +934,7 @@ static BOOL ClassVersionsAreCompatible(int oldClassVersion, int newClassVersion)
 		enumBlock = ^(int64_t rowid, NSString *collection, NSString *key, id object, id metadata, BOOL *stop) {
 			
 			enumHelperBlock(rowid);
-			recordBlock(databaseTransaction, &record, recordInfo, collection, key, object, metadata);
+			recordBlock(self->databaseTransaction, &record, recordInfo, collection, key, object, metadata);
 			
 			[self processRecord:record recordInfo:recordInfo
 			                    preCalculatedHash:nil
@@ -934,7 +950,7 @@ static BOOL ClassVersionsAreCompatible(int oldClassVersion, int newClassVersion)
 				
 				if ([allowedCollections isAllowed:collection])
 				{
-					[databaseTransaction _enumerateRowsInCollections:@[ collection ] usingBlock:enumBlock];
+					[self->databaseTransaction _enumerateRowsInCollections:@[ collection ] usingBlock:enumBlock];
 				}
 			}];
 		}
@@ -1027,7 +1043,7 @@ static BOOL ClassVersionsAreCompatible(int oldClassVersion, int newClassVersion)
 	uint8_t bufferStack[maxStackSize];
 	void *buffer = NULL;
 	
-	if (maxLen <= maxStackSize)
+	if (maxLen <= (NSUInteger)maxStackSize)
 		buffer = bufferStack;
 	else
 		buffer = malloc((size_t)maxLen);
@@ -1086,7 +1102,7 @@ static BOOL ClassVersionsAreCompatible(int oldClassVersion, int newClassVersion)
 	NSData *hashData = [NSData dataWithBytesNoCopy:(void *)hashBytes length:CC_SHA1_DIGEST_LENGTH freeWhenDone:NO];
 	NSString *hashStr = [hashData base64EncodedStringWithOptions:0];
 	
-	if (maxLen > maxStackSize) {
+	if (maxLen > (NSUInteger)maxStackSize) {
 		free(buffer);
 	}
 	return hashStr;
@@ -1414,7 +1430,7 @@ static BOOL ClassVersionsAreCompatible(int oldClassVersion, int newClassVersion)
 }
 
 /**
- * This method is called from handleRemoveObjectsForKeys:inCollection:withRowids:.
+ * This method is called from didRemoveObjectsForKeys:inCollection:withRowids:.
  *
  * It's used to fetch all the mappingTableInfo items for all the given rowids.
  * This information is used in order to determine which rowids are mapped to a CKRecords (in the record table).
@@ -1478,7 +1494,7 @@ static BOOL ClassVersionsAreCompatible(int oldClassVersion, int newClassVersion)
 		sqlite3 *db = databaseTransaction->connection->db;
 		
 		// Note:
-		// The handleRemoveObjectsForKeys:inCollection:withRowids: has the following guarantee:
+		// The didRemoveObjectsForKeys:inCollection:withRowids: has the following guarantee:
 		//     count <= (SQLITE_LIMIT_VARIABLE_NUMBER - 1)
 		//
 		// So we don't have to worry about sqlite's upper bound on host parameters.
@@ -1510,10 +1526,10 @@ static BOOL ClassVersionsAreCompatible(int oldClassVersion, int newClassVersion)
 		status = sqlite3_prepare_v2(db, [query UTF8String], -1, &statement, NULL);
 		if (status != SQLITE_OK)
 		{
-			YDBLogError(@"%@ (%@): Error creating statement\n"
+			YDBLogError(@"(%@): Error creating statement\n"
 			            @" - status(%d), errmsg: %s\n"
 			            @" - query: %@",
-			            THIS_METHOD, [self registeredName], status, sqlite3_errmsg(db), query);
+			            [self registeredName], status, sqlite3_errmsg(db), query);
 			
 			return foundRowids;
 		}
@@ -1548,8 +1564,8 @@ static BOOL ClassVersionsAreCompatible(int oldClassVersion, int newClassVersion)
 		
 		if (status != SQLITE_DONE)
 		{
-			YDBLogError(@"%@ (%@): Error executing statement: %d %s",
-						THIS_METHOD, [self registeredName], status, sqlite3_errmsg(db));
+			YDBLogError(@"(%@): Error executing statement: %d %s",
+			            [self registeredName], status, sqlite3_errmsg(db));
 		}
 		
 		sqlite3_finalize(statement);
@@ -1586,8 +1602,8 @@ static BOOL ClassVersionsAreCompatible(int oldClassVersion, int newClassVersion)
 		int status = sqlite3_step(statement);
 		if (status == SQLITE_ERROR)
 		{
-			YDBLogError(@"%@ - Error executing statement (insert): %d %s", THIS_METHOD,
-						status, sqlite3_errmsg(databaseTransaction->connection->db));
+			YDBLogError(@"Error executing statement (insert): %d %s",
+			            status, sqlite3_errmsg(databaseTransaction->connection->db));
 		}
 		
 		sqlite3_clear_bindings(statement);
@@ -1621,7 +1637,7 @@ static BOOL ClassVersionsAreCompatible(int oldClassVersion, int newClassVersion)
 		int status = sqlite3_step(statement);
 		if (status == SQLITE_ERROR)
 		{
-			YDBLogError(@"%@ - Error executing statement (insert): %d %s", THIS_METHOD,
+			YDBLogError(@"Error executing statement (insert): %d %s",
 						status, sqlite3_errmsg(databaseTransaction->connection->db));
 		}
 		
@@ -1649,7 +1665,7 @@ static BOOL ClassVersionsAreCompatible(int oldClassVersion, int newClassVersion)
 	int status = sqlite3_step(statement);
 	if (status == SQLITE_ERROR)
 	{
-		YDBLogError(@"%@ - Error executing statement (remove): %d %s", THIS_METHOD,
+		YDBLogError(@"Error executing statement (remove): %d %s",
 					status, sqlite3_errmsg(databaseTransaction->connection->db));
 	}
 	
@@ -1673,7 +1689,7 @@ static BOOL ClassVersionsAreCompatible(int oldClassVersion, int newClassVersion)
 	int status = sqlite3_step(statement);
 	if (status != SQLITE_DONE)
 	{
-		YDBLogError(@"%@ - Error executing statement: %d %s", THIS_METHOD,
+		YDBLogError(@"Error executing statement: %d %s",
 		            status, sqlite3_errmsg(databaseTransaction->connection->db));
 	}
 	
@@ -1866,7 +1882,7 @@ static BOOL ClassVersionsAreCompatible(int oldClassVersion, int newClassVersion)
 }
 
 /**
- * This method is called from handleRemoveObjectsForKeys:inCollection:withRowids:.
+ * This method is called from didRemoveObjectsForKeys:inCollection:withRowids:.
  * 
  * It's used to fetch all the recordInfo items for all the given rowids.
  * This information is used in order to determine which rowids have associated CKRecords,
@@ -1929,7 +1945,7 @@ static BOOL ClassVersionsAreCompatible(int oldClassVersion, int newClassVersion)
 		sqlite3 *db = databaseTransaction->connection->db;
 		
 		// Note:
-		// The handleRemoveObjectsForKeys:inCollection:withRowids: has the following guarantee:
+		// The didRemoveObjectsForKeys:inCollection:withRowids: has the following guarantee:
 		//     count <= (SQLITE_LIMIT_VARIABLE_NUMBER - 1)
 		//
 		// So we don't have to worry about sqlite's upper bound on host parameters.
@@ -1965,10 +1981,10 @@ static BOOL ClassVersionsAreCompatible(int oldClassVersion, int newClassVersion)
 		status = sqlite3_prepare_v2(db, [query UTF8String], -1, &statement, NULL);
 		if (status != SQLITE_OK)
 		{
-			YDBLogError(@"%@ (%@): Error creating statement\n"
+			YDBLogError(@"(%@): Error creating statement\n"
 			            @" - status(%d), errmsg: %s\n"
 			            @" - query: %@",
-			            THIS_METHOD, [self registeredName], status, sqlite3_errmsg(db), query);
+			            [self registeredName], status, sqlite3_errmsg(db), query);
 			
 			return foundHashes;
 		}
@@ -2026,8 +2042,7 @@ static BOOL ClassVersionsAreCompatible(int oldClassVersion, int newClassVersion)
 		
 		if (status != SQLITE_DONE)
 		{
-			YDBLogError(@"%@ (%@): Error executing statement: %d %s",
-						THIS_METHOD, [self registeredName], status, sqlite3_errmsg(db));
+			YDBLogError(@"(%@): Error executing statement: %d %s", [self registeredName], status, sqlite3_errmsg(db));
 		}
 		
 		sqlite3_finalize(statement);
@@ -2089,7 +2104,7 @@ static BOOL ClassVersionsAreCompatible(int oldClassVersion, int newClassVersion)
 	int status = sqlite3_step(statement);
 	if (status != SQLITE_DONE)
 	{
-		YDBLogError(@"%@ - Error executing statement: %d %s", THIS_METHOD,
+		YDBLogError(@"Error executing statement: %d %s",
 		            status, sqlite3_errmsg(databaseTransaction->connection->db));
 	}
 	
@@ -2143,7 +2158,7 @@ static BOOL ClassVersionsAreCompatible(int oldClassVersion, int newClassVersion)
 		int status = sqlite3_step(statement);
 		if (status != SQLITE_DONE)
 		{
-			YDBLogError(@"%@ - Error executing statement (A): %d %s", THIS_METHOD,
+			YDBLogError(@"Error executing statement (A): %d %s",
 						status, sqlite3_errmsg(databaseTransaction->connection->db));
 		}
 		
@@ -2185,7 +2200,7 @@ static BOOL ClassVersionsAreCompatible(int oldClassVersion, int newClassVersion)
 	int status = sqlite3_step(statement);
 	if (status != SQLITE_DONE)
 	{
-		YDBLogError(@"%@ - Error executing statement (A): %d %s", THIS_METHOD,
+		YDBLogError(@"Error executing statement (A): %d %s",
 		            status, sqlite3_errmsg(databaseTransaction->connection->db));
 	}
 	
@@ -2204,7 +2219,7 @@ static BOOL ClassVersionsAreCompatible(int oldClassVersion, int newClassVersion)
 	YDBLogAutoTrace();
 	
 	if (hash == nil) {
-		YDBLogWarn(@"%@ - Invalid parameter: hash == nil", THIS_METHOD);
+		YDBLogWarn(@"Invalid parameter: hash == nil");
 		return;
 	}
 	
@@ -2225,7 +2240,7 @@ static BOOL ClassVersionsAreCompatible(int oldClassVersion, int newClassVersion)
 	int status = sqlite3_step(statement);
 	if (status == SQLITE_ERROR)
 	{
-		YDBLogError(@"%@ - Error executing statement: %d %s", THIS_METHOD,
+		YDBLogError(@"Error executing statement: %d %s",
 		            status, sqlite3_errmsg(databaseTransaction->connection->db));
 	}
 	
@@ -2285,10 +2300,10 @@ static BOOL ClassVersionsAreCompatible(int oldClassVersion, int newClassVersion)
 		status = sqlite3_prepare_v2(db, [query UTF8String], -1, &statement, NULL);
 		if (status != SQLITE_OK)
 		{
-			YDBLogError(@"%@ (%@): Error creating statement\n"
+			YDBLogError(@"(%@): Error creating statement\n"
 			            @" - status(%d), errmsg: %s\n"
 			            @" - query: %@",
-			            THIS_METHOD, [self registeredName], status, sqlite3_errmsg(db), query);
+			            [self registeredName], status, sqlite3_errmsg(db), query);
 			
 			return;
 		}
@@ -2305,8 +2320,7 @@ static BOOL ClassVersionsAreCompatible(int oldClassVersion, int newClassVersion)
 		status = sqlite3_step(statement);
 		if (status != SQLITE_DONE)
 		{
-			YDBLogError(@"%@ (%@): Error executing statement: %d %s",
-						THIS_METHOD, [self registeredName], status, sqlite3_errmsg(db));
+			YDBLogError(@"(%@): Error executing statement: %d %s", [self registeredName], status, sqlite3_errmsg(db));
 		}
 		
 		sqlite3_finalize(statement);
@@ -2335,7 +2349,7 @@ static BOOL ClassVersionsAreCompatible(int oldClassVersion, int newClassVersion)
 	int status = sqlite3_step(statement);
 	if (status != SQLITE_DONE)
 	{
-		YDBLogError(@"%@ - Error executing statement: %d %s", THIS_METHOD,
+		YDBLogError(@"Error executing statement: %d %s",
 		            status, sqlite3_errmsg(databaseTransaction->connection->db));
 	}
 	
@@ -2438,7 +2452,7 @@ static BOOL ClassVersionsAreCompatible(int oldClassVersion, int newClassVersion)
 	int status = sqlite3_step(statement);
 	if (status != SQLITE_DONE)
 	{
-		YDBLogError(@"%@ - Error executing statement: %d %s", THIS_METHOD,
+		YDBLogError(@"Error executing statement: %d %s",
 		            status, sqlite3_errmsg(databaseTransaction->connection->db));
 	}
 	
@@ -2486,7 +2500,7 @@ static BOOL ClassVersionsAreCompatible(int oldClassVersion, int newClassVersion)
 		int status = sqlite3_step(statement);
 		if (status != SQLITE_DONE)
 		{
-			YDBLogError(@"%@ - Error executing statement: %d %s", THIS_METHOD,
+			YDBLogError(@"Error executing statement: %d %s",
 			            status, sqlite3_errmsg(databaseTransaction->connection->db));
 		}
 		
@@ -2521,7 +2535,7 @@ static BOOL ClassVersionsAreCompatible(int oldClassVersion, int newClassVersion)
 		int status = sqlite3_step(statement);
 		if (status != SQLITE_DONE)
 		{
-			YDBLogError(@"%@ - Error executing statement: %d %s", THIS_METHOD,
+			YDBLogError(@"Error executing statement: %d %s",
 			            status, sqlite3_errmsg(databaseTransaction->connection->db));
 		}
 		
@@ -2564,7 +2578,7 @@ static BOOL ClassVersionsAreCompatible(int oldClassVersion, int newClassVersion)
 		int status = sqlite3_step(statement);
 		if (status != SQLITE_DONE)
 		{
-			YDBLogError(@"%@ - Error executing statement: %d %s", THIS_METHOD,
+			YDBLogError(@"Error executing statement: %d %s",
 			            status, sqlite3_errmsg(databaseTransaction->connection->db));
 		}
 		
@@ -2598,7 +2612,7 @@ static BOOL ClassVersionsAreCompatible(int oldClassVersion, int newClassVersion)
 	int status = sqlite3_step(statement);
 	if (status != SQLITE_DONE)
 	{
-		YDBLogError(@"%@ - Error executing statement: %d %s", THIS_METHOD,
+		YDBLogError(@"Error executing statement: %d %s",
 		            status, sqlite3_errmsg(databaseTransaction->connection->db));
 	}
 	
@@ -2898,6 +2912,8 @@ static BOOL ClassVersionsAreCompatible(int oldClassVersion, int newClassVersion)
 	// Update mapping table.
 	
 	[parentConnection->dirtyMappingTableInfoDict enumerateKeysAndObjectsUsingBlock:^(id key, id obj, BOOL *stop) {
+	#pragma clang diagnostic push
+	#pragma clang diagnostic ignored "-Wimplicit-retain-self"
 		
 		__unsafe_unretained NSNumber *rowidNumber = (NSNumber *)key;
 		__unsafe_unretained YDBCKDirtyMappingTableInfo *dirtyMappingTableInfo = (YDBCKDirtyMappingTableInfo *)obj;
@@ -2923,6 +2939,8 @@ static BOOL ClassVersionsAreCompatible(int oldClassVersion, int newClassVersion)
 			[parentConnection->changeset_mappingTableInfo setObject:cleanMappingTableInfo forKey:rowidNumber];
 			[parentConnection->cleanMappingTableInfoCache setObject:cleanMappingTableInfo forKey:rowidNumber];
 		}
+		
+	#pragma clang diagnostic pop
 	}];
 	
 	// Step 2 of 6:
@@ -2930,6 +2948,8 @@ static BOOL ClassVersionsAreCompatible(int oldClassVersion, int newClassVersion)
 	// Update record table.
 	
 	[parentConnection->dirtyRecordTableInfoDict enumerateKeysAndObjectsUsingBlock:^(id key, id obj, BOOL *stop) {
+	#pragma clang diagnostic push
+	#pragma clang diagnostic ignored "-Wimplicit-retain-self"
 		
 		__unsafe_unretained NSString *hash = (NSString *)key;
 		__unsafe_unretained YDBCKDirtyRecordTableInfo *dirtyRecordTableInfo = (YDBCKDirtyRecordTableInfo *)obj;
@@ -2985,6 +3005,8 @@ static BOOL ClassVersionsAreCompatible(int oldClassVersion, int newClassVersion)
 			[parentConnection->changeset_recordTableInfo setObject:cleanRecordTableInfo forKey:hash];
 			[parentConnection->cleanRecordTableInfoCache setObject:cleanRecordTableInfo forKey:hash];
 		}
+		
+	#pragma clang diagnostic pop
 	}];
 	
 	// Step 3 of 6:
@@ -3260,10 +3282,10 @@ static BOOL ClassVersionsAreCompatible(int oldClassVersion, int newClassVersion)
  * YapDatabase extension hook.
  * This method is invoked by a YapDatabaseReadWriteTransaction as a post-operation-hook.
 **/
-- (void)handleInsertObject:(id)object
-          forCollectionKey:(YapCollectionKey *)collectionKey
-              withMetadata:(id)metadata
-                     rowid:(int64_t)rowid
+- (void)didInsertObject:(id)object
+       forCollectionKey:(YapCollectionKey *)collectionKey
+           withMetadata:(id)metadata
+                  rowid:(int64_t)rowid
 {
 	YDBLogAutoTrace();
 	
@@ -3306,10 +3328,10 @@ static BOOL ClassVersionsAreCompatible(int oldClassVersion, int newClassVersion)
  * YapDatabase extension hook.
  * This method is invoked by a YapDatabaseReadWriteTransaction as a post-operation-hook.
 **/
-- (void)handleUpdateObject:(id)object
-          forCollectionKey:(YapCollectionKey *)collectionKey
-              withMetadata:(id)metadata
-                     rowid:(int64_t)rowid
+- (void)didUpdateObject:(id)object
+       forCollectionKey:(YapCollectionKey *)collectionKey
+           withMetadata:(id)metadata
+                  rowid:(int64_t)rowid
 {
 	YDBLogAutoTrace();
 	
@@ -3344,7 +3366,7 @@ static BOOL ClassVersionsAreCompatible(int oldClassVersion, int newClassVersion)
  * YapDatabase extension hook.
  * This method is invoked by a YapDatabaseReadWriteTransaction as a post-operation-hook.
 **/
-- (void)handleReplaceObject:(id)object forCollectionKey:(YapCollectionKey *)collectionKey withRowid:(int64_t)rowid
+- (void)didReplaceObject:(id)object forCollectionKey:(YapCollectionKey *)collectionKey withRowid:(int64_t)rowid
 {
 	YDBLogAutoTrace();
 	
@@ -3384,7 +3406,7 @@ static BOOL ClassVersionsAreCompatible(int oldClassVersion, int newClassVersion)
  * YapDatabase extension hook.
  * This method is invoked by a YapDatabaseReadWriteTransaction as a post-operation-hook.
 **/
-- (void)handleReplaceMetadata:(id)metadata forCollectionKey:(YapCollectionKey *)collectionKey withRowid:(int64_t)rowid
+- (void)didReplaceMetadata:(id)metadata forCollectionKey:(YapCollectionKey *)collectionKey withRowid:(int64_t)rowid
 {
 	YDBLogAutoTrace();
 	
@@ -3424,7 +3446,7 @@ static BOOL ClassVersionsAreCompatible(int oldClassVersion, int newClassVersion)
  * YapDatabase extension hook.
  * This method is invoked by a YapDatabaseReadWriteTransaction as a post-operation-hook.
 **/
-- (void)handleTouchObjectForCollectionKey:(YapCollectionKey *)collectionKey withRowid:(int64_t)rowid
+- (void)didTouchObjectForCollectionKey:(YapCollectionKey *)collectionKey withRowid:(int64_t)rowid
 {
 	// Check for possible MidMerge
 	
@@ -3468,7 +3490,7 @@ static BOOL ClassVersionsAreCompatible(int oldClassVersion, int newClassVersion)
  * YapDatabase extension hook.
  * This method is invoked by a YapDatabaseReadWriteTransaction as a post-operation-hook.
 **/
-- (void)handleTouchMetadataForCollectionKey:(YapCollectionKey *)collectionKey withRowid:(int64_t)rowid
+- (void)didTouchMetadataForCollectionKey:(YapCollectionKey *)collectionKey withRowid:(int64_t)rowid
 {
 	// Check for possible MidMerge
 	
@@ -3512,7 +3534,7 @@ static BOOL ClassVersionsAreCompatible(int oldClassVersion, int newClassVersion)
  * YapDatabase extension hook.
  * This method is invoked by a YapDatabaseReadWriteTransaction as a post-operation-hook.
 **/
-- (void)handleTouchRowForCollectionKey:(YapCollectionKey *)collectionKey withRowid:(int64_t)rowid
+- (void)didTouchRowForCollectionKey:(YapCollectionKey *)collectionKey withRowid:(int64_t)rowid
 {
 	// Check for possible MidMerge
 	
@@ -3557,7 +3579,7 @@ static BOOL ClassVersionsAreCompatible(int oldClassVersion, int newClassVersion)
  * YapDatabase extension hook.
  * This method is invoked by a YapDatabaseReadWriteTransaction as a post-operation-hook.
 **/
-- (void)handleRemoveObjectForCollectionKey:(YapCollectionKey *)collectionKey withRowid:(int64_t)rowid
+- (void)didRemoveObjectForCollectionKey:(YapCollectionKey *)collectionKey withRowid:(int64_t)rowid
 {
 	YDBLogAutoTrace();
 	
@@ -3583,7 +3605,7 @@ static BOOL ClassVersionsAreCompatible(int oldClassVersion, int newClassVersion)
  * YapDatabase extension hook.
  * This method is invoked by a YapDatabaseReadWriteTransaction as a post-operation-hook.
 **/
-- (void)handleRemoveObjectsForKeys:(NSArray *)keys inCollection:(NSString *)collection withRowids:(NSArray *)rowids
+- (void)didRemoveObjectsForKeys:(NSArray *)keys inCollection:(NSString *)collection withRowids:(NSArray *)rowids
 {
 	YDBLogAutoTrace();
 	
@@ -3625,7 +3647,7 @@ static BOOL ClassVersionsAreCompatible(int oldClassVersion, int newClassVersion)
  * YapDatabase extension hook.
  * This method is invoked by a YapDatabaseReadWriteTransaction as a post-operation-hook.
 **/
-- (void)handleRemoveAllObjectsInAllCollections
+- (void)didRemoveAllObjectsInAllCollections
 {
 	YDBLogAutoTrace();
 	
@@ -3646,63 +3668,7 @@ static BOOL ClassVersionsAreCompatible(int oldClassVersion, int newClassVersion)
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 /**
- * This method is used to associate an existing CKRecord with a row in the database.
- * There are two primary use cases for this method.
- *
- * 1. To associate a discovered/pulled CKRecord with a row in the database before you insert it the row.
- *    In particular, for the following situation:
- *
- *    - You're pulling record changes from the server via CKFetchRecordChangesOperation (or similar).
- *    - You discover a record that was inserted by another device.
- *    - You need to add a corresponding row to the database,
- *      but you also need to inform the YapDatabaseCloudKit extension about the existing record,
- *      so it won't bother invoking the recordHandler, or attempting to upload the existing record.
- *    - So you invoke this method FIRST.
- *    - And THEN you insert the corresponding object into the database via the
- *      normal setObject:forKey:inCollection: method (or similar methods).
- *
- * 2. To assist in the migration process when switching to YapDatabaseCloudKit.
- *    In particular, for the following situation:
- *
- *    - You've been handling CloudKit manually (not via YapDatabaseCloudKit).
- *    - And you now want YapDatabaseCloudKit to manage the CKRecord for you.
- *    - So you can invoke this method for an object that already exists in the database,
- *      OR you can invoke this method FIRST, and then insert the new object that you want linked to the record.
- *
- * Thus, this method works as a simple "hand-off" of the CKRecord to the YapDatabaseCloudKit extension.
- *
- * In other words, YapDatbaseCloudKit will write the system fields of the given CKRecord to its internal table,
- * and associate it with the given collection/key tuple.
- *
- * @param record
- *   The CKRecord to associate with the collection/key tuple.
- *
- * @param databaseIdentifer
- *   The identifying string for the CKDatabase.
- *   @see YapDatabaseCloudKitDatabaseIdentifierBlock.
- *
- * @param key
- *   The key of the row to associate the record with.
- *
- * @param collection
- *   The collection of the row to associate the record with.
- *
- * @param shouldUpload
- *   If NO, then the record is simply associated with the collection/key,
- *     and YapDatabaseCloudKit doesn't attempt to push the record to the cloud.
- *   If YES, then the record is associated with the collection/key,
- *     and YapDatabaseCloutKit assumes the given record is dirty and will push the record to the cloud.
- *
- * @return
- *   YES if the record was associated with the given collection/key.
- *   NO if one of the following errors occurred.
- *
- * The following errors will prevent this method from succeeding:
- * - The given record is nil.
- * - The given collection/key is already associated with a different record (so must detach it first).
- *
- * Important: This method only works if within a readWriteTrasaction.
- * Invoking this method from within a read-only transaction will throw an exception.
+ * See header file for documentation.
 **/
 - (BOOL)attachRecord:(CKRecord *)inRecord
   databaseIdentifier:(NSString *)databaseIdentifier
@@ -3842,7 +3808,7 @@ static BOOL ClassVersionsAreCompatible(int oldClassVersion, int newClassVersion)
  *   Note: If a record was deleted remotely, and the record was associated with MULTIPLE items in the database,
  *   then you should be sure to invoke this method for each attached collection/key.
  *
- * @param shouldUpload
+ * @param shouldUploadDeletion
  *   Whether or not the extension should push a deleted CKRecordID to the cloud.
  *   In use case #2 (from the above discussion, concerning migration), you'd pass NO.
  *   In use case #3 (from the above discussion, concerning moving), you'd pass YES.
@@ -3886,7 +3852,7 @@ static BOOL ClassVersionsAreCompatible(int oldClassVersion, int newClassVersion)
 		}
 		
 		if (logWarning) {
-			YDBLogWarn(@"%@ - No row in database with given collection/key: %@, %@", THIS_METHOD, collection, key);
+			YDBLogWarn(@"No row in database with given collection/key: %@, %@", collection, key);
 		}
 		
 		return;
@@ -3946,7 +3912,7 @@ static BOOL ClassVersionsAreCompatible(int oldClassVersion, int newClassVersion)
 	
 	if (remoteRecord == nil)
 	{
-		YDBLogWarn(@"%@ - Unable to merge a nil record! Did you mean to detach the recordID?", THIS_METHOD);
+		YDBLogWarn(@"Unable to merge a nil record! Did you mean to detach the recordID?");
 		return;
 	}
 	
@@ -4257,7 +4223,7 @@ static BOOL ClassVersionsAreCompatible(int oldClassVersion, int newClassVersion)
 	YDBLogAutoTrace();
 	
 	if (recordID == nil) {
-		return nil;
+		return [NSArray array];
 	}
 	
 	NSString *hash = [self hashRecordID:recordID databaseIdentifier:databaseIdentifier];
@@ -4265,7 +4231,7 @@ static BOOL ClassVersionsAreCompatible(int oldClassVersion, int newClassVersion)
 	
 	NSUInteger count = rowids.count;
 	if (count == 0) {
-		return nil;
+		return [NSArray array];
 	}
 	
 	NSMutableArray *collectionKeys = [NSMutableArray arrayWithCapacity:count];
@@ -4465,7 +4431,7 @@ static BOOL ClassVersionsAreCompatible(int oldClassVersion, int newClassVersion)
 	}
 	else if (status == SQLITE_ERROR)
 	{
-		YDBLogError(@"%@ - Error executing statement: %d %s", THIS_METHOD,
+		YDBLogError(@"Error executing statement: %d %s",
 					status, sqlite3_errmsg(databaseTransaction->connection->db));
 	}
 	

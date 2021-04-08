@@ -1,17 +1,16 @@
 #import "YapDatabaseCloudKitPrivate.h"
+#import "YapDatabaseAtomic.h"
 #import "YapDatabasePrivate.h"
 #import "YapDatabaseLogging.h"
-
-#import <libkern/OSAtomic.h>
 
 /**
  * Define log level for this file: OFF, ERROR, WARN, INFO, VERBOSE
  * See YapDatabaseLogging.h for more information.
 **/
 #if DEBUG
-  static const int ydbLogLevel = YDB_LOG_LEVEL_VERBOSE | YDB_LOG_FLAG_TRACE;
+  static const int ydbLogLevel = YDBLogLevelWarning; // YDBLogLevelVerbose | YDBLogFlagTrace;
 #else
-  static const int ydbLogLevel = YDB_LOG_LEVEL_WARN;
+  static const int ydbLogLevel = YDBLogLevelWarning;
 #endif
 #pragma unused(ydbLogLevel)
 
@@ -21,7 +20,7 @@ NSString *const YapDatabaseCloudKitInFlightChangeSetChangedNotification = @"YDBC
 @implementation YapDatabaseCloudKit
 {
 	NSUInteger suspendCount;
-	OSSpinLock suspendCountLock;
+	YAPUnfairLock suspendCountLock;
 	
 	NSOperationQueue *masterOperationQueue;
 	
@@ -64,8 +63,7 @@ NSString *const YapDatabaseCloudKitInFlightChangeSetChangedNotification = @"YDBC
 		int status = sqlite3_exec(db, [dropTable UTF8String], NULL, NULL, NULL);
 		if (status != SQLITE_OK)
 		{
-			YDBLogError(@"%@ - Failed dropping table (%@): %d %s",
-			            THIS_METHOD, tableName, status, sqlite3_errmsg(db));
+			YDBLogError(@"Failed dropping table (%@): %d %s", tableName, status, sqlite3_errmsg(db));
 		}
 	}
 }
@@ -168,7 +166,7 @@ NSString *const YapDatabaseCloudKitInFlightChangeSetChangedNotification = @"YDBC
 		masterOperationQueue = [[NSOperationQueue alloc] init];
 		masterOperationQueue.maxConcurrentOperationCount = 1;
 		
-		suspendCountLock = OS_SPINLOCK_INIT;
+		suspendCountLock = YAP_UNFAIR_LOCK_INIT;
 	}
 	return self;
 }
@@ -191,11 +189,11 @@ NSString *const YapDatabaseCloudKitInFlightChangeSetChangedNotification = @"YDBC
 {
 	NSUInteger currentSuspendCount = 0;
 	
-	OSSpinLockLock(&suspendCountLock);
+	YAPUnfairLockLock(&suspendCountLock);
 	{
 		currentSuspendCount = suspendCount;
 	}
-	OSSpinLockUnlock(&suspendCountLock);
+	YAPUnfairLockUnlock(&suspendCountLock);
 	
 	return currentSuspendCount;
 }
@@ -264,7 +262,7 @@ NSString *const YapDatabaseCloudKitInFlightChangeSetChangedNotification = @"YDBC
 	BOOL overflow = NO;
 	NSUInteger newSuspendCount = 0;
 	
-	OSSpinLockLock(&suspendCountLock);
+	YAPUnfairLockLock(&suspendCountLock);
 	{
 		if (suspendCount <= (NSUIntegerMax - suspendCountIncrement))
 			suspendCount += suspendCountIncrement;
@@ -275,11 +273,11 @@ NSString *const YapDatabaseCloudKitInFlightChangeSetChangedNotification = @"YDBC
 		
 		newSuspendCount = suspendCount;
 	}
-	OSSpinLockUnlock(&suspendCountLock);
+	YAPUnfairLockUnlock(&suspendCountLock);
 	
 	if (overflow)
 	{
-		YDBLogWarn(@"%@ - The suspendCount has reached NSUIntegerMax!", THIS_METHOD);
+		YDBLogWarn(@"The suspendCount has reached NSUIntegerMax!");
 	}
 	else if (suspendCountIncrement > 0)
 	{
@@ -296,7 +294,7 @@ NSString *const YapDatabaseCloudKitInFlightChangeSetChangedNotification = @"YDBC
 	BOOL underflow = 0;
 	NSUInteger newSuspendCount = 0;
 	
-	OSSpinLockLock(&suspendCountLock);
+	YAPUnfairLockLock(&suspendCountLock);
 	{
 		if (suspendCount > 0)
 			suspendCount--;
@@ -305,11 +303,11 @@ NSString *const YapDatabaseCloudKitInFlightChangeSetChangedNotification = @"YDBC
 		
 		newSuspendCount = suspendCount;
 	}
-	OSSpinLockUnlock(&suspendCountLock);
+	YAPUnfairLockUnlock(&suspendCountLock);
 	
 	if (underflow)
 	{
-		YDBLogWarn(@"%@ - Attempting to resume with suspendCount already at zero.", THIS_METHOD);
+		YDBLogWarn(@"Attempting to resume with suspendCount already at zero.");
 	}
 	else
 	{
@@ -480,63 +478,70 @@ NSString *const YapDatabaseCloudKitInFlightChangeSetChangedNotification = @"YDBC
 {
 	YDBLogAutoTrace();
 	
-	// The 'forceNotification' parameter will be YES when this method
-	// is being called after successfully completing a previous operation.
+	__weak YapDatabaseCloudKit *weakSelf = self;
 	
 	dispatch_queue_t bgQueue = dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0);
 	dispatch_async(bgQueue, ^{ @autoreleasepool {
 		
-		if (self.isSuspended) // this method is thread-safe
-		{
-			YDBLogVerbose(@"Skipping dispatch operation - suspended");
-			
-			if (forceNotification) {
-				[self postInFlightChangeSetChangedNotification:[masterQueue currentChangeSetUUID]];
-			}
-			return;
-		}
-		
-		BOOL isAlreadyInFlight = NO;
-		YDBCKChangeSet *nextChangeSet = nil;
-		
-		nextChangeSet = [masterQueue makeInFlightChangeSet:&isAlreadyInFlight]; // this method is thread-safe
-		if (nextChangeSet == nil)
-		{
-			if (isAlreadyInFlight) { // <- { brackets } required when YapDatabaseLoggingTechnique_Disabled
-				YDBLogVerbose(@"Skipping dispatch operation - upload in progress");
-			}
-			else {
-				YDBLogVerbose(@"Skipping dispatch operation - nothing to upload");
-			}
-			
-			if (forceNotification) {
-				[self postInFlightChangeSetChangedNotification:[masterQueue currentChangeSetUUID]];
-			}
-			return;
-		}
-		
-		if ([nextChangeSet->deletedRecordIDs count] == 0 &&
-		    [nextChangeSet->modifiedRecords count] == 0)
-		{
-			YDBLogVerbose(@"Dropping empty queued operation: %@", nextChangeSet);
-			
-			NSString *changeSetUUID = nextChangeSet.uuid;
-			
-			[self handleCompletedOperationWithChangeSet:nextChangeSet savedRecords:nil deletedRecordIDs:nil];
-			[self postInFlightChangeSetChangedNotification:changeSetUUID];
-		}
-		else
-		{
-			YDBLogVerbose(@"Queueing operation: %@", nextChangeSet);
-			
-			NSString *changeSetUUID = nextChangeSet.uuid;
-			
-			[self queueOperationForChangeSet:nextChangeSet];
-			[self postInFlightChangeSetChangedNotification:changeSetUUID];
-		}
+		__strong YapDatabaseCloudKit *strongSelf = weakSelf;
+		[strongSelf maybeDispatchNextOperation:forceNotification];
 	}});
 }
 
+- (void)maybeDispatchNextOperation:(BOOL)forceNotification
+{
+	// The 'forceNotification' parameter will be YES when this method
+	// is being called after successfully completing a previous operation.
+	
+	if (self.isSuspended) // this method is thread-safe
+	{
+		YDBLogVerbose(@"Skipping dispatch operation - suspended");
+		
+		if (forceNotification) {
+			[self postInFlightChangeSetChangedNotification:[masterQueue currentChangeSetUUID]];
+		}
+		return;
+	}
+	
+	BOOL isAlreadyInFlight = NO;
+	YDBCKChangeSet *nextChangeSet = nil;
+	
+	nextChangeSet = [masterQueue makeInFlightChangeSet:&isAlreadyInFlight]; // this method is thread-safe
+	if (nextChangeSet == nil)
+	{
+		if (isAlreadyInFlight) { // <- { brackets } required when YapDatabaseLoggingTechnique_Disabled
+			YDBLogVerbose(@"Skipping dispatch operation - upload in progress");
+		}
+		else {
+			YDBLogVerbose(@"Skipping dispatch operation - nothing to upload");
+		}
+		
+		if (forceNotification) {
+			[self postInFlightChangeSetChangedNotification:[masterQueue currentChangeSetUUID]];
+		}
+		return;
+	}
+	
+	if ([nextChangeSet->deletedRecordIDs count] == 0 &&
+	    [nextChangeSet->modifiedRecords count] == 0)
+	{
+		YDBLogVerbose(@"Dropping empty queued operation: %@", nextChangeSet);
+		
+		NSString *changeSetUUID = nextChangeSet.uuid;
+		
+		[self handleCompletedOperationWithChangeSet:nextChangeSet savedRecords:nil deletedRecordIDs:nil];
+		[self postInFlightChangeSetChangedNotification:changeSetUUID];
+	}
+	else
+	{
+		YDBLogVerbose(@"Queueing operation: %@", nextChangeSet);
+		
+		NSString *changeSetUUID = nextChangeSet.uuid;
+		
+		[self queueOperationForChangeSet:nextChangeSet];
+		[self postInFlightChangeSetChangedNotification:changeSetUUID];
+	}
+}
 
 - (YapDatabaseConnection *)completionDatabaseConnection
 {
@@ -678,8 +683,12 @@ NSString *const YapDatabaseCloudKitInFlightChangeSetChangedNotification = @"YDBC
 	
 	NSString *databaseIdentifier = changeSet.databaseIdentifier;
 	dispatch_async(dispatch_get_main_queue(), ^{
+	#pragma clang diagnostic push
+	#pragma clang diagnostic ignored "-Wimplicit-retain-self"
 		
 		opErrorBlock(databaseIdentifier, operationError);
+		
+	#pragma clang diagnostic pop
 	});
 }
 
@@ -742,10 +751,13 @@ NSString *const YapDatabaseCloudKitInFlightChangeSetChangedNotification = @"YDBC
 		                                                         deletedRecordIDs:success_deletedRecordIDs];
 		
 	} completionBlock:^{
+	#pragma clang diagnostic push
+	#pragma clang diagnostic ignored "-Wimplicit-retain-self"
 		
 		// Inform the user about the problem via the operationErrorBlock.
-		
 		opErrorBlock(databaseIdentifier, operationError);
+		
+	#pragma clang diagnostic pop
 	}];
 }
 

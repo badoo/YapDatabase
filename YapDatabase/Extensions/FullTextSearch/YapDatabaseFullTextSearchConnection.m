@@ -15,9 +15,9 @@
  * See YapDatabaseLogging.h for more information.
 **/
 #if DEBUG
-  static const int ydbLogLevel = YDB_LOG_LEVEL_WARN;
+  static const int ydbLogLevel = YDBLogLevelWarning;
 #else
-  static const int ydbLogLevel = YDB_LOG_LEVEL_WARN;
+  static const int ydbLogLevel = YDBLogLevelWarning;
 #endif
 #pragma unused(ydbLogLevel)
 
@@ -30,6 +30,7 @@
 	sqlite3_stmt *removeRowidStatement;
 	sqlite3_stmt *removeAllStatement;
 	sqlite3_stmt *queryStatement;
+	sqlite3_stmt *bm25QueryStatement;
 	sqlite3_stmt *querySnippetStatement;
 	sqlite3_stmt *rowidQueryStatement;
 	sqlite3_stmt *rowidQuerySnippetStatement;
@@ -60,6 +61,7 @@
 	sqlite_finalize_null(&removeRowidStatement);
 	sqlite_finalize_null(&removeAllStatement);
 	sqlite_finalize_null(&queryStatement);
+	sqlite_finalize_null(&bm25QueryStatement);
 	sqlite_finalize_null(&querySnippetStatement);
 	sqlite_finalize_null(&rowidQueryStatement);
 	sqlite_finalize_null(&rowidQuerySnippetStatement);
@@ -200,7 +202,7 @@
 		int status = sqlite3_prepare_v2(db, [string UTF8String], -1, statement, NULL);
 		if (status != SQLITE_OK)
 		{
-			YDBLogError(@"%@: Error creating prepared statement: %d %s", THIS_METHOD, status, sqlite3_errmsg(db));
+			YDBLogError(@"Error creating prepared statement: %d %s", status, sqlite3_errmsg(db));
 		}
 	}
 	
@@ -236,7 +238,7 @@
 		int status = sqlite3_prepare_v2(db, [string UTF8String], -1, statement, NULL);
 		if (status != SQLITE_OK)
 		{
-			YDBLogError(@"%@: Error creating prepared statement: %d %s", THIS_METHOD, status, sqlite3_errmsg(db));
+			YDBLogError(@"Error creating prepared statement: %d %s", status, sqlite3_errmsg(db));
 		}
 	}
 	
@@ -255,7 +257,7 @@
 		int status = sqlite3_prepare_v2(db, [string UTF8String], -1, statement, NULL);
 		if (status != SQLITE_OK)
 		{
-			YDBLogError(@"%@: Error creating prepared statement: %d %s", THIS_METHOD, status, sqlite3_errmsg(db));
+			YDBLogError(@"Error creating prepared statement: %d %s", status, sqlite3_errmsg(db));
 		}
 	}
 	
@@ -274,7 +276,7 @@
 		int status = sqlite3_prepare_v2(db, [string UTF8String], -1, statement, NULL);
 		if (status != SQLITE_OK)
 		{
-			YDBLogError(@"%@: Error creating prepared statement: %d %s", THIS_METHOD, status, sqlite3_errmsg(db));
+			YDBLogError(@"Error creating prepared statement: %d %s", status, sqlite3_errmsg(db));
 		}
 	}
 	
@@ -294,11 +296,54 @@
 		int status = sqlite3_prepare_v2(db, [string UTF8String], -1, statement, NULL);
 		if (status != SQLITE_OK)
 		{
-			YDBLogError(@"%@: Error creating prepared statement: %d %s", THIS_METHOD, status, sqlite3_errmsg(db));
+			YDBLogError(@"Error creating prepared statement: %d %s", status, sqlite3_errmsg(db));
 		}
 	}
 	
 	return *statement;
+}
+
+- (sqlite3_stmt *)bm25QueryStatement
+{
+    sqlite3_stmt **statement = &bm25QueryStatement;
+    if (*statement == NULL)
+    {
+        NSString *string = [NSString stringWithFormat:
+                            @"SELECT \"rowid\" FROM \"%1$@\" WHERE \"%1$@\" MATCH ? ORDER BY bm25(\"%1$@\");", [parent tableName]];
+        
+        sqlite3 *db = databaseConnection->db;
+        
+        int status = sqlite3_prepare_v2(db, [string UTF8String], -1, statement, NULL);
+        if (status != SQLITE_OK)
+        {
+            YDBLogError(@"Error creating prepared statement: %d %s", status, sqlite3_errmsg(db));
+        }
+    }
+    
+    return *statement;
+}
+
+- (sqlite3_stmt *)bm25QueryStatementWithWeights:(NSArray<NSNumber *> *)weights
+{
+    if (weights.count < 1)
+    {
+        return [self bm25QueryStatement];
+    }
+    
+    sqlite3_stmt *statement;
+    NSString *string =
+        [NSString stringWithFormat: @"SELECT \"rowid\" FROM \"%1$@\" WHERE \"%1$@\" MATCH ? ORDER BY bm25(\"%1$@\", %2$@);",
+                                    [parent tableName], [weights componentsJoinedByString:@", "]];
+    
+    sqlite3 *db = databaseConnection->db;
+    
+    int status = sqlite3_prepare_v2(db, [string UTF8String], -1, &statement, NULL);
+    if (status != SQLITE_OK)
+    {
+        YDBLogError(@"Error creating prepared statement: %d %s", status, sqlite3_errmsg(db));
+    }
+    
+    return statement;
 }
 
 - (sqlite3_stmt *)querySnippetStatement
@@ -315,7 +360,7 @@
 		int status = sqlite3_prepare_v2(db, [string UTF8String], -1, statement, NULL);
 		if (status != SQLITE_OK)
 		{
-			YDBLogError(@"%@: Error creating prepared statement: %d %s", THIS_METHOD, status, sqlite3_errmsg(db));
+			YDBLogError(@"Error creating prepared statement: %d %s", status, sqlite3_errmsg(db));
 		}
 	}
 	
@@ -335,7 +380,7 @@
 		int status = sqlite3_prepare_v2(db, [string UTF8String], -1, statement, NULL);
 		if (status != SQLITE_OK)
 		{
-			YDBLogError(@"%@: Error creating prepared statement: %d %s", THIS_METHOD, status, sqlite3_errmsg(db));
+			YDBLogError(@"Error creating prepared statement: %d %s", status, sqlite3_errmsg(db));
 		}
 	}
 	
@@ -356,7 +401,7 @@
 		int status = sqlite3_prepare_v2(db, [string UTF8String], -1, statement, NULL);
 		if (status != SQLITE_OK)
 		{
-			YDBLogError(@"%@: Error creating prepared statement: %d %s", THIS_METHOD, status, sqlite3_errmsg(db));
+			YDBLogError(@"Error creating prepared statement: %d %s", status, sqlite3_errmsg(db));
 		}
 	}
 	

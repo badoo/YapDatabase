@@ -16,9 +16,9 @@
  * See YapDatabaseLogging.h for more information.
 **/
 #if DEBUG
-  static const int ydbLogLevel = YDB_LOG_LEVEL_WARN;
+  static const int ydbLogLevel = YDBLogLevelWarning;
 #else
-  static const int ydbLogLevel = YDB_LOG_LEVEL_WARN;
+  static const int ydbLogLevel = YDBLogLevelWarning;
 #endif
 #pragma unused(ydbLogLevel)
 
@@ -148,11 +148,10 @@ static NSString *const ext_key_version_deprecated = @"version";
 			
 			if (![setup matchesExistingColumnNamesAndAffinity:columns])
 			{
-				YDBLogError(@"Error creating secondary index extension (%@):"
+				YDBLogError(@"Error creating secondary index extension:"
 				            @" The given setup doesn't match the previously registered setup."
 				            @" If you change the setup, or you change the block in any meaningful way,"
-				            @" then you MUST change the versionTag as well.",
-				            THIS_METHOD);
+				            @" then you MUST change the versionTag as well.");
 				return NO;
 			}
 		}
@@ -193,8 +192,8 @@ static NSString *const ext_key_version_deprecated = @"version";
 	int status = sqlite3_exec(db, [dropTable UTF8String], NULL, NULL, NULL);
 	if (status != SQLITE_OK)
 	{
-		YDBLogError(@"%@ - Failed dropping secondary index table (%@): %d %s",
-		            THIS_METHOD, dropTable, status, sqlite3_errmsg(db));
+		YDBLogError(@"Failed dropping secondary index table (%@): %d %s",
+		            dropTable, status, sqlite3_errmsg(db));
 		return NO;
 	}
 	
@@ -249,8 +248,7 @@ static NSString *const ext_key_version_deprecated = @"version";
 	int status = sqlite3_exec(db, [createTable UTF8String], NULL, NULL, NULL);
 	if (status != SQLITE_OK)
 	{
-		YDBLogError(@"%@ - Failed creating secondary index table (%@): %d %s",
-		            THIS_METHOD, tableName, status, sqlite3_errmsg(db));
+		YDBLogError(@"Failed creating secondary index table (%@): %d %s", tableName, status, sqlite3_errmsg(db));
 		return NO;
 	}
 	
@@ -279,6 +277,9 @@ static NSString *const ext_key_version_deprecated = @"version";
 **/
 - (BOOL)populate
 {
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wimplicit-retain-self"
+	
 	// Remove everything from the database
 	
 	[self removeAllRowids];
@@ -423,6 +424,8 @@ static NSString *const ext_key_version_deprecated = @"version";
 	}
 	
 	return YES;
+	
+#pragma clang diagnostic pop
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -686,8 +689,8 @@ static NSString *const ext_key_version_deprecated = @"version";
 	status = sqlite3_step(statement);
 	if (status != SQLITE_DONE)
 	{
-		YDBLogError(@"%@ (%@): Error in removeAllStatement: %d %s",
-		            THIS_METHOD, [self registeredName],
+		YDBLogError(@"(%@): Error in removeAllStatement: %d %s",
+		            [self registeredName],
 		            status, sqlite3_errmsg(databaseTransaction->connection->db));
 	}
 	
@@ -819,10 +822,10 @@ static NSString *const ext_key_version_deprecated = @"version";
  * YapDatabase extension hook.
  * This method is invoked by a YapDatabaseReadWriteTransaction as a post-operation-hook.
 **/
-- (void)handleInsertObject:(id)object
-          forCollectionKey:(YapCollectionKey *)collectionKey
-              withMetadata:(id)metadata
-                     rowid:(int64_t)rowid
+- (void)didInsertObject:(id)object
+       forCollectionKey:(YapCollectionKey *)collectionKey
+           withMetadata:(id)metadata
+                  rowid:(int64_t)rowid
 {
 	YDBLogAutoTrace();
 	
@@ -837,10 +840,10 @@ static NSString *const ext_key_version_deprecated = @"version";
  * YapDatabase extension hook.
  * This method is invoked by a YapDatabaseReadWriteTransaction as a post-operation-hook.
 **/
-- (void)handleUpdateObject:(id)object
-          forCollectionKey:(YapCollectionKey *)collectionKey
-              withMetadata:(id)metadata
-                     rowid:(int64_t)rowid
+- (void)didUpdateObject:(id)object
+       forCollectionKey:(YapCollectionKey *)collectionKey
+           withMetadata:(id)metadata
+                  rowid:(int64_t)rowid
 {
 	YDBLogAutoTrace();
 	
@@ -866,7 +869,7 @@ static NSString *const ext_key_version_deprecated = @"version";
  * YapDatabase extension hook.
  * This method is invoked by a YapDatabaseReadWriteTransaction as a post-operation-hook.
 **/
-- (void)handleReplaceObject:(id)object forCollectionKey:(YapCollectionKey *)collectionKey withRowid:(int64_t)rowid
+- (void)didReplaceObject:(id)object forCollectionKey:(YapCollectionKey *)collectionKey withRowid:(int64_t)rowid
 {
 	YDBLogAutoTrace();
 	
@@ -897,7 +900,7 @@ static NSString *const ext_key_version_deprecated = @"version";
  * YapDatabase extension hook.
  * This method is invoked by a YapDatabaseReadWriteTransaction as a post-operation-hook.
 **/
-- (void)handleReplaceMetadata:(id)metadata forCollectionKey:(YapCollectionKey *)collectionKey withRowid:(int64_t)rowid
+- (void)didReplaceMetadata:(id)metadata forCollectionKey:(YapCollectionKey *)collectionKey withRowid:(int64_t)rowid
 {
 	YDBLogAutoTrace();
 	
@@ -928,7 +931,7 @@ static NSString *const ext_key_version_deprecated = @"version";
  * YapDatabase extension hook.
  * This method is invoked by a YapDatabaseReadWriteTransaction as a post-operation-hook.
 **/
-- (void)handleTouchObjectForCollectionKey:(YapCollectionKey __unused *)collectionKey withRowid:(int64_t __unused)rowid
+- (void)didTouchObjectForCollectionKey:(YapCollectionKey __unused *)collectionKey withRowid:(int64_t __unused)rowid
 {
 	__unsafe_unretained YapDatabaseSecondaryIndex *secondaryIndex = parentConnection->parent;
 	__unsafe_unretained YapDatabaseSecondaryIndexHandler *handler = secondaryIndex->handler;
@@ -963,7 +966,7 @@ static NSString *const ext_key_version_deprecated = @"version";
  * YapDatabase extension hook.
  * This method is invoked by a YapDatabaseReadWriteTransaction as a post-operation-hook.
 **/
-- (void)handleTouchMetadataForCollectionKey:(YapCollectionKey __unused *)collectionKey withRowid:(int64_t __unused)rowid
+- (void)didTouchMetadataForCollectionKey:(YapCollectionKey __unused *)collectionKey withRowid:(int64_t __unused)rowid
 {
 	__unsafe_unretained YapDatabaseSecondaryIndex *secondaryIndex = parentConnection->parent;
 	__unsafe_unretained YapDatabaseSecondaryIndexHandler *handler = secondaryIndex->handler;
@@ -998,7 +1001,7 @@ static NSString *const ext_key_version_deprecated = @"version";
  * YapDatabase extension hook.
  * This method is invoked by a YapDatabaseReadWriteTransaction as a post-operation-hook.
 **/
-- (void)handleTouchRowForCollectionKey:(YapCollectionKey *)collectionKey withRowid:(int64_t)rowid
+- (void)didTouchRowForCollectionKey:(YapCollectionKey *)collectionKey withRowid:(int64_t)rowid
 {
 	__unsafe_unretained YapDatabaseSecondaryIndex *secondaryIndex = parentConnection->parent;
 	__unsafe_unretained YapDatabaseSecondaryIndexHandler *handler = secondaryIndex->handler;
@@ -1034,7 +1037,7 @@ static NSString *const ext_key_version_deprecated = @"version";
  * YapDatabase extension hook.
  * This method is invoked by a YapDatabaseReadWriteTransaction as a post-operation-hook.
 **/
-- (void)handleRemoveObjectForCollectionKey:(YapCollectionKey *)collectionKey withRowid:(int64_t)rowid
+- (void)didRemoveObjectForCollectionKey:(YapCollectionKey *)collectionKey withRowid:(int64_t)rowid
 {
 	YDBLogAutoTrace();
 	
@@ -1053,7 +1056,7 @@ static NSString *const ext_key_version_deprecated = @"version";
  * YapDatabase extension hook.
  * This method is invoked by a YapDatabaseReadWriteTransaction as a post-operation-hook.
 **/
-- (void)handleRemoveObjectsForKeys:(NSArray __unused *)keys inCollection:(NSString *)collection withRowids:(NSArray *)rowids
+- (void)didRemoveObjectsForKeys:(NSArray __unused *)keys inCollection:(NSString *)collection withRowids:(NSArray *)rowids
 {
 	YDBLogAutoTrace();
 	
@@ -1072,7 +1075,7 @@ static NSString *const ext_key_version_deprecated = @"version";
  * YapDatabase extension hook.
  * This method is invoked by a YapDatabaseReadWriteTransaction as a post-operation-hook.
 **/
-- (void)handleRemoveAllObjectsInAllCollections
+- (void)didRemoveAllObjectsInAllCollections
 {
 	YDBLogAutoTrace();
 	
@@ -1107,8 +1110,8 @@ static NSString *const ext_key_version_deprecated = @"version";
 		}
 		else
 		{
-			YDBLogError(@"%@: Error creating query:\n query: '%@'\n error: %d %s",
-						THIS_METHOD, fullQueryString, status, sqlite3_errmsg(db));
+			YDBLogError(@"Error creating query:\n query: '%@'\n error: %d %s",
+			             fullQueryString, status, sqlite3_errmsg(db));
 			
 			return NULL;
 		}
@@ -1171,7 +1174,7 @@ static NSString *const ext_key_version_deprecated = @"version";
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 - (BOOL)_enumerateRowidsMatchingQuery:(YapDatabaseQuery *)query
-                           usingBlock:(void (^)(int64_t rowid, BOOL *stop))block
+                           usingBlock:(void (NS_NOESCAPE^)(int64_t rowid, BOOL *stop))block
 {
 	if (query == nil) return NO;
 	if (query.isAggregateQuery) return NO;
@@ -1210,14 +1213,14 @@ static NSString *const ext_key_version_deprecated = @"version";
 	
 	if ((status != SQLITE_DONE) && !stop && !mutation.isMutated)
 	{
-		YDBLogError(@"%@ - sqlite_step error: %d %s", THIS_METHOD,
+		YDBLogError(@"sqlite_step error: %d %s",
 		            status, sqlite3_errmsg(databaseTransaction->connection->db));
 	}
 	
 	sqlite3_clear_bindings(statement);
 	sqlite3_reset(statement);
 	
-	if (!stop & mutation.isMutated)
+	if (!stop && mutation.isMutated)
 	{
 		@throw [self mutationDuringEnumerationException];
 	}
@@ -1226,7 +1229,7 @@ static NSString *const ext_key_version_deprecated = @"version";
 }
 
 - (BOOL)enumerateKeysMatchingQuery:(YapDatabaseQuery *)query
-                        usingBlock:(void (^)(NSString *collection, NSString *key, BOOL *stop))block
+                        usingBlock:(void (NS_NOESCAPE^)(NSString *collection, NSString *key, BOOL *stop))block
 {
 	BOOL result = [self _enumerateRowidsMatchingQuery:query usingBlock:^(int64_t rowid, BOOL *stop) {
 		
@@ -1236,7 +1239,7 @@ static NSString *const ext_key_version_deprecated = @"version";
 			return; // from block
 		}
 		
-		YapCollectionKey *ck = [databaseTransaction collectionKeyForRowid:rowid];
+		YapCollectionKey *ck = [self->databaseTransaction collectionKeyForRowid:rowid];
 		
 		block(ck.collection, ck.key, stop);
 	}];
@@ -1246,7 +1249,7 @@ static NSString *const ext_key_version_deprecated = @"version";
 
 - (BOOL)enumerateKeysAndMetadataMatchingQuery:(YapDatabaseQuery *)query
                                    usingBlock:
-                            (void (^)(NSString *collection, NSString *key, id metadata, BOOL *stop))block
+                            (void (NS_NOESCAPE^)(NSString *collection, NSString *key, id metadata, BOOL *stop))block
 {
 	BOOL result = [self _enumerateRowidsMatchingQuery:query usingBlock:^(int64_t rowid, BOOL *stop) {
 		
@@ -1258,7 +1261,7 @@ static NSString *const ext_key_version_deprecated = @"version";
 		
 		YapCollectionKey *ck = nil;
 		id metadata = nil;
-		[databaseTransaction getCollectionKey:&ck metadata:&metadata forRowid:rowid];
+		[self->databaseTransaction getCollectionKey:&ck metadata:&metadata forRowid:rowid];
 		
 		block(ck.collection, ck.key, metadata, stop);
 	}];
@@ -1268,7 +1271,7 @@ static NSString *const ext_key_version_deprecated = @"version";
 
 - (BOOL)enumerateKeysAndObjectsMatchingQuery:(YapDatabaseQuery *)query
                                   usingBlock:
-                            (void (^)(NSString *collection, NSString *key, id object, BOOL *stop))block
+                            (void (NS_NOESCAPE^)(NSString *collection, NSString *key, id object, BOOL *stop))block
 {
 	BOOL result = [self _enumerateRowidsMatchingQuery:query usingBlock:^(int64_t rowid, BOOL *stop) {
 		
@@ -1280,7 +1283,7 @@ static NSString *const ext_key_version_deprecated = @"version";
 		
 		YapCollectionKey *ck = nil;
 		id object = nil;
-		[databaseTransaction getCollectionKey:&ck object:&object forRowid:rowid];
+		[self->databaseTransaction getCollectionKey:&ck object:&object forRowid:rowid];
 		
 		block(ck.collection, ck.key, object, stop);
 	}];
@@ -1290,7 +1293,7 @@ static NSString *const ext_key_version_deprecated = @"version";
 
 - (BOOL)enumerateRowsMatchingQuery:(YapDatabaseQuery *)query
                         usingBlock:
-                            (void (^)(NSString *collection, NSString *key, id object, id metadata, BOOL *stop))block
+                            (void (NS_NOESCAPE^)(NSString *collection, NSString *key, id object, id metadata, BOOL *stop))block
 {
 	BOOL result = [self _enumerateRowidsMatchingQuery:query usingBlock:^(int64_t rowid, BOOL *stop) {
 		
@@ -1303,7 +1306,7 @@ static NSString *const ext_key_version_deprecated = @"version";
 		YapCollectionKey *ck = nil;
 		id object = nil;
 		id metadata = nil;
-		[databaseTransaction getCollectionKey:&ck object:&object metadata:&metadata forRowid:rowid];
+		[self->databaseTransaction getCollectionKey:&ck object:&object metadata:&metadata forRowid:rowid];
 		
 		block(ck.collection, ck.key, object, metadata, stop);
 	}];
@@ -1313,7 +1316,7 @@ static NSString *const ext_key_version_deprecated = @"version";
 
 - (BOOL)_enumerateIndexedValuesInColumn:(NSString *)column
                           matchingQuery:(YapDatabaseQuery *)query
-                             usingBlock:(void (^)(id indexedValue, BOOL *stop))block
+                             usingBlock:(void (NS_NOESCAPE^)(id indexedValue, BOOL *stop))block
 {
 	if (column == nil) return NO;
 	if (query == nil) return NO;
@@ -1387,14 +1390,14 @@ static NSString *const ext_key_version_deprecated = @"version";
 
 	if ((status != SQLITE_DONE) && !stop && !mutation.isMutated)
 	{
-		YDBLogError(@"%@ - sqlite_step error: %d %s", THIS_METHOD,
+		YDBLogError(@"sqlite_step error: %d %s",
 					status, sqlite3_errmsg(databaseTransaction->connection->db));
 	}
 
 	sqlite3_clear_bindings(statement);
 	sqlite3_reset(statement);
 
-	if (!stop & mutation.isMutated)
+	if (!stop && mutation.isMutated)
 	{
 		@throw [self mutationDuringEnumerationException];
 	}
@@ -1404,7 +1407,7 @@ static NSString *const ext_key_version_deprecated = @"version";
 
 - (BOOL)enumerateIndexedValuesInColumn:(NSString *)column
                          matchingQuery:(YapDatabaseQuery *)query
-                            usingBlock:(void(^)(id indexedValue, BOOL *stop))block
+                            usingBlock:(void(NS_NOESCAPE^)(id indexedValue, BOOL *stop))block
 {
 	BOOL result = [self _enumerateIndexedValuesInColumn:column
 	                                      matchingQuery:query
@@ -1458,7 +1461,7 @@ static NSString *const ext_key_version_deprecated = @"version";
 	}
 	else if (status == SQLITE_ERROR)
 	{
-		YDBLogError(@"%@ - sqlite_step error: %d %s", THIS_METHOD,
+		YDBLogError(@"sqlite_step error: %d %s",
 		            status, sqlite3_errmsg(databaseTransaction->connection->db));
 		result = NO;
 	}
@@ -1536,7 +1539,7 @@ static NSString *const ext_key_version_deprecated = @"version";
 	}
 	else if (status == SQLITE_ERROR)
 	{
-		YDBLogError(@"%@ - sqlite_step error: %d %s", THIS_METHOD,
+		YDBLogError(@"sqlite_step error: %d %s",
 		            status, sqlite3_errmsg(databaseTransaction->connection->db));
 	}
 	

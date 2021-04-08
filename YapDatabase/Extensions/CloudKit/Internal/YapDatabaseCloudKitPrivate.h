@@ -19,13 +19,17 @@
 #import "YapDatabaseExtensionPrivate.h"
 #import "YapCache.h"
 
-#import "sqlite3.h"
+#ifdef SQLITE_HAS_CODEC
+  #import <SQLCipher/sqlite3.h>
+#else
+  #import "sqlite3.h"
+#endif
 
 /**
  * This version number is stored in the yap2 table.
  * If there is a major re-write to this class, then the version number will be incremented,
  * and the class can automatically rebuild the tables as needed.
-**/
+ */
 #define YAP_DATABASE_CLOUD_KIT_CLASS_VERSION 3
 
 static NSString *const changeset_key_deletedRowids    = @"deletedRowids";    // Array: rowid
@@ -206,7 +210,7 @@ static NSString *const changeset_key_reset            = @"reset";
  * 
  * - deletedRecordIDs   : Array of CKRecordID's
  * - modifiedRecords    : Array of YDBCKChangeRecord's (storing either a CKRecord or just changedKeys array)
-**/
+ */
 @interface YDBCKChangeSet () {
 @public
 	
@@ -251,7 +255,7 @@ static NSString *const changeset_key_reset            = @"reset";
 // Blob to go in 'modifiedRecords' column of database row.
 - (NSData *)serializeModifiedRecords;
 
-- (void)enumerateMissingRecordsWithBlock:(CKRecord* (^)(CKRecordID *recordID, NSArray *changedKeys))block;
+- (void)enumerateMissingRecordsWithBlock:(CKRecord* (NS_NOESCAPE^)(CKRecordID *recordID, NSArray *changedKeys))block;
 
 @end
 

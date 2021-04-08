@@ -15,11 +15,16 @@
  * See YapDatabaseLogging.h for more information.
  **/
 #if DEBUG
-static const int ydbLogLevel = YDB_LOG_LEVEL_WARN;
+static const int ydbLogLevel = YDBLogLevelWarning;
 #else
-static const int ydbLogLevel = YDB_LOG_LEVEL_WARN;
+static const int ydbLogLevel = YDBLogLevelWarning;
 #endif
 #pragma unused(ydbLogLevel)
+
+
+NSString *const YapDatabaseFullTextSearchFTS5Version = @"fts5";
+NSString *const YapDatabaseFullTextSearchFTS4Version = @"fts4";
+NSString *const YapDatabaseFullTextSearchFTS3Version = @"fts3";
 
 
 @implementation YapDatabaseFullTextSearch
@@ -38,8 +43,7 @@ static const int ydbLogLevel = YDB_LOG_LEVEL_WARN;
 	status = sqlite3_exec(db, [dropTable UTF8String], NULL, NULL, NULL);
 	if (status != SQLITE_OK)
 	{
-		YDBLogError(@"%@ - Failed dropping FTS table (%@): %d %s",
-		            THIS_METHOD, dropTable, status, sqlite3_errmsg(db));
+		YDBLogError(@"Failed dropping FTS table (%@): %d %s", dropTable, status, sqlite3_errmsg(db));
 	}
 }
 
@@ -59,6 +63,7 @@ static const int ydbLogLevel = YDB_LOG_LEVEL_WARN;
 
 @synthesize handler = handler;
 @synthesize versionTag = versionTag;
+@synthesize ftsVersion = ftsVersion;
 
 - (id)initWithColumnNames:(NSArray *)inColumnNames
                   handler:(YapDatabaseFullTextSearchHandler *)inHandler
@@ -81,42 +86,55 @@ static const int ydbLogLevel = YDB_LOG_LEVEL_WARN;
                   handler:(YapDatabaseFullTextSearchHandler *)inHandler
                versionTag:(NSString *)inVersionTag
 {
-	if ([inColumnNames count] == 0)
-	{
-		NSAssert(NO, @"Empty columnNames array");
-		return nil;
-	}
-	
-	for (id columnName in inColumnNames)
-	{
-		if (![columnName isKindOfClass:[NSString class]])
-		{
-			NSAssert(NO, @"Invalid column name. Not a string: %@", columnName);
-			return nil;
-		}
-		
-		NSRange range = [(NSString *)columnName rangeOfString:@"\""];
-		if (range.location != NSNotFound)
-		{
-			NSAssert(NO, @"Invalid column name. Cannot contain quotes: %@", columnName);
-			return nil;
-		}
-	}
-	
-	NSAssert(inHandler != NULL, @"Null handler");
-	
-	if ((self = [super init]))
-	{
-		columnNames = [NSOrderedSet orderedSetWithArray:inColumnNames];
-		columnNamesSharedKeySet = [NSDictionary sharedKeySetForKeys:[columnNames array]];
-		
-		options = [inOptions copy];
-		
-		handler = inHandler;
-		
-		versionTag = inVersionTag ? [inVersionTag copy] : @"";
-	}
-	return self;
+    return [self initWithColumnNames:inColumnNames
+                             options:inOptions
+                             handler:inHandler
+                          ftsVersion:nil
+                          versionTag:inVersionTag];
+}
+
+- (id)initWithColumnNames:(NSArray *)inColumnNames
+                  options:(NSDictionary *)inOptions
+                  handler:(YapDatabaseFullTextSearchHandler *)inHandler
+               ftsVersion:(NSString *)inFtsVersion
+               versionTag:(NSString *)inVersionTag {
+    if ([inColumnNames count] == 0)
+    {
+        NSAssert(NO, @"Empty columnNames array");
+        return nil;
+    }
+    
+    for (id columnName in inColumnNames)
+    {
+        if (![columnName isKindOfClass:[NSString class]])
+        {
+            NSAssert(NO, @"Invalid column name. Not a string: %@", columnName);
+            return nil;
+        }
+        
+        NSRange range = [(NSString *)columnName rangeOfString:@"\""];
+        if (range.location != NSNotFound)
+        {
+            NSAssert(NO, @"Invalid column name. Cannot contain quotes: %@", columnName);
+            return nil;
+        }
+    }
+    
+    NSAssert(inHandler != NULL, @"Null handler");
+    
+    if ((self = [super init]))
+    {
+        columnNames = [NSOrderedSet orderedSetWithArray:inColumnNames];
+        columnNamesSharedKeySet = [NSDictionary sharedKeySetForKeys:[columnNames array]];
+        
+        options = [inOptions copy];
+        
+        handler = inHandler;
+        
+        versionTag = inVersionTag ? [inVersionTag copy] : @"";
+        ftsVersion = inFtsVersion ? [inFtsVersion copy] : YapDatabaseFullTextSearchFTS4Version;
+    }
+    return self;
 }
 
 - (YapDatabaseExtensionConnection *)newConnection:(YapDatabaseConnection *)databaseConnection

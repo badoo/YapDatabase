@@ -18,12 +18,12 @@
  * This version number is stored in the yap2 table.
  * If there is a major re-write to this class, then the version number will be incremented,
  * and the class can automatically rebuild the table as needed.
-**/
+ */
 #define YAP_DATABASE_RELATIONSHIP_CLASS_VERSION 4
 
 /**
  * Keys for yap2 extension configuration table.
-**/
+ */
 
 static NSString *const ext_key_classVersion       = @"classVersion";
 static NSString *const ext_key_versionTag         = @"versionTag";
@@ -31,7 +31,7 @@ static NSString *const ext_key_version_deprecated = @"version";
 
 /**
  * Keys for changeset dictionary.
-**/
+ */
 
 static NSString *const changeset_key_deletedEdges  = @"deletedEdges";
 static NSString *const changeset_key_modifiedEdges = @"modifiedEdges";
@@ -53,7 +53,7 @@ static NSString *const changeset_key_reset         = @"reset";
 /**
  * The dispatch queue for performing file deletion operations.
  * Note: This method is not thread-safe, as it expects to only be invoked from within a read-write transaction.
-**/
+ */
 - (dispatch_queue_t)fileManagerQueue;
 
 @end
@@ -118,7 +118,7 @@ static NSString *const changeset_key_reset         = @"reset";
 - (sqlite3_stmt *)enumerateDstFileURLWithSrcStatement:(BOOL *)needsFinalizePtr;
 - (sqlite3_stmt *)enumerateDstFileURLWithSrcNameStatement:(BOOL *)needsFinalizePtr;
 - (sqlite3_stmt *)enumerateDstFileURLWithNameStatement:(BOOL *)needsFinalizePtr;
-- (sqlite3_stmt *)enumerateDstFileURLWithNameExcludingSrcStatement:(BOOL *)needsFinalizePtr;
+- (sqlite3_stmt *)enumerateDstFileURLExcludingSrcStatement:(BOOL *)needsFinalizePtr;
 - (sqlite3_stmt *)enumerateAllDstFileURLStatement:(BOOL *)needsFinalizePtr;
 - (sqlite3_stmt *)enumerateForSrcStatement:(BOOL *)needsFinalizePtr;
 - (sqlite3_stmt *)enumerateForDstStatement:(BOOL *)needsFinalizePtr;
@@ -127,8 +127,8 @@ static NSString *const changeset_key_reset         = @"reset";
 - (sqlite3_stmt *)enumerateForNameStatement:(BOOL *)needsFinalizePtr;
 - (sqlite3_stmt *)enumerateForSrcDstStatement:(BOOL *)needsFinalizePtr;
 - (sqlite3_stmt *)enumerateForSrcDstNameStatement:(BOOL *)needsFinalizePtr;
-- (sqlite3_stmt *)countForSrcNameExcludingDstStatement;
-- (sqlite3_stmt *)countForDstNameExcludingSrcStatement;
+- (sqlite3_stmt *)countForSrcExcludingDstStatement;
+- (sqlite3_stmt *)countForDstExcludingSrcStatement;
 - (sqlite3_stmt *)countForNameStatement;
 - (sqlite3_stmt *)countForSrcStatement;
 - (sqlite3_stmt *)countForSrcNameStatement;

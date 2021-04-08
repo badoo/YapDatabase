@@ -1,16 +1,15 @@
 #import "AppDelegate.h"
-#import "DatabaseManager.h"
+
 #import "CloudKitManager.h"
-
+#import "DatabaseManager.h"
 #import "MyTodo.h"
-
 #import "YapDatabaseLogging.h"
 
 #import <CocoaLumberjack/CocoaLumberjack.h>
 #import <CocoaLumberjack/DDTTYLogger.h>
-
 #import <CloudKit/CloudKit.h>
 #import <Reachability/Reachability.h>
+#import <UserNotifications/UserNotifications.h>
 
 #if DEBUG
   static const NSUInteger ddLogLevel = DDLogLevelAll;
@@ -36,31 +35,33 @@ AppDelegate *MyAppDelegate;
 		[DDLog addLogger:[DDTTYLogger sharedInstance]];
 		
 		[[DDTTYLogger sharedInstance] setColorsEnabled:YES];
-		
-	#if TARGET_OS_IPHONE
-		UIColor *redColor    = [UIColor redColor];
-		UIColor *orangeColor = [UIColor orangeColor];
-		UIColor *grayColor   = [UIColor grayColor];
-	#else
-		NSColor *redColor    = [NSColor redColor];
-		NSColor *orangeColor = [NSColor orangeColor];
-		NSColor *grayColor   = [NSColor grayColor];
-	#endif
-		
-		[[DDTTYLogger sharedInstance] setForegroundColor:redColor
-		                                 backgroundColor:nil
-		                                         forFlag:YDB_LOG_FLAG_ERROR   // errors
-		                                         context:YDBLogContext];      // from YapDatabase
-	
-		[[DDTTYLogger sharedInstance] setForegroundColor:orangeColor
-		                                 backgroundColor:nil
-		                                         forFlag:YDB_LOG_FLAG_WARN    // warnings
-		                                         context:YDBLogContext];      // from YapDatabase
-		
-		[[DDTTYLogger sharedInstance] setForegroundColor:grayColor
-		                                 backgroundColor:nil
-		                                         forFlag:YDB_LOG_FLAG_TRACE   // trace (method invocations)
-		                                         context:YDBLogContext];      // from YapDatabase
+
+// TODO: Restore if/when https://github.com/yapstudios/YapDatabase/issues/509 is resolved
+//	#if TARGET_OS_IPHONE
+//		UIColor *redColor    = [UIColor redColor];
+//		UIColor *orangeColor = [UIColor orangeColor];
+//		UIColor *grayColor   = [UIColor grayColor];
+//	#else
+//		NSColor *redColor    = [NSColor redColor];
+//		NSColor *orangeColor = [NSColor orangeColor];
+//		NSColor *grayColor   = [NSColor grayColor];
+//	#endif
+//
+//		[[DDTTYLogger sharedInstance] setForegroundColor:redColor
+//		                                 backgroundColor:nil
+//		                                         forFlag:YDBLogFlagError   // errors
+//		                                         context:YDBLogContext];      // from YapDatabase
+//
+//		[[DDTTYLogger sharedInstance] setForegroundColor:orangeColor
+//		                                 backgroundColor:nil
+//		                                         forFlag:YDBLogFlagWarn    // warnings
+//		                                         context:YDBLogContext];      // from YapDatabase
+//
+//		[[DDTTYLogger sharedInstance] setForegroundColor:grayColor
+//		                                 backgroundColor:nil
+//		                                         forFlag:YDBLogFlagTrace   // trace (method invocations)
+//		                                         context:YDBLogContext];      // from YapDatabase
+// ^^^^^ TODO: Restore if/when https://github.com/yapstudios/YapDatabase/issues/509 is resolved
 	}
 	return self;
 }
@@ -76,10 +77,21 @@ AppDelegate *MyAppDelegate;
 	
 	// Register for push notifications
 	
-	UIUserNotificationSettings *notificationSettings =
-	  [UIUserNotificationSettings settingsForTypes:UIUserNotificationTypeBadge categories:nil];
-
-	[application registerUserNotificationSettings:notificationSettings];
+	UNAuthorizationOptions options = UNAuthorizationOptionBadge;
+	
+	[[UNUserNotificationCenter currentNotificationCenter]
+	  requestAuthorizationWithOptions:options
+	                completionHandler:^(BOOL granted, NSError *_Nullable error)
+	{
+		if (granted)
+			DDLogVerbose(@"UNAuthorizationOptionBadge: granted");
+		else
+			DDLogWarn(@"UNAuthorizationOptionBadge: NOT granted !");
+		
+		dispatch_async(dispatch_get_main_queue(), ^{
+			[application registerForRemoteNotifications];
+		});
+	}];
 	
 	// Start reachability
  
@@ -117,14 +129,6 @@ AppDelegate *MyAppDelegate;
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 #pragma mark Push (iOS 8)
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-- (void)application:(UIApplication *)application
-    didRegisterUserNotificationSettings:(UIUserNotificationSettings *)notificationSettings
-{
-	DDLogVerbose(@"application:didRegisterUserNotificationSettings: %@", notificationSettings);
-	
-	[application registerForRemoteNotifications];
-}
 
 - (void)application:(UIApplication *)application didRegisterForRemoteNotificationsWithDeviceToken:(NSData *)deviceToken
 {

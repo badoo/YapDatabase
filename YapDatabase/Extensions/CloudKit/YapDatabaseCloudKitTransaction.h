@@ -33,7 +33,7 @@ NS_ASSUME_NONNULL_BEGIN
  *   However, if you do this keep in mind that this method will only return 1 of the associated items.
  *   Further, which item it returns is not guaranteed, and may change between method invocations.
  *   So, in this particular case, you likely should be using 'collectionKeysForRecordID:databaseIdentifier:'.
-**/
+ */
 - (BOOL)getKey:(NSString * _Nonnull * _Nullable)keyPtr collection:(NSString * _Nonnull * _Nullable)collectionPtr
                                                       forRecordID:(CKRecordID *)recordID
                                                databaseIdentifier:(nullable NSString *)databaseIdentifier;
@@ -46,7 +46,7 @@ NS_ASSUME_NONNULL_BEGIN
  * each associated with the given recordID/databaseIdentifier.
  * 
  * @see YapCollectionKey
-**/
+ */
 - (NSArray<YapCollectionKey *> *)collectionKeysForRecordID:(CKRecordID *)recordID
                                         databaseIdentifier:(nullable NSString *)databaseIdentifier;
 
@@ -71,7 +71,7 @@ NS_ASSUME_NONNULL_BEGIN
  * @return
  *   YES if the given collection/key is associated with a CKRecord.
  *   NO otherwise.
-**/
+ */
 - (BOOL)getRecordID:(CKRecordID * _Nonnull * _Nullable)recordIDPtr
  databaseIdentifier:(NSString * _Nonnull * _Nullable)databaseIdentifierPtr
              forKey:(NSString *)key
@@ -97,7 +97,7 @@ NS_ASSUME_NONNULL_BEGIN
  * then you need to save those changes back into YapDatabaseCloudKit via 'saveRecord:databaseIdentifier'.
  * 
  * @see saveRecord:databaseIdentifier:
-**/
+ */
 - (CKRecord *)recordForRecordID:(CKRecordID *)recordID databaseIdentifier:(nullable NSString *)databaseIdentifier;
 
 /**
@@ -108,7 +108,7 @@ NS_ASSUME_NONNULL_BEGIN
  * - recordForRecordID:databaseIdentifier:
  * 
  * @see recordForRecordID:databaseIdentifier:
-**/
+ */
 - (CKRecord *)recordForKey:(NSString *)key inCollection:(nullable NSString *)collection;
 
 /**
@@ -121,7 +121,7 @@ NS_ASSUME_NONNULL_BEGIN
  * @return
  *   Whether or not YapDatabaseCloudKit is currently managing a record for the given recordID/databaseIdentifer.
  *   That is, whether or not there is currently one or more rows in the database attached to the CKRecord.
-**/
+ */
 - (BOOL)containsRecordID:(CKRecordID *)recordID databaseIdentifier:(nullable NSString *)databaseIdentifier;
 
 /**
@@ -158,7 +158,7 @@ NS_ASSUME_NONNULL_BEGIN
  *   Tells you if there is a pending delete of the record in the queue.
  *   That is, if we deleted the item locally, and the delete operation is pending upload to the cloudKit server.
  *   If this value is YES, then you may not want to create a new database item for the record.
-**/
+ */
 - (void)getRecordChangeTag:(NSString * _Nullable * _Nullable)outRecordChangeTag
    hasPendingModifications:(nullable BOOL *)outPendingModifications
           hasPendingDelete:(nullable BOOL *)outPendingDelete
@@ -205,7 +205,7 @@ NS_ASSUME_NONNULL_BEGIN
  * @param record
  *   The CKRecord to associate with the collection/key tuple.
  * 
- * @param databaseIdentifer
+ * @param databaseIdentifier
  *   The identifying string for the CKDatabase.
  *   @see YapDatabaseCloudKitDatabaseIdentifierBlock.
  *
@@ -215,7 +215,7 @@ NS_ASSUME_NONNULL_BEGIN
  * @param collection
  *   The collection of the row to associate the record with.
  * 
- * @param shouldUpload
+ * @param shouldUploadRecord
  *   If NO, then the record is simply associated with the collection/key,
  *     and YapDatabaseCloudKit doesn't attempt to push the record to the cloud.
  *   If YES, then the record is associated with the collection/key,
@@ -231,7 +231,7 @@ NS_ASSUME_NONNULL_BEGIN
  * 
  * Important: This method only works if within a readWriteTrasaction.
  * Invoking this method from within a read-only transaction will throw an exception.
-**/
+ */
 - (BOOL)attachRecord:(CKRecord *)record
   databaseIdentifier:(nullable NSString *)databaseIdentifier
               forKey:(NSString *)key
@@ -286,7 +286,7 @@ NS_ASSUME_NONNULL_BEGIN
  *   Note: If a record was deleted remotely, and the record was associated with MULTIPLE items in the database,
  *   then you should be sure to invoke this method for each attached collection/key.
  * 
- * @param shouldUpload
+ * @param shouldUploadDeletion
  *   Whether or not the extension should push a deleted CKRecordID to the cloud.
  *   In use case #2 (from the above discussion, concerning migration), you'd pass NO.
  *   In use case #3 (from the above discussion, concerning moving), you'd pass YES.
@@ -296,7 +296,7 @@ NS_ASSUME_NONNULL_BEGIN
  * Invoking this method from within a read-only transaction will throw an exception.
  * 
  * @see getKey:collection:forRecordID:databaseIdentifier:
-**/
+ */
 - (void)detachRecordForKey:(NSString *)key
               inCollection:(nullable NSString *)collection
          wasRemoteDeletion:(BOOL)wasRemoteDeletion
@@ -318,13 +318,13 @@ NS_ASSUME_NONNULL_BEGIN
  *   A record that was modified remotely, and discovered via CKFetchRecordChangesOperation (or similar).
  *   This value will be passed as the remoteRecord parameter to the mergeBlock.
  * 
- * @param databaseIdentifier
+ * @param databaseIdentifer
  *   The identifying string for the CKDatabase.
  *   @see YapDatabaseCloudKitDatabaseIdentifierBlock.
  * 
  * Important: This method only works if within a readWriteTrasaction.
  * Invoking this method from within a read-only transaction will throw an exception.
-**/
+ */
 - (void)mergeRecord:(CKRecord *)remoteRecord databaseIdentifier:(nullable NSString *)databaseIdentifer;
 
 /**
@@ -343,7 +343,7 @@ NS_ASSUME_NONNULL_BEGIN
  *
  * Important: This method only works if within a readWriteTrasaction.
  * Invoking this method from within a read-only transaction will throw an exception.
-**/
+ */
 - (BOOL)saveRecord:(CKRecord *)record databaseIdentifier:(nullable NSString *)databaseIdentifier;
 
 @end

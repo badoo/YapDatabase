@@ -15,7 +15,6 @@
 @import YapDatabase.YapDatabaseSearchResultsView;
 @import YapDatabase.YapDatabaseHooks;
 @import YapDatabase.YapDatabaseRTreeIndex;
-@import YapDatabase.YapDatabaseConnectionProxy;
 @import YapDatabase.YapDatabaseActionManager;
 #if !TARGET_OS_WATCH
 @import YapDatabase.YapDatabaseCloudKit;
@@ -30,7 +29,7 @@
 #pragma clang diagnostic ignored "-Wunused"
 	
 	YapDatabase *database;
-	
+
 	YapCache *cache;
 	YapCollectionKey *collectionKey;
 	YapDatabaseQuery *query;
@@ -46,7 +45,6 @@
 	YapDatabaseSearchResultsView *searchResultsView;
 	YapDatabaseHooks *hooks;
 	YapDatabaseRTreeIndex *rTreeIndex;
-	YapDatabaseConnectionProxy *connectionProxy;
 	YapDatabaseActionManager *actionManager;
 #if !TARGET_OS_WATCH
 	YapDatabaseCloudKit *cloudKit;

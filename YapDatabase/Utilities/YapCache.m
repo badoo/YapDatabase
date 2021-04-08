@@ -6,9 +6,9 @@
  * See YapDatabaseLogging.h for more information.
 **/
 #if DEBUG
-  static const int ydbLogLevel = YDB_LOG_LEVEL_OFF;
+  static const int ydbLogLevel = YDBLogLevelOff;
 #else
-  static const int ydbLogLevel = YDB_LOG_LEVEL_OFF;
+  static const int ydbLogLevel = YDBLogLevelOff;
 #endif
 
 /**
@@ -336,7 +336,7 @@ static const NSUInteger YapCache_Default_CountLimit = 40;
 		}
 	}
 	
-	if (ydbLogLevel & YDB_LOG_FLAG_VERBOSE)
+	if (ydbLogLevel & YDBLogFlagVerbose)
 	{
 		YDBLogVerbose(@"cfdict: %@", cfdict);
 		
@@ -416,7 +416,7 @@ static const NSUInteger YapCache_Default_CountLimit = 40;
 	}
 }
 
-- (void)enumerateKeysWithBlock:(void (^)(id key, BOOL *stop))block
+- (void)enumerateKeysWithBlock:(void (NS_NOESCAPE^)(id key, BOOL *stop))block
 {
 	NSDictionary *nsdict = (__bridge NSDictionary *)cfdict;
 	BOOL stop = NO;
@@ -429,7 +429,7 @@ static const NSUInteger YapCache_Default_CountLimit = 40;
 	}
 }
 
-- (void)enumerateKeysAndObjectsWithBlock:(void (^)(id key, id obj, BOOL *stop))block
+- (void)enumerateKeysAndObjectsWithBlock:(void (NS_NOESCAPE^)(id key, id obj, BOOL *stop))block
 {
 	NSDictionary *nsdict = (__bridge NSDictionary *)cfdict;
 	

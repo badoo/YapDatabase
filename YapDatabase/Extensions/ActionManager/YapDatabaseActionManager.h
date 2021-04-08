@@ -4,12 +4,14 @@
 #import "YapActionItem.h"
 #import "YapDatabaseActionManagerConnection.h"
 #import "YapDatabaseActionManagerTransaction.h"
-#import "YapDatabaseView.h"
+#import "YapDatabaseAutoView.h"
 #import "YapReachability.h"
 
 @class YapDatabaseConnection;
 
 NS_ASSUME_NONNULL_BEGIN
+
+typedef NSArray<YapActionItem*> *_Nullable (^YapActionScheduler)(NSString *collection, NSString *key, id object);
 
 /**
  * This extension automatically monitors the database for objects that support the YapActionable protocol.
@@ -30,13 +32,19 @@ NS_ASSUME_NONNULL_BEGIN
  *   e.g.: removing cached files
  * - refreshing items when they've become "stale"
  *   e.g.: periodically updating user infromation from the server
-**/
-@interface YapDatabaseActionManager : YapDatabaseView
+ */
+@interface YapDatabaseActionManager : YapDatabaseAutoView
 
 - (instancetype)init;
+
 - (instancetype)initWithConnection:(nullable YapDatabaseConnection *)connection;
+
 - (instancetype)initWithConnection:(nullable YapDatabaseConnection *)connection
                            options:(nullable YapDatabaseViewOptions *)options;
+
+- (instancetype)initWithConnection:(nullable YapDatabaseConnection *)connection
+                           options:(nullable YapDatabaseViewOptions *)options
+                         scheduler:(nullable YapActionScheduler)scheduler;
 
 #if !TARGET_OS_WATCH
 /**
@@ -45,7 +53,7 @@ NS_ASSUME_NONNULL_BEGIN
  * 
  * If an instance is not assigned, then one will be automatically created (after registration)
  * via [YapReachability reachabilityForInternetConnection].
-**/
+ */
 @property (atomic, strong, readwrite, nullable) YapReachability *reachability;
 #endif
 
@@ -70,14 +78,14 @@ NS_ASSUME_NONNULL_BEGIN
  * a retain cycle if you were attemping to shut down the YapDatabase instance. However, you can break the
  * retain cycle by suspending the action manager. When suspended, YDBActionManager automatically releases its
  * strongly held internal YDBConnection.
-**/
+ */
 
 /**
  * Returns YES if the action manager is suspended.
  *
  * @see suspend
  * @see resume
-**/
+ */
 @property (atomic, readonly) BOOL isSuspended;
 
 /**
@@ -87,7 +95,7 @@ NS_ASSUME_NONNULL_BEGIN
  *
  * @see suspend
  * @see resume
-**/
+ */
 @property (atomic, readonly) NSUInteger suspendCount;
 
 /**
@@ -95,7 +103,7 @@ NS_ASSUME_NONNULL_BEGIN
  *
  * @return
  *   The new suspend count.
-**/
+ */
 - (NSUInteger)suspend;
 
 /**
@@ -107,7 +115,7 @@ NS_ASSUME_NONNULL_BEGIN
  *
  * @see suspend
  * @see suspendCount
-**/
+ */
 - (NSUInteger)suspendWithCount:(NSUInteger)suspendCountIncrement;
 
 /**
@@ -115,7 +123,7 @@ NS_ASSUME_NONNULL_BEGIN
  *
  * @return
  *   The new suspend count.
-**/
+ */
 - (NSUInteger)resume;
 
 @end

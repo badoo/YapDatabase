@@ -14,7 +14,7 @@ NS_ASSUME_NONNULL_BEGIN
  * 
  * @see YapDatabaseConnection hasChangeForKey:inNotifications:
  * @see YapDatabaseConnection hasChangeForAnyKeys:inNotifications:
-**/
+ */
 @interface YapSet : NSObject <NSFastEnumeration>
 
 - (id)initWithSet:(NSMutableSet *)set;
@@ -27,7 +27,7 @@ NS_ASSUME_NONNULL_BEGIN
 - (BOOL)containsObject:(id)anObject;
 - (BOOL)intersectsSet:(NSSet *)otherSet;
 
-- (void)enumerateObjectsUsingBlock:(void (^)(id obj, BOOL *stop))block;
+- (void)enumerateObjectsUsingBlock:(void (NS_NOESCAPE^)(id obj, BOOL *stop))block;
 
 // It's open source!
 // You are encouraged to add any methods you may need that are available in the NSSet API.

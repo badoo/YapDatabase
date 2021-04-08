@@ -12,7 +12,7 @@ NS_ASSUME_NONNULL_BEGIN
  * then a returned snippet may look something like this:
  * 
  * <b>...</b>one of my <b>favorite</b> cheese pairings is<b>...</b>
-**/
+ */
 @interface YapDatabaseFullTextSearchSnippetOptions : NSObject <NSCopying>
 
 
@@ -28,20 +28,20 @@ NS_ASSUME_NONNULL_BEGIN
  * The startMatchText is inserted before matched terms/phrases, and also before injected ellipses text.
  * It is used to mark the beginning of special text within the snippet.
  *
- * If not set, it will be the defaultStartMatchText: @"<b>"
+ * If not set, it will be the defaultStartMatchText
  *
  * @see defaultStartMatchText
-**/
+ */
 @property (nonatomic, copy) NSString *startMatchText;
 
 /**
  * The endMatchText is inserted after matched terms/phrases, and also after injected ellipses text.
  * It is used to mark the end of special text within the snippet.
  *
- * If not set, it will be the defaultEndMatchText: @"</b>"
+ * If not set, it will be the defaultEndMatchText
  *
  * @see defaultEndMatchText
-**/
+ */
 @property (nonatomic, copy) NSString *endMatchText;
 
 /**
@@ -53,7 +53,7 @@ NS_ASSUME_NONNULL_BEGIN
  *
  * @see defaultEllipsesText
  * @see numberOfTokens
-**/
+ */
 @property (nonatomic, copy) NSString *ellipsesText;
 
 /**
@@ -61,7 +61,7 @@ NS_ASSUME_NONNULL_BEGIN
  * If nil, then the text may be extracted from any column.
  * 
  * If not set, the default value is nil.
-**/
+ */
 @property (nonatomic, copy, nullable) NSString *columnName;
 
 /**
@@ -75,7 +75,7 @@ NS_ASSUME_NONNULL_BEGIN
  * The maximum allowable absolute value is 64.
  *
  * @see defaultNumberOfTokens
-**/
+ */
 @property (nonatomic, assign) int numberOfTokens;
 
 @end

@@ -1,8 +1,8 @@
 #import <Foundation/Foundation.h>
 
-#import "YapDatabase.h"
-#import "YapDatabaseView.h"
-#import "YapDatabaseCloudKit.h"
+#import <YapDatabase/YapDatabase.h>
+#import <YapDatabase/YapDatabaseAutoView.h>
+#import <YapDatabase/YapDatabaseCloudKit.h>
 
 @class DatabaseManager;
 
@@ -71,7 +71,7 @@ extern DatabaseManager *MyDatabaseManager;
 /**
  * The path of the raw database file.
 **/
-+ (NSString *)databasePath;
++ (NSURL *)databaseURL;
 
 /**
  * The root database class, and extension(s)

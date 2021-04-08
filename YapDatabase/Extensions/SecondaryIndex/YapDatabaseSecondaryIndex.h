@@ -28,7 +28,7 @@ NS_ASSUME_NONNULL_BEGIN
  *
  * For more information, see the wiki article about secondary indexes:
  * https://github.com/yapstudios/YapDatabase/wiki/Secondary-Indexes
-**/
+ */
 @interface YapDatabaseSecondaryIndex : YapDatabaseExtension
 
 /**
@@ -50,7 +50,7 @@ NS_ASSUME_NONNULL_BEGIN
  * @see YapDatabaseSecondaryIndexHandler
  * 
  * @see YapDatabase registerExtension:withName:
-**/
+ */
 - (id)initWithSetup:(YapDatabaseSecondaryIndexSetup *)setup
             handler:(YapDatabaseSecondaryIndexHandler *)handler;
 
@@ -59,17 +59,14 @@ NS_ASSUME_NONNULL_BEGIN
  * After creation, you'll need to register the extension with the database system.
  *
  * @param setup
- * 
  *   A YapDatabaseSecondaryIndexSetup instance allows you to specify the column names and type.
  *   The column names can be whatever you want, with a few exceptions for reserved names such as "rowid".
  *   The types can reflect numbers or text.
  * 
  * @param handler
- * 
  *   The block (and blockType) that handles extracting secondary index information from a row in the database.
  * 
- * @param version
- * 
+ * @param versionTag
  *   If, after creating the secondary index(es), you need to change the setup or block,
  *   then simply increment the version parameter. If you pass a version that is different from the last
  *   initialization of the extension, then it will automatically re-create itself.
@@ -78,7 +75,7 @@ NS_ASSUME_NONNULL_BEGIN
  * @see YapDatabaseSecondaryIndexHandler
  *
  * @see YapDatabase registerExtension:withName:
-**/
+ */
 - (id)initWithSetup:(YapDatabaseSecondaryIndexSetup *)setup
             handler:(YapDatabaseSecondaryIndexHandler *)handler
          versionTag:(nullable NSString *)versionTag;
@@ -97,7 +94,7 @@ NS_ASSUME_NONNULL_BEGIN
  * 
  *   The block (and blockType) that handles extracting secondary index information from a row in the database.
  * 
- * @param version
+ * @param versionTag
  * 
  *   If, after creating the secondary index(es), you need to change the setup or block,
  *   then simply increment the version parameter. If you pass a version that is different from the last
@@ -112,7 +109,7 @@ NS_ASSUME_NONNULL_BEGIN
  * @see YapDatabaseSecondaryIndexHandler
  *
  * @see YapDatabase registerExtension:withName:
-**/
+ */
 - (id)initWithSetup:(YapDatabaseSecondaryIndexSetup *)setup
             handler:(YapDatabaseSecondaryIndexHandler *)handler
          versionTag:(nullable NSString *)versionTag
@@ -131,7 +128,7 @@ NS_ASSUME_NONNULL_BEGIN
  * If you need to change the columnNames and/or block,
  * then simply pass a different versionTag during the init method,
  * and the extension will automatically update itself.
-**/
+ */
 @property (nonatomic, copy, readonly) NSString *versionTag;
 
 @end

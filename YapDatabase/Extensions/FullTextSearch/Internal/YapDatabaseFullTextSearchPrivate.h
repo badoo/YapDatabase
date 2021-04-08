@@ -9,13 +9,17 @@
 
 #import "YapMutationStack.h"
 
-#import "sqlite3.h"
+#ifdef SQLITE_HAS_CODEC
+  #import <SQLCipher/sqlite3.h>
+#else
+  #import "sqlite3.h"
+#endif
 
 /**
  * This version number is stored in the yap2 table.
  * If there is a major re-write to this class, then the version number will be incremented,
  * and the class can automatically rebuild the tables as needed.
-**/
+ */
 #define YAP_DATABASE_FTS_CLASS_VERSION 1
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -43,6 +47,7 @@
 	
 	NSOrderedSet *columnNames;
 	NSDictionary *options;
+	NSString *ftsVersion;
 	NSString *versionTag;
 	
 	id columnNamesSharedKeySet;
@@ -77,6 +82,8 @@
 - (sqlite3_stmt *)removeRowidStatement;
 - (sqlite3_stmt *)removeAllStatement;
 - (sqlite3_stmt *)queryStatement;
+- (sqlite3_stmt *)bm25QueryStatement;
+- (sqlite3_stmt *)bm25QueryStatementWithWeights:(NSArray<NSNumber *> *)weights;
 - (sqlite3_stmt *)querySnippetStatement;
 - (sqlite3_stmt *)rowidQueryStatement;
 - (sqlite3_stmt *)rowidQuerySnippetStatement;
@@ -98,12 +105,12 @@
            databaseTransaction:(YapDatabaseReadTransaction *)databaseTransaction;
 
 - (void)enumerateRowidsMatching:(NSString *)query
-                     usingBlock:(void (^)(int64_t rowid, BOOL *stop))block;
+                     usingBlock:(void (NS_NOESCAPE^)(int64_t rowid, BOOL *stop))block;
 
 - (void)enumerateRowidsMatching:(NSString *)query
              withSnippetOptions:(YapDatabaseFullTextSearchSnippetOptions *)inOptions
                      usingBlock:
-            (void (^)(NSString *snippet, int64_t rowid, BOOL *stop))block;
+            (void (NS_NOESCAPE^)(NSString *snippet, int64_t rowid, BOOL *stop))block;
 
 - (BOOL)rowid:(int64_t)rowid matches:(NSString *)query;
 - (NSString *)rowid:(int64_t)rowid matches:(NSString *)query
