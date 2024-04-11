@@ -53,6 +53,9 @@
 		371A7BC01EF18B80004176EC /* YapDatabaseViewLocator.m in Sources */ = {isa = PBXBuildFile; fileRef = 371A7BBB1EF18B7B004176EC /* YapDatabaseViewLocator.m */; };
 		65580CA61BF36A020055E65C /* yap_vfs_shim.h in Headers */ = {isa = PBXBuildFile; fileRef = 65580CA41BF36A020055E65C /* yap_vfs_shim.h */; };
 		65580CA81BF36AA20055E65C /* yap_vfs_shim.h in Headers */ = {isa = PBXBuildFile; fileRef = 65580CA41BF36A020055E65C /* yap_vfs_shim.h */; };
+		799ECEDE2BC83CF200563F83 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 799ECEDC2BC83CF200563F83 /* PrivacyInfo.xcprivacy */; };
+		799ECEDF2BC83CF200563F83 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 799ECEDC2BC83CF200563F83 /* PrivacyInfo.xcprivacy */; };
+		799ECEE02BC83CF200563F83 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 799ECEDC2BC83CF200563F83 /* PrivacyInfo.xcprivacy */; };
 		B93B30CB238966FC00710E07 /* YapDatabaseConnectionPool.h in Headers */ = {isa = PBXBuildFile; fileRef = B93B30C9238966FC00710E07 /* YapDatabaseConnectionPool.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		B93B30CC238966FC00710E07 /* YapDatabaseConnectionPool.m in Sources */ = {isa = PBXBuildFile; fileRef = B93B30CA238966FC00710E07 /* YapDatabaseConnectionPool.m */; };
 		B93B30CD2389670000710E07 /* YapDatabaseConnectionPool.h in Headers */ = {isa = PBXBuildFile; fileRef = B93B30C9238966FC00710E07 /* YapDatabaseConnectionPool.h */; settings = {ATTRIBUTES = (Public, ); }; };
@@ -1262,6 +1265,7 @@
 		371A7BBA1EF18B7B004176EC /* YapDatabaseViewLocator.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = YapDatabaseViewLocator.h; sourceTree = "<group>"; };
 		371A7BBB1EF18B7B004176EC /* YapDatabaseViewLocator.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = YapDatabaseViewLocator.m; sourceTree = "<group>"; };
 		65580CA41BF36A020055E65C /* yap_vfs_shim.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = yap_vfs_shim.h; sourceTree = "<group>"; };
+		799ECEDC2BC83CF200563F83 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		B93B30C9238966FC00710E07 /* YapDatabaseConnectionPool.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = YapDatabaseConnectionPool.h; sourceTree = "<group>"; };
 		B93B30CA238966FC00710E07 /* YapDatabaseConnectionPool.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = YapDatabaseConnectionPool.m; sourceTree = "<group>"; };
 		B93B30D32389670D00710E07 /* YapDatabaseConnectionProxy.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = YapDatabaseConnectionProxy.h; sourceTree = "<group>"; };
@@ -2602,6 +2606,7 @@
 				DCF7C2BF1BCC8E870087ED39 /* iOS */,
 				DCE760921D78ADEF009C83A0 /* tvOS */,
 				DC1E7D041D80C901000721B8 /* watchOS */,
+				799ECEDC2BC83CF200563F83 /* PrivacyInfo.xcprivacy */,
 			);
 			name = Framework;
 			sourceTree = "<group>";
@@ -3454,6 +3459,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				799ECEE02BC83CF200563F83 /* PrivacyInfo.xcprivacy in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -3496,6 +3502,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				799ECEDF2BC83CF200563F83 /* PrivacyInfo.xcprivacy in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -3519,6 +3526,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				799ECEDE2BC83CF200563F83 /* PrivacyInfo.xcprivacy in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
