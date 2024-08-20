@@ -556,9 +556,13 @@
 			                               object:&anotherObject
 			                             forRowid:anotherRowid];
 			
-			return sortingBlock(databaseTransaction, group,
-			                      collectionKey.collection, collectionKey.key,        object,
-			                            another.collection,       another.key, anotherObject);
+			if (object && anotherObject) {
+				return sortingBlock(databaseTransaction, group,
+				                      collectionKey.collection, collectionKey.key,        object,
+				                            another.collection,       another.key, anotherObject);
+			} else {
+				return NSOrderedAscending;
+			}
 		}
 		else if (sorting->blockType == YapDatabaseBlockTypeWithMetadata)
 		{
@@ -588,9 +592,13 @@
 			                             metadata:&anotherMetadata
 			                             forRowid:anotherRowid];
 			
-			return sortingBlock(databaseTransaction, group,
-			                      collectionKey.collection, collectionKey.key,        object,        metadata,
-			                            another.collection,       another.key, anotherObject, anotherMetadata);
+			if (object && anotherObject) {
+				return sortingBlock(databaseTransaction, group,
+				                      collectionKey.collection, collectionKey.key,        object,        metadata,
+				                            another.collection,       another.key, anotherObject, anotherMetadata);
+			} else {
+				return NSOrderedAscending;
+			}
 		}
 		
 	#pragma clang diagnostic pop
@@ -1364,7 +1372,11 @@
 				id object = nil;
 				[databaseTransaction getCollectionKey:&ck object:&object forRowid:rowid];
 				
-				return findBlock(ck.collection, ck.key, object);
+				if (ck && object) {
+					return findBlock(ck.collection, ck.key, object);
+				} else {
+					return NSOrderedAscending;
+				}
 				
 			#pragma clang diagnostic pop
 			};
@@ -1411,7 +1423,11 @@
 				id metadata = nil;
 				[databaseTransaction getCollectionKey:&ck object:&object metadata:&metadata forRowid:rowid];
 				
-				return findBlock(ck.collection, ck.key, object, metadata);
+				if (ck && object) {
+					return findBlock(ck.collection, ck.key, object, metadata);
+				} else {
+					return NSOrderedAscending;
+				}
 				
 			#pragma clang diagnostic pop
 			};

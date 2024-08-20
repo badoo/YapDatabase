@@ -38,13 +38,13 @@ typedef NSString* _Nullable (^YapDatabaseViewGroupingWithKeyBlock)
              (YapDatabaseReadTransaction *transaction, NSString *collection, NSString *key);
 
 typedef NSString* _Nullable (^YapDatabaseViewGroupingWithObjectBlock)
-             (YapDatabaseReadTransaction *transaction, NSString *collection, NSString *key, id object);
+             (YapDatabaseReadTransaction *transaction, NSString *collection, NSString *key, __nullable id object);
 
 typedef NSString* _Nullable (^YapDatabaseViewGroupingWithMetadataBlock)
              (YapDatabaseReadTransaction *transaction, NSString *collection, NSString *key, _Nullable id metadata);
 
 typedef NSString* _Nullable (^YapDatabaseViewGroupingWithRowBlock)
-             (YapDatabaseReadTransaction *transaction, NSString *collection, NSString *key, id object, _Nullable id metadata);
+             (YapDatabaseReadTransaction *transaction, NSString *collection, NSString *key, __nullable id object, _Nullable id metadata);
 
 + (instancetype)withKeyBlock:(YapDatabaseViewGroupingWithKeyBlock)block;
 + (instancetype)withObjectBlock:(YapDatabaseViewGroupingWithObjectBlock)block;
@@ -207,13 +207,13 @@ typedef NSComparisonResult (^YapDatabaseViewFindWithKeyBlock)
                                  (NSString *collection, NSString *key);
 
 typedef NSComparisonResult (^YapDatabaseViewFindWithObjectBlock)
-                                 (NSString *collection, NSString *key, id object);
+                                 (NSString *collection, NSString *key, __nullable id object);
 
 typedef NSComparisonResult (^YapDatabaseViewFindWithMetadataBlock)
                                  (NSString *collection, NSString *key, _Nullable id metadata);
 
 typedef NSComparisonResult (^YapDatabaseViewFindWithRowBlock)
-                                 (NSString *collection, NSString *key, id object, _Nullable id metadata);
+                                 (NSString *collection, NSString *key, __nullable id object, _Nullable id metadata);
 
 + (instancetype)withKeyBlock:(YapDatabaseViewFindWithKeyBlock)findBlock;
 + (instancetype)withObjectBlock:(YapDatabaseViewFindWithObjectBlock)findBlock;
